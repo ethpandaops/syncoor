@@ -62,7 +62,7 @@ type ClientInfo struct {
 // Report represents the complete sync test report
 type Report struct {
 	RunID               string     `json:"run_id"`
-	Timestamp           string     `json:"timestamp"`
+	Timestamp           int64      `json:"timestamp"`
 	SyncStatus          SyncStatus `json:"sync_status"`
 	ExecutionClientInfo ClientInfo `json:"execution_client_info"`
 	ConsensusClientInfo ClientInfo `json:"consensus_client_info"`
@@ -84,7 +84,7 @@ func NewSyncTest(config SyncTestConfig) *SyncTest {
 	runID := fmt.Sprintf("sync-test-%d", time.Now().UnixNano())
 	report := &Report{
 		RunID:     runID,
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+		Timestamp: time.Now().Unix(),
 		SyncStatus: SyncStatus{
 			SyncProgress: []SyncProgressEntry{},
 		},
@@ -240,7 +240,7 @@ func (st *SyncTest) WaitForSync(ctx context.Context) error {
 				"current_block": execSyncStatus.BlockNumber,
 				"is_syncing":    execSyncStatus.IsSyncing,
 				"peer_count":    execSyncStatus.PeerCount,
-			}).Info("Execution client sync status")
+			}).Debug("Execution client sync status")
 
 			if execSyncStatus.SyncProgress != nil && execSyncStatus.SyncProgress.CurrentBlock > 0 {
 				percent := float64(execSyncStatus.SyncProgress.CurrentBlock) / float64(execSyncStatus.SyncProgress.HighestBlock) * 100
@@ -250,7 +250,7 @@ func (st *SyncTest) WaitForSync(ctx context.Context) error {
 					"highest_block":  execSyncStatus.SyncProgress.HighestBlock,
 					"starting_block": execSyncStatus.SyncProgress.StartingBlock,
 					"progress":       fmt.Sprintf("%.2f%%", percent),
-				}).Info("Execution client sync progress")
+				}).Debug("Execution client sync progress")
 			}
 		}
 
@@ -267,7 +267,7 @@ func (st *SyncTest) WaitForSync(ctx context.Context) error {
 				"is_syncing":    consensusSyncStatus.IsSyncing,
 				"is_optimistic": consensusSyncStatus.IsOptimistic,
 				"el_offline":    consensusSyncStatus.ElOffline,
-			}).Info("Consensus client sync status")
+			}).Debug("Consensus client sync status")
 
 		}
 
@@ -277,14 +277,46 @@ func (st *SyncTest) WaitForSync(ctx context.Context) error {
 			log.Printf("Failed to get metrics: %v", err)
 		} else {
 			logrus.WithFields(logrus.Fields{
-				"disk_cl":  metrics.ConDiskUsage,
-				"disk_el":  metrics.ExeDiskUsage,
-				"peers_cl": metrics.ConPeers,
-				"peers_el": metrics.ExePeers,
-			}).Info("Metrics exporter status")
+				"data": metrics,
+			}).Debug("Metrics exporter status")
+			logrus.WithFields(logrus.Fields{
+				"cl_disk":          metrics.ConDiskUsage,
+				"cl_is_syncing":    metrics.ConIsSyncing,
+				"cl_peers":         metrics.ConPeers,
+				"cl_slot":          metrics.ConSyncHeadSlot,
+				"cl_sync_distance": metrics.ConSyncEstimatedHighestSlot,
+				"cl_sync_perc":     metrics.ConSyncPercentage,
+				"cl_syncing":       metrics.ConIsSyncing,
+				"cl_version":       metrics.ConVersion,
+				"el_block":         metrics.ExeSyncCurrentBlock,
+				"el_chain_id":      metrics.ExeChainID,
+				"el_disk":          metrics.ExeDiskUsage,
+				"el_highest_block": metrics.ExeSyncHighestBlock,
+				"el_peers":         metrics.ExePeers,
+				"el_sync_perc":     metrics.ExeSyncPercentage,
+				"el_syncing":       metrics.ExeIsSyncing,
+				"el_version":       metrics.ExeVersion,
+			}).Debug("Metrics exporter status")
 		}
 
 		if gotExecutionSync && gotConsensusSync && metrics != nil {
+			logrus.WithFields(logrus.Fields{
+
+				"cl_optimistic":    consensusSyncStatus.IsOptimistic,
+				"cl_progress":      metrics.ConSyncPercentage,
+				"cl_slot":          metrics.ConSyncHeadSlot,
+				"cl_sync_distance": metrics.ConSyncEstimatedHighestSlot,
+				"cl_syncing":       metrics.ConIsSyncing,
+				"cl_type":          st.config.CLClient,
+
+				"el_block":         metrics.ExeSyncCurrentBlock,
+				"el_chain_id":      metrics.ExeChainID,
+				"el_highest_block": metrics.ExeSyncHighestBlock,
+				"el_is_syncing":    metrics.ExeIsSyncing,
+				"el_progress":      metrics.ExeSyncPercentage,
+				"el_type":          st.config.ELClient,
+			}).Info("Sync progress")
+
 			// Track progress if we got all data
 			timestamp := time.Now().Unix()
 			var blockNumber uint64
