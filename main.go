@@ -19,6 +19,7 @@ var (
 	networkName   string
 	enclaveName   string
 	reportDir     string
+	logLevel      string
 )
 
 var rootCmd = &cobra.Command{
@@ -37,6 +38,7 @@ func init() {
 	rootCmd.Flags().StringVar(&networkName, "network", "hoodi", "Network to connect to (e.g., hoodi, sepolia, mainnet)")
 	rootCmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
 	rootCmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")
+	rootCmd.Flags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
 }
 
 func main() {
@@ -47,6 +49,13 @@ func main() {
 
 func runSyncTest(cmd *cobra.Command, args []string) {
 	ctx := context.Background()
+
+	// Configure log level
+	level, err := logrus.ParseLevel(logLevel)
+	if err != nil {
+		log.Fatalf("Invalid log level '%s': %v", logLevel, err)
+	}
+	logrus.SetLevel(level)
 
 	// Set default enclave name if not provided
 	if enclaveName == "" {
