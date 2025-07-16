@@ -1,6 +1,7 @@
-package main
+package metrics_exporter
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,7 +10,12 @@ import (
 
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/sirupsen/logrus"
 )
+
+type Client interface {
+	FetchMetrics(ctx context.Context) (*ParsedMetrics, error)
+}
 
 // ParsedMetrics contains the parsed metrics we're interested in
 type ParsedMetrics struct {
@@ -35,22 +41,28 @@ type ParsedMetrics struct {
 }
 
 // MetricsClient handles fetching and parsing metrics
-type MetricsClient struct {
+type client struct {
+	log        logrus.FieldLogger
 	httpClient *http.Client
+	endpoint   string
 }
 
-// NewMetricsClient creates a new metrics client
-func NewMetricsClient() *MetricsClient {
-	return &MetricsClient{
+// NewClient creates a new metrics export client
+func NewClient(log logrus.FieldLogger, endpoint string) Client {
+	return &client{
+		log:      log.WithField("package", "metrics-exporter"),
+		endpoint: endpoint,
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 10 * time.Second,
 		},
 	}
 }
 
 // FetchMetrics fetches and parses metrics from the given endpoint
-func (mc *MetricsClient) FetchMetrics(endpoint string) (*ParsedMetrics, error) {
-	resp, err := mc.httpClient.Get(endpoint)
+func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
+	c.log.WithField("endpoint", c.endpoint).Debug("Fetching metrics")
+
+	resp, err := c.httpClient.Get(c.endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch metrics: %w", err)
 	}
@@ -65,11 +77,11 @@ func (mc *MetricsClient) FetchMetrics(endpoint string) (*ParsedMetrics, error) {
 		return nil, fmt.Errorf("failed to read response body: %w", err)
 	}
 
-	return mc.parseMetrics(strings.NewReader(string(body)))
+	return c.parseMetrics(strings.NewReader(string(body)))
 }
 
 // parseMetrics parses the Prometheus-style metrics using official libraries
-func (mc *MetricsClient) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
+func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
 	parser := expfmt.TextParser{}
 	metricFamilies, err := parser.TextToMetricFamilies(reader)
 	if err != nil {
@@ -100,79 +112,79 @@ func (mc *MetricsClient) parseMetrics(reader io.Reader) (*ParsedMetrics, error) 
 
 	// Parse disk usage metrics
 	if family, exists := metricFamilies["eth_disk_usage_bytes"]; exists {
-		mc.parseDiskUsageFamily(family, parsed)
+		c.parseDiskUsageFamily(family, parsed)
 	}
 
 	// Parse consensus peers
 	if family, exists := metricFamilies["eth_con_peers"]; exists {
-		mc.parseConPeersFamily(family, parsed)
+		c.parseConPeersFamily(family, parsed)
 	}
 
 	// Parse execution net peer count
 	if family, exists := metricFamilies["eth_exe_net_peer_count"]; exists {
-		mc.parseExePeersFamily(family, parsed)
+		c.parseExePeersFamily(family, parsed)
 	}
 
 	// Parse execution client version
 	if family, exists := metricFamilies["eth_exe_web3_client_version"]; exists {
-		mc.parseExeVersionFamily(family, parsed)
+		c.parseExeVersionFamily(family, parsed)
 	}
 
 	// Parse consensus node version
 	if family, exists := metricFamilies["eth_con_node_version"]; exists {
-		mc.parseConVersionFamily(family, parsed)
+		c.parseConVersionFamily(family, parsed)
 	}
 
 	// Parse execution chain ID
 	if family, exists := metricFamilies["eth_exe_chain_id"]; exists {
-		mc.parseExeChainIDFamily(family, parsed)
+		c.parseExeChainIDFamily(family, parsed)
 	}
 
 	// Parse execution sync current block
 	if family, exists := metricFamilies["eth_exe_sync_current_block"]; exists {
-		mc.parseExeSyncCurrentBlockFamily(family, parsed)
+		c.parseExeSyncCurrentBlockFamily(family, parsed)
 	}
 
 	// Parse execution sync highest block
 	if family, exists := metricFamilies["eth_exe_sync_highest_block"]; exists {
-		mc.parseExeSyncHighestBlockFamily(family, parsed)
+		c.parseExeSyncHighestBlockFamily(family, parsed)
 	}
 
 	// Parse execution sync is syncing
 	if family, exists := metricFamilies["eth_exe_sync_is_syncing"]; exists {
-		mc.parseExeSyncIsSyncingFamily(family, parsed)
+		c.parseExeSyncIsSyncingFamily(family, parsed)
 	}
 
 	// Parse execution sync percentage
 	if family, exists := metricFamilies["eth_exe_sync_percentage"]; exists {
-		mc.parseExeSyncPercentageFamily(family, parsed)
+		c.parseExeSyncPercentageFamily(family, parsed)
 	}
 
 	// Parse consensus sync head slot
 	if family, exists := metricFamilies["eth_con_sync_head_slot"]; exists {
-		mc.parseConSyncHeadSlotFamily(family, parsed)
+		c.parseConSyncHeadSlotFamily(family, parsed)
 	}
 
 	// Parse consensus sync estimated highest slot
 	if family, exists := metricFamilies["eth_con_sync_estimated_highest_slot"]; exists {
-		mc.parseConSyncEstimatedHighestSlotFamily(family, parsed)
+		c.parseConSyncEstimatedHighestSlotFamily(family, parsed)
 	}
 
 	// Parse consensus sync is syncing
 	if family, exists := metricFamilies["eth_con_sync_is_syncing"]; exists {
-		mc.parseConSyncIsSyncingFamily(family, parsed)
+		c.parseConSyncIsSyncingFamily(family, parsed)
 	}
 
 	// Parse consensus sync percentage
 	if family, exists := metricFamilies["eth_con_sync_percentage"]; exists {
-		mc.parseConSyncPercentageFamily(family, parsed)
+		c.parseConSyncPercentageFamily(family, parsed)
 	}
 
 	return parsed, nil
 }
 
 // parseDiskUsageFamily parses eth_disk_usage_bytes metrics
-func (mc *MetricsClient) parseDiskUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseDiskUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		var directory string
 		for _, label := range metric.GetLabel() {
@@ -194,7 +206,7 @@ func (mc *MetricsClient) parseDiskUsageFamily(family *io_prometheus_client.Metri
 }
 
 // parseConPeersFamily parses eth_con_peers metrics
-func (mc *MetricsClient) parseConPeersFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseConPeersFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		var state string
 		for _, label := range metric.GetLabel() {
@@ -211,7 +223,7 @@ func (mc *MetricsClient) parseConPeersFamily(family *io_prometheus_client.Metric
 }
 
 // parseExePeersFamily parses eth_exe_net_peer_count metrics
-func (mc *MetricsClient) parseExePeersFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExePeersFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExePeers = uint64(metric.GetGauge().GetValue())
@@ -221,17 +233,17 @@ func (mc *MetricsClient) parseExePeersFamily(family *io_prometheus_client.Metric
 }
 
 // parseExeVersionFamily parses eth_exe_web3_client_version metrics
-func (mc *MetricsClient) parseExeVersionFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
-	parsed.ExeVersion = mc.extractVersionFromFamily(family)
+func (c *client) parseExeVersionFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	parsed.ExeVersion = c.extractVersionFromFamily(family)
 }
 
 // parseConVersionFamily parses eth_con_node_version metrics
-func (mc *MetricsClient) parseConVersionFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
-	parsed.ConVersion = mc.extractVersionFromFamily(family)
+func (c *client) parseConVersionFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	parsed.ConVersion = c.extractVersionFromFamily(family)
 }
 
 // extractVersionFromFamily extracts the version string from a metric family's version label
-func (mc *MetricsClient) extractVersionFromFamily(family *io_prometheus_client.MetricFamily) string {
+func (c *client) extractVersionFromFamily(family *io_prometheus_client.MetricFamily) string {
 	for _, metric := range family.GetMetric() {
 		for _, label := range metric.GetLabel() {
 			if label.GetName() == "version" {
@@ -243,7 +255,7 @@ func (mc *MetricsClient) extractVersionFromFamily(family *io_prometheus_client.M
 }
 
 // parseExeChainIDFamily parses eth_exe_chain_id metrics
-func (mc *MetricsClient) parseExeChainIDFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExeChainIDFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExeChainID = uint64(metric.GetGauge().GetValue())
@@ -253,7 +265,7 @@ func (mc *MetricsClient) parseExeChainIDFamily(family *io_prometheus_client.Metr
 }
 
 // parseExeSyncCurrentBlockFamily parses eth_exe_sync_current_block metrics
-func (mc *MetricsClient) parseExeSyncCurrentBlockFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExeSyncCurrentBlockFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExeSyncCurrentBlock = uint64(metric.GetGauge().GetValue())
@@ -263,7 +275,7 @@ func (mc *MetricsClient) parseExeSyncCurrentBlockFamily(family *io_prometheus_cl
 }
 
 // parseExeSyncHighestBlockFamily parses eth_exe_sync_highest_block metrics
-func (mc *MetricsClient) parseExeSyncHighestBlockFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExeSyncHighestBlockFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExeSyncHighestBlock = uint64(metric.GetGauge().GetValue())
@@ -273,7 +285,7 @@ func (mc *MetricsClient) parseExeSyncHighestBlockFamily(family *io_prometheus_cl
 }
 
 // parseExeSyncIsSyncingFamily parses eth_exe_sync_is_syncing metrics
-func (mc *MetricsClient) parseExeSyncIsSyncingFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExeSyncIsSyncingFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExeIsSyncing = metric.GetGauge().GetValue() == 1
@@ -283,7 +295,7 @@ func (mc *MetricsClient) parseExeSyncIsSyncingFamily(family *io_prometheus_clien
 }
 
 // parseExeSyncPercentageFamily parses eth_exe_sync_percentage metrics
-func (mc *MetricsClient) parseExeSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseExeSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ExeSyncPercentage = metric.GetGauge().GetValue()
@@ -293,7 +305,7 @@ func (mc *MetricsClient) parseExeSyncPercentageFamily(family *io_prometheus_clie
 }
 
 // parseConSyncHeadSlotFamily parses eth_con_sync_head_slot metrics
-func (mc *MetricsClient) parseConSyncHeadSlotFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseConSyncHeadSlotFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ConSyncHeadSlot = uint64(metric.GetGauge().GetValue())
@@ -303,7 +315,7 @@ func (mc *MetricsClient) parseConSyncHeadSlotFamily(family *io_prometheus_client
 }
 
 // parseConSyncEstimatedHighestSlotFamily parses eth_con_sync_estimated_highest_slot metrics
-func (mc *MetricsClient) parseConSyncEstimatedHighestSlotFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseConSyncEstimatedHighestSlotFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ConSyncEstimatedHighestSlot = uint64(metric.GetGauge().GetValue())
@@ -313,7 +325,7 @@ func (mc *MetricsClient) parseConSyncEstimatedHighestSlotFamily(family *io_prome
 }
 
 // parseConSyncIsSyncingFamily parses eth_con_sync_is_syncing metrics
-func (mc *MetricsClient) parseConSyncIsSyncingFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseConSyncIsSyncingFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ConIsSyncing = metric.GetGauge().GetValue() == 1
@@ -323,7 +335,7 @@ func (mc *MetricsClient) parseConSyncIsSyncingFamily(family *io_prometheus_clien
 }
 
 // parseConSyncPercentageFamily parses eth_con_sync_percentage metrics
-func (mc *MetricsClient) parseConSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+func (c *client) parseConSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
 			parsed.ConSyncPercentage = metric.GetGauge().GetValue()

@@ -1,10 +1,21 @@
-package main
+package kurtosis
 
 import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+
+	"github.com/sirupsen/logrus"
 )
+
+// Client defines the interface for execution layer operations
+type Client interface {
+	InspectService(enclaveName, service string) (*KurtosisServiceInspectResult, error)
+}
+
+type client struct {
+	log logrus.FieldLogger
+}
 
 // TransportProtocol represents the transport protocol type
 type TransportProtocol int
@@ -35,8 +46,15 @@ type KurtosisServiceInspectResult struct {
 	TtyEnabled  bool                        `json:"tty_enabled"`
 }
 
+// NewClient creates a new kurtosis client
+func NewClient(log logrus.FieldLogger) Client {
+	return &client{
+		log: log.WithField("package", "kurtosis"),
+	}
+}
+
 // InspectKurtosisService runs `kurtosis service inspect $enclaveName $service -o json` and returns the parsed result
-func InspectKurtosisService(enclaveName, service string) (*KurtosisServiceInspectResult, error) {
+func (c *client) InspectService(enclaveName, service string) (*KurtosisServiceInspectResult, error) {
 	// Run the kurtosis service inspect command
 	cmd := exec.Command("kurtosis", "service", "inspect", enclaveName, service, "-o", "json")
 
@@ -53,3 +71,6 @@ func InspectKurtosisService(enclaveName, service string) (*KurtosisServiceInspec
 
 	return &result, nil
 }
+
+// Interface compliance check
+var _ Client = (*client)(nil)

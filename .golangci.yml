@@ -1,0 +1,61 @@
+run:
+  timeout: 5m
+  go: '1.23'
+
+linters:
+  enable:
+    - errcheck
+    - gofmt
+    - goimports
+    - govet
+    - ineffassign
+    - misspell
+    - staticcheck
+    - unused
+    - gosimple
+    - goconst
+    - gocyclo
+    - dupl
+    - lll
+    - unconvert
+    - unparam
+    - nakedret
+    - prealloc
+    - scopelint
+    - gocritic
+    - gochecknoinits
+    - gochecknoglobals
+    - godox
+    - funlen
+    - wsl
+    - gci
+    - godot
+    - testpackage
+    - nestif
+    - exportloopref
+    - exhaustive
+    - sqlclosecheck
+    - rowserrcheck
+    - noctx
+    - contextcheck
+
+linters-settings:
+  lll:
+    line-length: 99
+  gocyclo:
+    min-complexity: 15
+  funlen:
+    lines: 60
+    statements: 40
+  nestif:
+    min-complexity: 4
+  gci:
+    sections:
+      - standard
+      - default
+      - prefix(github.com/ethpandaops/syncoor)
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

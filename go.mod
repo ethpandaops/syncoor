@@ -3,7 +3,7 @@ module github.com/ethpandaops/syncoor
 go 1.23.5
 
 require (
-	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250716141637-06bbc1a2f34e
+	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250716150623-10247d5bbc91
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.65.0
 	github.com/sirupsen/logrus v1.9.3
