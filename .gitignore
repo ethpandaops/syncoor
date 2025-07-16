@@ -19,7 +19,6 @@ vendor/
 go.work
 
 # Built binary
-syncoor
 bin/
 
 # Reports directory (generated at runtime)
