@@ -27,6 +27,7 @@ type SyncTestConfig struct {
 	Network       string
 	EnclaveName   string
 	ReportDir     string
+	Labels        map[string]string
 }
 
 // SyncProgressEntry represents the progress data at a specific timestamp
@@ -61,11 +62,12 @@ type ClientInfo struct {
 
 // Report represents the complete sync test report
 type Report struct {
-	RunID               string     `json:"run_id"`
-	Timestamp           int64      `json:"timestamp"`
-	SyncStatus          SyncStatus `json:"sync_status"`
-	ExecutionClientInfo ClientInfo `json:"execution_client_info"`
-	ConsensusClientInfo ClientInfo `json:"consensus_client_info"`
+	RunID               string            `json:"run_id"`
+	Timestamp           int64             `json:"timestamp"`
+	Labels              map[string]string `json:"labels,omitempty"`
+	SyncStatus          SyncStatus        `json:"sync_status"`
+	ExecutionClientInfo ClientInfo        `json:"execution_client_info"`
+	ConsensusClientInfo ClientInfo        `json:"consensus_client_info"`
 }
 
 // SyncTest represents a sync test instance
@@ -85,6 +87,7 @@ func NewSyncTest(config SyncTestConfig) *SyncTest {
 	report := &Report{
 		RunID:     runID,
 		Timestamp: time.Now().Unix(),
+		Labels:    config.Labels,
 		SyncStatus: SyncStatus{
 			SyncProgress: []SyncProgressEntry{},
 		},

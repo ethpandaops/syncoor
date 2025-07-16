@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,6 +21,7 @@ var (
 	enclaveName   string
 	reportDir     string
 	logLevel      string
+	labels        []string
 )
 
 var rootCmd = &cobra.Command{
@@ -39,6 +41,7 @@ func init() {
 	rootCmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
 	rootCmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")
 	rootCmd.Flags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
+	rootCmd.Flags().StringSliceVar(&labels, "label", []string{}, "Labels in key=value format (can be used multiple times)")
 }
 
 func main() {
@@ -73,6 +76,18 @@ func runSyncTest(cmd *cobra.Command, args []string) {
 		EnclaveName:   enclaveName,
 		ReportDir:     reportDir,
 	}
+
+	// Parse labels
+	parsedLabels := make(map[string]string)
+	for _, label := range labels {
+		parts := strings.SplitN(label, "=", 2)
+		if len(parts) == 2 {
+			parsedLabels[parts[0]] = parts[1]
+		} else {
+			log.Printf("Warning: Invalid label format '%s', skipping", label)
+		}
+	}
+	config.Labels = parsedLabels
 
 	// Create new sync test instance
 	syncTest := NewSyncTest(config)
