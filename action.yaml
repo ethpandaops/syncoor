@@ -1,0 +1,194 @@
+name: 'Syncoor Test'
+description: 'Run Ethereum client synchronization tests using syncoor'
+author: 'ethpandaops'
+
+inputs:
+  image:
+    description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:latest). Ignored if git-ref is provided.'
+    required: false
+    default: 'ghcr.io/ethpandaops/syncoor:master'
+
+  git-ref:
+    description: 'Git branch or commit hash to build the image from. If provided, will clone and build instead of using pre-built image.'
+    required: false
+    default: ''
+
+  repository:
+    description: 'Git repository URL to clone from when using git-ref'
+    required: false
+    default: 'https://github.com/ethpandaops/syncoor.git'
+
+  check-interval:
+    description: 'Interval in seconds between sync status checks'
+    required: false
+    default: '10s'
+
+  run-timeout:
+    description: 'Timeout in minutes for network startup'
+    required: false
+    default: '60m'
+
+  el-client:
+    description: 'Execution layer client type (geth, besu, nethermind, erigon, reth)'
+    required: false
+    default: 'geth'
+
+  cl-client:
+    description: 'Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)'
+    required: false
+    default: 'teku'
+
+  el-image:
+    description: 'Execution layer client image (optional)'
+    required: false
+    default: ''
+
+  cl-image:
+    description: 'Consensus layer client image (optional)'
+    required: false
+    default: ''
+
+  el-extra-args:
+    description: 'Extra arguments for execution layer client (optional)'
+    required: false
+    default: ''
+
+  cl-extra-args:
+    description: 'Extra arguments for consensus layer client (optional)'
+    required: false
+    default: ''
+
+  network:
+    description: 'Network to connect to (e.g., hoodi, sepolia, mainnet)'
+    required: false
+    default: 'hoodi'
+
+  enclave:
+    description: 'Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)'
+    required: false
+    default: ''
+
+  report-dir:
+    description: 'Directory to save reports'
+    required: false
+    default: './reports'
+
+  log-level:
+    description: 'Log level (panic, fatal, error, warn, info, debug, trace)'
+    required: false
+    default: 'info'
+
+  labels:
+    description: 'Comma-separated labels in key=value format (e.g., "test=sync,env=ci")'
+    required: false
+    default: ''
+
+  upload-artifacts:
+    description: 'Whether to upload test reports as artifacts'
+    required: false
+    default: 'true'
+
+outputs:
+  report-path:
+    description: 'Path to the generated report'
+    value: ${{ steps.run-test.outputs.report-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Checkout and Build Syncoor
+      if: inputs.git-ref != ''
+      shell: bash
+      run: |
+        # Clone the repository
+        echo "Cloning repository from ${{ inputs.repository }} at ref ${{ inputs.git-ref }}"
+        git clone ${{ inputs.repository }} syncoor-build
+        cd syncoor-build
+        git checkout ${{ inputs.git-ref }}
+
+        # Build the Docker image
+        echo "Building Docker image..."
+        docker build -t syncoor:local .
+        cd ..
+
+        # Clean up
+        rm -rf syncoor-build
+
+    - name: Run Syncoor Test
+      id: run-test
+      shell: bash
+      run: |
+        # Determine which image to use
+        if [ -n "${{ inputs.git-ref }}" ]; then
+          IMAGE="syncoor:local"
+        else
+          IMAGE="${{ inputs.image }}"
+        fi
+
+        # Build docker run command
+        DOCKER_CMD="docker run --rm"
+
+        # Add Docker socket mount for Kurtosis
+        DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
+
+        # Mount report directory
+        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/${{ inputs.report-dir }}:/app/${{ inputs.report-dir }}"
+
+        # Add the image
+        DOCKER_CMD="$DOCKER_CMD $IMAGE"
+
+        # Use 'sync' command
+        DOCKER_CMD="$DOCKER_CMD sync"
+
+        # Add CLI flags
+        DOCKER_CMD="$DOCKER_CMD --check-interval=${{ inputs.check-interval }}"
+        DOCKER_CMD="$DOCKER_CMD --run-timeout=${{ inputs.run-timeout }}"
+        DOCKER_CMD="$DOCKER_CMD --el-client=${{ inputs.el-client }}"
+        DOCKER_CMD="$DOCKER_CMD --cl-client=${{ inputs.cl-client }}"
+        DOCKER_CMD="$DOCKER_CMD --network=${{ inputs.network }}"
+        DOCKER_CMD="$DOCKER_CMD --report-dir=${{ inputs.report-dir }}"
+        DOCKER_CMD="$DOCKER_CMD --log-level=${{ inputs.log-level }}"
+
+        # Add optional parameters if provided
+        if [ -n "${{ inputs.el-image }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --el-image=${{ inputs.el-image }}"
+        fi
+
+        if [ -n "${{ inputs.cl-image }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --cl-image=${{ inputs.cl-image }}"
+        fi
+
+        if [ -n "${{ inputs.enclave }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --enclave=${{ inputs.enclave }}"
+        fi
+
+        if [ -n "${{ inputs.el-extra-args }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --el-extra-args=\"${{ inputs.el-extra-args }}\""
+        fi
+
+        if [ -n "${{ inputs.cl-extra-args }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --cl-extra-args=\"${{ inputs.cl-extra-args }}\""
+        fi
+
+        # Add labels if provided
+        if [ -n "${{ inputs.labels }}" ]; then
+          IFS=',' read -ra LABEL_ARRAY <<< "${{ inputs.labels }}"
+          for label in "${LABEL_ARRAY[@]}"; do
+            DOCKER_CMD="$DOCKER_CMD --label=$label"
+          done
+        fi
+
+        # Execute the command
+        echo "Running: $DOCKER_CMD"
+        eval $DOCKER_CMD
+
+        # Set output
+        echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
+
+    - name: Upload Test Reports
+      uses: actions/upload-artifact@v4
+      if: always() && inputs.upload-artifacts == 'true'
+      with:
+        name: syncoor-test-reports
+        path: ${{ inputs.report-dir }}
+        retention-days: 30

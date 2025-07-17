@@ -1,0 +1,61 @@
+name: Syncoor
+
+on:
+  workflow_dispatch:
+    inputs:
+      network:
+        description: 'Network to test (e.g., hoodi, sepolia, mainnet)'
+        required: false
+        default: 'hoodi'
+        type: string
+      el-client:
+        description: 'Execution layer client (geth, besu, nethermind, erigon, reth)'
+        required: false
+        default: 'geth'
+        type: string
+      cl-client:
+        description: 'Consensus layer client (lighthouse, teku, prysm, nimbus, lodestar, grandine)'
+        required: false
+        default: 'teku'
+        type: string
+      run-timeout:
+        description: 'Timeout for the sync test'
+        required: false
+        default: '60m'
+        type: string
+
+jobs:
+  sync-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+    - name: Run Syncoor Test on Hoodi
+      uses: ./
+      with:
+        git-ref: main
+        network: ${{ inputs.network || 'hoodi' }}
+        el-client: ${{ inputs.el-client || 'geth' }}
+        cl-client: ${{ inputs.cl-client || 'teku' }}
+        el-extra-args: |
+          ${{
+            (inputs.el-client == 'reth' || github.event.inputs.el-client == 'reth') && '--full' ||
+            (inputs.el-client == 'erigon' || github.event.inputs.el-client == 'erigon') && '--prune.mode=full' ||
+            ''
+          }}
+        check-interval: 30s
+        run-timeout: ${{ inputs.run-timeout || '60m' }}
+        log-level: info
+        labels: "env=ci"
+        report-dir: ./test-reports
+
+    - name: Display test results
+      if: always()
+      run: |
+        echo "Test completed. Reports saved in ./test-reports"
+        if [ -d "./test-reports" ]; then
+          echo "Report files:"
+          ls -la ./test-reports/
+        fi
