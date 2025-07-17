@@ -85,7 +85,9 @@ func (s *service) Start(ctx context.Context) error {
 	}
 	s.log.Debug("Starting report service")
 	s.result.RunID = fmt.Sprintf("sync-test-%d", time.Now().UnixNano())
-	s.result.Timestamp = time.Now().Unix()
+	now := time.Now().Unix()
+	s.result.Timestamp = now
+	s.result.SyncStatus.Start = now
 	return nil
 }
 
@@ -192,7 +194,7 @@ func (s *service) SaveReportToFiles(ctx context.Context, baseFilename string, di
 
 	// Create a copy of the report for the main file (without sync progress data)
 	mainReport := *s.result
-	mainReport.SyncStatus.SyncProgressFile = baseFilename + ".progress.json"
+	mainReport.SyncStatus.SyncProgressFile = fullFilePrefix + ".progress.json"
 	mainReport.SyncStatus.SyncProgress = nil // Remove the sync progress data from main report
 
 	jsonData, err := json.MarshalIndent(&mainReport, "", "  ")

@@ -83,8 +83,7 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLImage = &s.cfg.CLImage
 	}
 
-	network, err := ethereum.Run(ctx,
-		ethereum.WithTimeout(5*time.Minute),
+	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
 		ethereum.WithEnclaveName(s.cfg.EnclaveName),
@@ -96,6 +95,13 @@ func (s *service) Start(ctx context.Context) error {
 			},
 			Persistent: true,
 		}),
+	}
+
+	if s.cfg.RunTimeout > 0 {
+		runOpts = append(runOpts, ethereum.WithTimeout(s.cfg.RunTimeout))
+	}
+
+	network, err := ethereum.Run(ctx, runOpts...,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to start network: %w", err)
@@ -162,7 +168,6 @@ func (s *service) Start(ctx context.Context) error {
 	logrus.WithFields(logrus.Fields{
 		"client":         s.consensusClient.Name(),
 		"type":           s.consensusClient.Type(),
-		"version":        s.consensusClient.Version(),
 		"beacon_api_url": s.consensusClient.BeaconAPIURL(),
 		"metrics_url":    s.consensusClient.MetricsURL(),
 		"image":          clInspect.Image,
@@ -283,17 +288,17 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			logrus.WithFields(logrus.Fields{
 
 				"cl_optimistic":    consensusSyncStatus.IsOptimistic,
-				"cl_progress":      metrics.ConSyncPercentage,
+				"0_cl_progress":    fmt.Sprintf("%.2f%%", metrics.ConSyncPercentage),
 				"cl_slot":          metrics.ConSyncHeadSlot,
 				"cl_sync_distance": metrics.ConSyncEstimatedHighestSlot,
 				"cl_syncing":       metrics.ConIsSyncing,
 				"cl_type":          s.cfg.CLClient,
 
+				"el_block_highest": metrics.ExeSyncHighestBlock,
 				"el_block":         metrics.ExeSyncCurrentBlock,
 				"el_chain_id":      metrics.ExeChainID,
-				"el_highest_block": metrics.ExeSyncHighestBlock,
-				"el_is_syncing":    metrics.ExeIsSyncing,
-				"el_progress":      metrics.ExeSyncPercentage,
+				"0_el_progress":    fmt.Sprintf("%.2f%%", metrics.ExeSyncPercentage),
+				"el_syncing":       metrics.ExeIsSyncing,
 				"el_type":          s.cfg.ELClient,
 			}).Info("Sync progress")
 

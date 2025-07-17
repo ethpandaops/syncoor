@@ -8,6 +8,7 @@ import (
 // Config contains the configuration for the synctest service
 type Config struct {
 	CheckInterval time.Duration
+	RunTimeout    time.Duration
 	ELClient      string
 	CLClient      string
 	ELImage       string
