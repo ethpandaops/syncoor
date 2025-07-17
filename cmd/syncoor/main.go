@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
-	rootCmd.Flags().DurationVar(&runTimeout, "run-timeout", 5*time.Minute, "Timeout in minutes for network startup")
+	rootCmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute, "Timeout in minutes for network startup")
 	rootCmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
 	rootCmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
 	rootCmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")
