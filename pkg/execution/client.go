@@ -157,74 +157,93 @@ func (c *client) GetBlockNumber(ctx context.Context) (uint64, error) {
 	return blockNumber, nil
 }
 
+// SyncProgress gets the sync progress object if syncing, returns nil if not syncing
+func (c *client) SyncProgress(ctx context.Context) (*SyncProgress, error) {
+	req := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "eth_syncing",
+		"params":  []interface{}{},
+		"id":      1,
+	}
+
+	resp, err := c.makeRPCRequest(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sync progress: %w", err)
+	}
+
+	// eth_syncing returns false when not syncing, or a sync object when syncing
+	var result interface{}
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse sync progress: %w", err)
+	}
+
+	// If result is false, not syncing
+	if syncing, ok := result.(bool); ok && !syncing {
+		return nil, nil
+	}
+
+	// If result is an object, parse it as sync progress with hex values
+	var rawProgress struct {
+		CurrentBlock  string `json:"currentBlock"`
+		HighestBlock  string `json:"highestBlock"`
+		StartingBlock string `json:"startingBlock"`
+	}
+	if err := json.Unmarshal(resp.Result, &rawProgress); err != nil {
+		return nil, fmt.Errorf("failed to parse sync progress object: %w", err)
+	}
+
+	// Parse hex strings to uint64
+	progress := &SyncProgress{}
+	if _, err := fmt.Sscanf(rawProgress.CurrentBlock, "0x%x", &progress.CurrentBlock); err != nil {
+		return nil, fmt.Errorf("failed to parse currentBlock hex: %w", err)
+	}
+	if _, err := fmt.Sscanf(rawProgress.HighestBlock, "0x%x", &progress.HighestBlock); err != nil {
+		return nil, fmt.Errorf("failed to parse highestBlock hex: %w", err)
+	}
+	if _, err := fmt.Sscanf(rawProgress.StartingBlock, "0x%x", &progress.StartingBlock); err != nil {
+		return nil, fmt.Errorf("failed to parse startingBlock hex: %w", err)
+	}
+
+	return progress, nil
+}
+
 // GetSyncStatus gets the sync status from the execution client
 func (c *client) GetSyncStatus(ctx context.Context) (*SyncStatus, error) {
 	c.log.WithField("endpoint", c.rpcURL).Debug("Getting execution sync status")
 
-	payload := map[string]any{
-		"jsonrpc": "2.0",
-		"method":  "eth_syncing",
-		"params":  []any{},
-		"id":      1,
-	}
-
-	_, err := json.Marshal(payload)
+	// Get block number
+	blockNumber, err := c.GetBlockNumber(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal JSON-RPC payload: %w", err)
+		return nil, fmt.Errorf("failed to get block number: %w", err)
 	}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", c.rpcURL, nil)
+	// Check if syncing
+	isSyncing, err := c.IsSyncing(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to check sync status: %w", err)
 	}
 
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := c.httpClient.Do(req)
+	// Get peer count
+	peerCount, err := c.GetPeerCount(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to get peer count: %w", err)
 	}
 
-	var rpcResponse struct {
-		Result interface{} `json:"result"`
-		Error  *struct {
-			Code    int    `json:"code"`
-			Message string `json:"message"`
-		} `json:"error"`
+	status := &SyncStatus{
+		BlockNumber: blockNumber,
+		IsSyncing:   isSyncing,
+		PeerCount:   peerCount,
 	}
 
-	if err := json.NewDecoder(resp.Body).Decode(&rpcResponse); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Check sync progress if	syncing
+	if isSyncing {
+		status.SyncProgress, err = c.SyncProgress(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get sync progress: %w", err)
+		}
 	}
 
-	if rpcResponse.Error != nil {
-		return nil, fmt.Errorf("JSON-RPC error: %s", rpcResponse.Error.Message)
-	}
-
-	// If result is false, the node is not syncing
-	if result, ok := rpcResponse.Result.(bool); ok && !result {
-		return &SyncStatus{
-			IsSyncing: false,
-		}, nil
-	}
-
-	// If result is an object, parse sync details
-	if _, ok := rpcResponse.Result.(map[string]interface{}); ok {
-		return &SyncStatus{
-			IsSyncing: true,
-			// Note: Full implementation would parse currentBlock, highestBlock, etc.
-		}, nil
-	}
-
-	return &SyncStatus{
-		IsSyncing: false,
-	}, nil
+	return status, nil
 }
 
 // makeRPCRequest makes a JSON-RPC request
