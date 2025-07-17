@@ -1,4 +1,4 @@
-.PHONY: build test lint clean install deps
+.PHONY: build test lint clean install deps docker-build docker-run
 
 # Build configuration
 BINARY_NAME=syncoor
@@ -62,3 +62,25 @@ check: deps test lint
 
 # Development workflow
 dev: clean deps fmt test lint build
+
+# Docker configuration
+DOCKER_IMAGE=syncoor
+DOCKER_TAG=latest
+
+# Build Docker image
+docker-build:
+	@echo "Building Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)..."
+	@docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+
+# Run Docker container with mounted Docker socket and reports volume
+# Usage:
+#  make docker-run ARGS="--help"
+#  make docker-run ARGS="--el-client geth --cl-client teku --network hoodi --run-timeout 10m"
+# ARGS are passed to the syncoor binary
+docker-run:
+	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."
+	@docker run -it --rm \
+		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v $(PWD)/reports:/app/reports \
+		--network host \
+		$(DOCKER_IMAGE):$(DOCKER_TAG) $(ARGS)

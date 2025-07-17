@@ -103,31 +103,18 @@ func (c *client) GetPeerCount(ctx context.Context) (int, error) {
 
 // IsSyncing checks if the client is syncing
 func (c *client) IsSyncing(ctx context.Context) (bool, error) {
-	req := map[string]interface{}{
-		"jsonrpc": "2.0",
-		"method":  "eth_syncing",
-		"params":  []interface{}{},
-		"id":      1,
-	}
-
-	resp, err := c.makeRPCRequest(ctx, req)
+	sp, err := c.SyncProgress(ctx)
 	if err != nil {
-		return false, fmt.Errorf("failed to check sync status: %w", err)
+		return false, fmt.Errorf("failed to get sync progress: %w", err)
 	}
 
-	// eth_syncing returns false when not syncing, or a sync object when syncing
-	var result interface{}
-	if err := json.Unmarshal(resp.Result, &result); err != nil {
-		return false, fmt.Errorf("failed to parse sync status: %w", err)
+	// If sync progress is nil, not syncing
+	if sp == nil {
+		return false, nil
 	}
 
-	// If result is false, not syncing
-	if syncing, ok := result.(bool); ok {
-		return syncing, nil
-	}
-
-	// If result is an object, syncing
-	return true, nil
+	// Otherwise we need to check if the current block is less than the highest block
+	return sp.CurrentBlock < sp.HighestBlock, nil
 }
 
 // GetBlockNumber gets the current block number

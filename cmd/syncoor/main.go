@@ -27,7 +27,7 @@ var (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "sync_test",
+	Use:   "syncoor",
 	Short: "Test Ethereum client synchronization",
 	Long:  "A tool to test and monitor Ethereum execution and consensus client synchronization",
 	Run:   runSyncTest,
