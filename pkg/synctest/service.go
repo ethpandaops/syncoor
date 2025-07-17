@@ -269,7 +269,7 @@ func (s *service) WaitForSync(ctx context.Context) error {
 				"cl_is_syncing":    metrics.ConIsSyncing,
 				"cl_peers":         metrics.ConPeers,
 				"cl_slot":          metrics.ConSyncHeadSlot,
-				"cl_sync_distance": metrics.ConSyncEstimatedHighestSlot,
+				"cl_slot_highest":  metrics.ConSyncEstimatedHighestSlot,
 				"cl_sync_perc":     metrics.ConSyncPercentage,
 				"cl_syncing":       metrics.ConIsSyncing,
 				"cl_version":       metrics.ConVersion,
@@ -286,18 +286,18 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 		if gotExecutionSync && gotConsensusSync && metrics != nil {
 			logrus.WithFields(logrus.Fields{
+				"0_cl_progress": fmt.Sprintf("%.2f%%", metrics.ConSyncPercentage),
+				"0_el_progress": fmt.Sprintf("%.2f%%", metrics.ExeSyncPercentage),
 
-				"cl_optimistic":    consensusSyncStatus.IsOptimistic,
-				"0_cl_progress":    fmt.Sprintf("%.2f%%", metrics.ConSyncPercentage),
-				"cl_slot":          metrics.ConSyncHeadSlot,
-				"cl_sync_distance": metrics.ConSyncEstimatedHighestSlot,
-				"cl_syncing":       metrics.ConIsSyncing,
-				"cl_type":          s.cfg.CLClient,
+				"cl_optimistic":   consensusSyncStatus.IsOptimistic,
+				"cl_slot":         metrics.ConSyncHeadSlot,
+				"cl_slot_highest": metrics.ConSyncEstimatedHighestSlot,
+				"cl_syncing":      metrics.ConIsSyncing,
+				"cl_type":         s.cfg.CLClient,
 
 				"el_block_highest": metrics.ExeSyncHighestBlock,
 				"el_block":         metrics.ExeSyncCurrentBlock,
 				"el_chain_id":      metrics.ExeChainID,
-				"0_el_progress":    fmt.Sprintf("%.2f%%", metrics.ExeSyncPercentage),
 				"el_syncing":       metrics.ExeIsSyncing,
 				"el_type":          s.cfg.ELClient,
 			}).Info("Sync progress")
@@ -370,7 +370,6 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 		time.Sleep(s.cfg.CheckInterval)
 	}
-	return nil
 }
 
 func boolPtr(b bool) *bool {
