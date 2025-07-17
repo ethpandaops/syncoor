@@ -21,6 +21,7 @@ type Service interface {
 	SetBlockNumber(ctx context.Context, blockNumber uint64) error
 	SetSlotNumber(ctx context.Context, slotNumber uint64) error
 	SetLabels(ctx context.Context, labels map[string]string) error
+	SetNetwork(ctx context.Context, network string) error
 	SaveReportToFiles(ctx context.Context, baseFilename string, reportDir string) error
 	Stop(ctx context.Context) error
 }
@@ -28,6 +29,7 @@ type Service interface {
 type Result struct {
 	RunID               string            `json:"run_id"`
 	Timestamp           int64             `json:"timestamp"`
+	Network             string            `json:"network"`
 	Labels              map[string]string `json:"labels,omitempty"`
 	SyncStatus          SyncStatus        `json:"sync_status"`
 	ExecutionClientInfo ClientInfo        `json:"execution_client_info"`
@@ -112,6 +114,12 @@ func (s *service) SetSlotNumber(ctx context.Context, slotNumber uint64) error {
 func (s *service) SetLabels(ctx context.Context, labels map[string]string) error {
 	s.log.WithField("labels", labels).Debug("Setting labels")
 	s.result.Labels = labels
+	return nil
+}
+
+func (s *service) SetNetwork(ctx context.Context, network string) error {
+	s.log.WithField("network", network).Debug("Setting network")
+	s.result.Network = network
 	return nil
 }
 

@@ -120,6 +120,11 @@ func (s *service) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to start report service: %w", err)
 	}
 
+	// Set network in report
+	if err := s.reportService.SetNetwork(ctx, s.cfg.Network); err != nil {
+		return fmt.Errorf("failed to set network in report: %w", err)
+	}
+
 	s.network = network
 
 	// Create execution client fetcher
