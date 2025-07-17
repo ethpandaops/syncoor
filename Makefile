@@ -75,7 +75,7 @@ docker-build:
 # Run Docker container with mounted Docker socket and reports volume
 # Usage:
 #  make docker-run ARGS="--help"
-#  make docker-run ARGS="--el-client nethermind --cl-client teku --network hoodi"
+#  make docker-run ARGS="sync --el-client nethermind --cl-client teku --network hoodi"
 # ARGS are passed to the syncoor binary
 docker-run:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."

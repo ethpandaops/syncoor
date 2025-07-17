@@ -13,6 +13,8 @@ type Config struct {
 	CLClient      string
 	ELImage       string
 	CLImage       string
+	ELExtraArgs   []string
+	CLExtraArgs   []string
 	Network       string
 	EnclaveName   string
 	ReportDir     string

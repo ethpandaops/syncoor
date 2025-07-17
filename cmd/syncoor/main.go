@@ -13,16 +13,21 @@ import (
 )
 
 var (
+	// Global flags
+	logLevel string
+
+	// Sync command flags
 	checkInterval time.Duration
 	runTimeout    time.Duration
 	elClient      string
 	clClient      string
 	elImage       string
 	clImage       string
+	elExtraArgs   []string
+	clExtraArgs   []string
 	networkName   string
 	enclaveName   string
 	reportDir     string
-	logLevel      string
 	labels        []string
 )
 
@@ -30,21 +35,35 @@ var rootCmd = &cobra.Command{
 	Use:   "syncoor",
 	Short: "Test Ethereum client synchronization",
 	Long:  "A tool to test and monitor Ethereum execution and consensus client synchronization",
+}
+
+var syncCmd = &cobra.Command{
+	Use:   "sync",
+	Short: "Run synchronization test",
+	Long:  "Run a synchronization test for Ethereum execution and consensus clients",
 	Run:   runSyncTest,
 }
 
 func init() {
-	rootCmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
-	rootCmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute, "Timeout in minutes for network startup")
-	rootCmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
-	rootCmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
-	rootCmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")
-	rootCmd.Flags().StringVar(&clImage, "cl-image", "", "Consensus layer client image (optional)")
-	rootCmd.Flags().StringVar(&networkName, "network", "hoodi", "Network to connect to (e.g., hoodi, sepolia, mainnet)")
-	rootCmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
-	rootCmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")
-	rootCmd.Flags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
-	rootCmd.Flags().StringSliceVar(&labels, "label", []string{}, "Labels in key=value format (can be used multiple times)")
+	// Global flags
+	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
+
+	// Sync command flags
+	syncCmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
+	syncCmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute, "Timeout in minutes for network startup")
+	syncCmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
+	syncCmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
+	syncCmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")
+	syncCmd.Flags().StringVar(&clImage, "cl-image", "", "Consensus layer client image (optional)")
+	syncCmd.Flags().StringSliceVar(&elExtraArgs, "el-extra-args", []string{}, "Extra arguments for execution layer client (can be used multiple times)")
+	syncCmd.Flags().StringSliceVar(&clExtraArgs, "cl-extra-args", []string{}, "Extra arguments for consensus layer client (can be used multiple times)")
+	syncCmd.Flags().StringVar(&networkName, "network", "hoodi", "Network to connect to (e.g., hoodi, sepolia, mainnet)")
+	syncCmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
+	syncCmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")
+	syncCmd.Flags().StringSliceVar(&labels, "label", []string{}, "Labels in key=value format (can be used multiple times)")
+
+	// Add sync command to root
+	rootCmd.AddCommand(syncCmd)
 }
 
 func main() {
@@ -79,6 +98,8 @@ func runSyncTest(cmd *cobra.Command, args []string) {
 		CLClient:      clClient,
 		ELImage:       elImage,
 		CLImage:       clImage,
+		ELExtraArgs:   elExtraArgs,
+		CLExtraArgs:   clExtraArgs,
 		Network:       networkName,
 		EnclaveName:   enclaveName,
 		ReportDir:     reportDir,

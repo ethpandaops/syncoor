@@ -16,3 +16,4 @@ RUN apk add --no-cache ca-certificates bash docker-cli curl && \
 WORKDIR /app
 COPY --from=builder /app/syncoor /usr/local/bin/syncoor
 ENTRYPOINT ["syncoor"]
+CMD ["--help"]

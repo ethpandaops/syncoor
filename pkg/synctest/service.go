@@ -83,6 +83,14 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLImage = &s.cfg.CLImage
 	}
 
+	// Set extra args if provided
+	if len(s.cfg.ELExtraArgs) > 0 {
+		participantConfig.ELExtraParams = s.cfg.ELExtraArgs
+	}
+	if len(s.cfg.CLExtraArgs) > 0 {
+		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
+	}
+
 	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
