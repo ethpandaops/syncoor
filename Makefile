@@ -75,12 +75,13 @@ docker-build:
 # Run Docker container with mounted Docker socket and reports volume
 # Usage:
 #  make docker-run ARGS="--help"
-#  make docker-run ARGS="--el-client geth --cl-client teku --network hoodi --run-timeout 10m"
+#  make docker-run ARGS="--el-client nethermind --cl-client teku --network hoodi"
 # ARGS are passed to the syncoor binary
 docker-run:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."
 	@docker run -it --rm \
-		-v /var/run/docker.sock:/var/run/docker.sock \
+		-v /var/run/docker.sock:/var/run/docker.sock:ro \
+		-v $(HOME)/.docker:/root/.docker:ro \
 		-v $(PWD)/reports:/app/reports \
 		--network host \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) $(ARGS)
