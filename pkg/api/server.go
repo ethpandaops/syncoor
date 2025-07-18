@@ -53,6 +53,13 @@ func NewServer(log logrus.FieldLogger, addr string, authToken string) *Server {
 func (s *Server) Start(ctx context.Context) error {
 	s.store.Start()
 
+	s.log.WithFields(map[string]interface{}{
+		"addr":              s.httpServer.Addr,
+		"auth_enabled":      s.authToken != "",
+		"store_max_age":     "24h",
+		"store_max_history": 1000,
+	}).Info("Starting syncoor server")
+
 	// Setup graceful shutdown
 	shutdownCh := make(chan os.Signal, 1)
 	signal.Notify(shutdownCh, os.Interrupt, syscall.SIGTERM)
@@ -60,7 +67,7 @@ func (s *Server) Start(ctx context.Context) error {
 	// Start server in goroutine
 	serverErrCh := make(chan error, 1)
 	go func() {
-		s.log.WithField("addr", s.httpServer.Addr).Info("Starting HTTP server")
+		s.log.WithField("addr", s.httpServer.Addr).Info("HTTP server listening")
 		if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErrCh <- err
 		}

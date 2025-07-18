@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
 )
@@ -27,7 +28,20 @@ func (s *Server) handleTestStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.log.WithFields(map[string]interface{}{
+		"run_id":    req.RunID,
+		"network":   req.Network,
+		"el_client": req.ELClient.Type,
+		"cl_client": req.CLClient.Type,
+		"enclave":   req.EnclaveName,
+		"labels":    req.Labels,
+	}).Info("Test started")
+
 	if err := s.store.CreateTest(req); err != nil {
+		s.log.WithFields(map[string]interface{}{
+			"run_id": req.RunID,
+			"error":  err.Error(),
+		}).Error("Failed to create test")
 		s.writeError(w, err, http.StatusInternalServerError)
 		return
 	}
@@ -70,9 +84,63 @@ func (s *Server) handleTestProgress(w http.ResponseWriter, r *http.Request, runI
 		return
 	}
 
+	s.log.WithFields(map[string]interface{}{
+		"run_id":            runID,
+		"block":             req.Metrics.Block,
+		"slot":              req.Metrics.Slot,
+		"exec_sync_percent": req.Metrics.ExecSyncPercent,
+		"cons_sync_percent": req.Metrics.ConsSyncPercent,
+		"exec_peers":        req.Metrics.ExecPeers,
+		"cons_peers":        req.Metrics.ConsPeers,
+		"exec_disk_gb":      req.Metrics.ExecDiskUsage / (1024 * 1024 * 1024),
+		"cons_disk_gb":      req.Metrics.ConsDiskUsage / (1024 * 1024 * 1024),
+	}).Info("Test progress update")
+
 	if err := s.store.UpdateProgress(runID, req.Metrics); err != nil {
-		s.writeError(w, err, http.StatusInternalServerError)
-		return
+		// If test not found, try to auto-create it
+		if strings.Contains(err.Error(), "not found") {
+			s.log.WithField("run_id", runID).Info("Auto-creating test from progress update")
+
+			// Create a minimal test entry from the runID
+			autoStartReq := s.createTestFromRunID(runID)
+			if createErr := s.store.CreateTest(autoStartReq); createErr != nil {
+				s.log.WithFields(map[string]interface{}{
+					"run_id": runID,
+					"error":  createErr.Error(),
+				}).Error("Failed to auto-create test")
+				s.writeError(w, fmt.Errorf("failed to auto-create test: %w", createErr), http.StatusInternalServerError)
+				return
+			}
+
+			s.log.WithFields(map[string]interface{}{
+				"run_id":    runID,
+				"network":   autoStartReq.Network,
+				"el_client": autoStartReq.ELClient.Type,
+				"cl_client": autoStartReq.CLClient.Type,
+			}).Info("Auto-created test from progress update")
+
+			// Publish test start event
+			if test, getErr := s.store.GetTest(runID); getErr == nil {
+				s.publishTestStart(runID, test)
+			}
+
+			// Retry the progress update
+			if retryErr := s.store.UpdateProgress(runID, req.Metrics); retryErr != nil {
+				s.log.WithFields(map[string]interface{}{
+					"run_id": runID,
+					"error":  retryErr.Error(),
+				}).Error("Failed to update progress after auto-create")
+				s.writeError(w, retryErr, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			s.log.WithFields(map[string]interface{}{
+				"run_id": runID,
+				"error":  err.Error(),
+			}).Error("Failed to update test progress")
+			s.writeError(w, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Publish SSE event
@@ -88,9 +156,62 @@ func (s *Server) handleTestComplete(w http.ResponseWriter, r *http.Request, runI
 		return
 	}
 
+	logFields := map[string]interface{}{
+		"run_id":      runID,
+		"success":     req.Success,
+		"final_block": req.FinalBlock,
+		"final_slot":  req.FinalSlot,
+	}
+	if req.Error != "" {
+		logFields["error"] = req.Error
+	}
+	s.log.WithFields(logFields).Info("Test completed")
+
 	if err := s.store.CompleteTest(runID, req); err != nil {
-		s.writeError(w, err, http.StatusInternalServerError)
-		return
+		// If test not found, try to auto-create it
+		if strings.Contains(err.Error(), "not found") {
+			s.log.WithField("run_id", runID).Info("Auto-creating test from completion request")
+
+			// Create a minimal test entry from the runID
+			autoStartReq := s.createTestFromRunID(runID)
+			if createErr := s.store.CreateTest(autoStartReq); createErr != nil {
+				s.log.WithFields(map[string]interface{}{
+					"run_id": runID,
+					"error":  createErr.Error(),
+				}).Error("Failed to auto-create test")
+				s.writeError(w, fmt.Errorf("failed to auto-create test: %w", createErr), http.StatusInternalServerError)
+				return
+			}
+
+			s.log.WithFields(map[string]interface{}{
+				"run_id":    runID,
+				"network":   autoStartReq.Network,
+				"el_client": autoStartReq.ELClient.Type,
+				"cl_client": autoStartReq.CLClient.Type,
+			}).Info("Auto-created test from completion request")
+
+			// Publish test start event
+			if test, getErr := s.store.GetTest(runID); getErr == nil {
+				s.publishTestStart(runID, test)
+			}
+
+			// Retry the completion
+			if retryErr := s.store.CompleteTest(runID, req); retryErr != nil {
+				s.log.WithFields(map[string]interface{}{
+					"run_id": runID,
+					"error":  retryErr.Error(),
+				}).Error("Failed to complete test after auto-create")
+				s.writeError(w, retryErr, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			s.log.WithFields(map[string]interface{}{
+				"run_id": runID,
+				"error":  err.Error(),
+			}).Error("Failed to complete test")
+			s.writeError(w, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	// Publish SSE event
@@ -136,11 +257,20 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activeCnt := len(s.store.ListTests(true))
+	totalCnt := len(s.store.ListTests(false))
+
 	health := map[string]interface{}{
 		"status":       "healthy",
-		"active_tests": len(s.store.ListTests(true)),
-		"total_tests":  len(s.store.ListTests(false)),
+		"active_tests": activeCnt,
+		"total_tests":  totalCnt,
 	}
+
+	s.log.WithFields(map[string]interface{}{
+		"active_tests": activeCnt,
+		"total_tests":  totalCnt,
+		"remote_addr":  r.RemoteAddr,
+	}).Debug("Health check requested")
 
 	s.writeJSON(w, http.StatusOK, Response{Data: health})
 }
@@ -165,4 +295,45 @@ func (s *Server) countActiveTests(tests []TestSummary) int {
 		}
 	}
 	return count
+}
+
+// createTestFromRunID creates a minimal test entry from a run ID
+// This is used when the server restarts but clients continue sending progress
+func (s *Server) createTestFromRunID(runID string) reporting.TestStartRequest {
+	// Extract information from runID format: sync-test-timestamp-network_el_cl
+	parts := strings.Split(runID, "-")
+
+	network := "unknown"
+	elClient := "unknown"
+	clClient := "unknown"
+
+	if len(parts) >= 4 {
+		// Last part should be network_el_cl
+		lastPart := parts[len(parts)-1]
+		clientParts := strings.Split(lastPart, "_")
+		if len(clientParts) >= 3 {
+			network = clientParts[0]
+			elClient = clientParts[1]
+			clClient = clientParts[2]
+		}
+	}
+
+	return reporting.TestStartRequest{
+		RunID:     runID,
+		Timestamp: time.Now().Unix(),
+		Network:   network,
+		Labels: map[string]string{
+			"auto_created": "true",
+			"reason":       "server_restart",
+		},
+		ELClient: reporting.ClientConfig{
+			Type:  elClient,
+			Image: "",
+		},
+		CLClient: reporting.ClientConfig{
+			Type:  clClient,
+			Image: "",
+		},
+		EnclaveName: "auto-created",
+	}
 }
