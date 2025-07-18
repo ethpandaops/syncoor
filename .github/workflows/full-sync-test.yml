@@ -35,7 +35,7 @@ jobs:
     - name: Run Syncoor Test on Hoodi
       uses: ./
       with:
-        git-ref: main
+        #git-ref: main
         network: ${{ inputs.network || 'hoodi' }}
         el-client: ${{ inputs.el-client || 'geth' }}
         cl-client: ${{ inputs.cl-client || 'teku' }}
