@@ -10,6 +10,26 @@ Syncoor is a sync test orchestation, monitoring and visualization tool that trac
 
 To be written...
 
+## Dependencies
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Kurtosis](https://docs.kurtosis.com/install/)
+
+## Quick start
+
+Using docker compose:
+
+```bash
+docker compose up -d
+```
+
+
+Open [http://localhost:3000](http://localhost:3000) in your browser to view the web UI.
+
+
+
+
 ## License
 
 This project is licensed under the [GNU GPL-3.0](LICENSE).

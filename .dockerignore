@@ -47,3 +47,6 @@ ai_plans/
 # Temporary files
 tmp/
 temp/
+
+# Web
+web/public/reports
