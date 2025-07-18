@@ -32,6 +32,7 @@ func init() {
 	// Add commands to root
 	rootCmd.AddCommand(NewSyncCommand())
 	rootCmd.AddCommand(NewServerCommand())
+	rootCmd.AddCommand(NewReportIndexCommand())
 }
 
 func main() {

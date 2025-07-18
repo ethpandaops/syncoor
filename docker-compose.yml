@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Syncoor centralized server
   syncoor-server:
@@ -25,7 +23,7 @@ services:
       retries: 3
       start_period: 30s
 
-  # Example sync client - hoodi network with geth+teku
+  # Sync client
   syncoor-client-hoodi-geth-teku:
     build:
       context: .
@@ -52,6 +50,28 @@ services:
       - ./reports:/app/reports
     network_mode: host
     restart: "no"  # Don't restart sync tests automatically
+
+  # Syncoor report index generator
+  syncoor-report-index-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syncoor-index-generator
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+    - >-
+      while true; do
+        syncoor report-index --report-dir /app/reports --output /app/reports/index.json --log-level ${LOG_LEVEL:-info};
+        sleep 60;
+      done
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - ./reports:/app/reports
+    networks:
+      - syncoor-net
+    restart: unless-stopped
+
 
   # Nginx web server for serving reports
   nginx-reports:
