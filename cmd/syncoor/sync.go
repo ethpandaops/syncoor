@@ -3,9 +3,14 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/ethpandaops/syncoor/pkg/kurtosis"
+	"github.com/ethpandaops/syncoor/pkg/recovery"
 	"github.com/ethpandaops/syncoor/pkg/synctest"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -14,20 +19,21 @@ import (
 func NewSyncCommand() *cobra.Command {
 	var (
 		// Sync command flags
-		checkInterval time.Duration
-		runTimeout    time.Duration
-		elClient      string
-		clClient      string
-		elImage       string
-		clImage       string
-		elExtraArgs   []string
-		clExtraArgs   []string
-		networkName   string
-		enclaveName   string
-		reportDir     string
-		labels        []string
-		serverURL     string
-		serverAuth    string
+		checkInterval  time.Duration
+		runTimeout     time.Duration
+		elClient       string
+		clClient       string
+		elImage        string
+		clImage        string
+		elExtraArgs    []string
+		clExtraArgs    []string
+		networkName    string
+		enclaveName    string
+		reportDir      string
+		labels         []string
+		serverURL      string
+		serverAuth     string
+		enableRecovery bool
 	)
 
 	cmd := &cobra.Command{
@@ -35,7 +41,9 @@ func NewSyncCommand() *cobra.Command {
 		Short: "Run synchronization test",
 		Long:  "Run a synchronization test for Ethereum execution and consensus clients",
 		Run: func(cmd *cobra.Command, args []string) {
-			ctx := context.Background()
+			// Create cancellable context for signal handling
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			// Create logger instance
 			logger := logrus.WithField("component", "sync")
@@ -77,6 +85,17 @@ func NewSyncCommand() *cobra.Command {
 			// Create new sync test service
 			syncTestService := synctest.NewService(logger, config)
 
+			// Enable recovery if requested
+			if enableRecovery {
+				logger.Info("Recovery mode enabled")
+				kurtosisClient := kurtosis.NewClient(logger)
+				recoveryService := recovery.NewService(kurtosisClient, logger)
+				syncTestService.EnableRecovery(recoveryService)
+			}
+
+			// Setup signal handling for graceful shutdown
+			setupSignalHandling(ctx, cancel, syncTestService, logger)
+
 			// Start the service
 			if err := syncTestService.Start(ctx); err != nil {
 				logger.Fatalf("Failed to start sync test: %v", err)
@@ -113,6 +132,26 @@ func NewSyncCommand() *cobra.Command {
 	cmd.Flags().StringSliceVar(&labels, "label", []string{}, "Labels in key=value format (can be used multiple times)")
 	cmd.Flags().StringVar(&serverURL, "server", "", "Centralized server URL (e.g., https://api.syncoor.example)")
 	cmd.Flags().StringVar(&serverAuth, "server-auth", "", "Bearer token for server authentication")
+	cmd.Flags().BoolVar(&enableRecovery, "enable-recovery", true, "Enable recovery from interrupted sync operations")
 
 	return cmd
+}
+
+// setupSignalHandling sets up signal handlers for graceful shutdown
+func setupSignalHandling(ctx context.Context, cancel context.CancelFunc, service synctest.Service, logger *logrus.Entry) {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		select {
+		case sig := <-sigChan:
+			logger.WithField("signal", sig).Info("Received signal, saving progress and shutting down")
+			if err := service.SaveTempReport(ctx); err != nil {
+				logger.WithError(err).Error("Failed to save temp report")
+			}
+			cancel()
+		case <-ctx.Done():
+			return
+		}
+	}()
 }

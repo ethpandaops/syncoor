@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -24,6 +25,18 @@ type Service interface {
 	SetNetwork(ctx context.Context, network string) error
 	SaveReportToFiles(ctx context.Context, baseFilename string, reportDir string) error
 	Stop(ctx context.Context) error
+
+	// Temporary report methods for recovery
+	SaveTempReport(ctx context.Context, report *Result) error
+	LoadTempReport(ctx context.Context, network, elClient, clClient string) (*Result, error)
+	RemoveTempReport(ctx context.Context, network, elClient, clClient string) error
+	ListTempReports(ctx context.Context) ([]string, error)
+
+	// Get current report state
+	GetCurrentReport(ctx context.Context) (*Result, error)
+
+	// Restore report state from recovered data
+	RestoreReportState(ctx context.Context, restoredReport *Result) error
 }
 
 type Result struct {
@@ -214,7 +227,7 @@ func (s *service) SaveReportToFiles(ctx context.Context, baseFilename string, di
 		return fmt.Errorf("failed to write report to file: %w", err)
 	}
 
-	s.log.WithField("filename", baseFilename).Info("Report generated successfully")
+	s.log.WithField("filename", fullFilePrefix).Info("Report generated successfully")
 
 	return nil
 }
@@ -414,6 +427,209 @@ func (s *indexService) countProgressEntries(progressFilePath string) int {
 	}
 
 	return len(entries)
+}
+
+// SaveTempReport saves a temporary report to disk for recovery purposes
+func (s *service) SaveTempReport(ctx context.Context, report *Result) error {
+	if report == nil {
+		return fmt.Errorf("report cannot be nil")
+	}
+
+	// Generate temp report filename from report data
+	tempFilename := s.generateTempReportFilename(report)
+	tempFilePath := filepath.Join("./reports", tempFilename)
+
+	s.log.WithField("temp_file", tempFilePath).Debug("Saving temporary report")
+
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(tempFilePath), 0755); err != nil {
+		return fmt.Errorf("failed to create temp report directory: %w", err)
+	}
+
+	// Marshal report to JSON
+	data, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal temp report: %w", err)
+	}
+
+	// Write to file
+	if err := os.WriteFile(tempFilePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write temp report: %w", err)
+	}
+
+	s.log.WithField("temp_file", tempFilePath).Info("Temporary report saved successfully")
+	return nil
+}
+
+// LoadTempReport loads a temporary report that matches the given configuration
+func (s *service) LoadTempReport(ctx context.Context, network, elClient, clClient string) (*Result, error) {
+	reportDir := "./reports"
+
+	// Find temp reports matching the configuration
+	tempFiles, err := s.findTempReports(network, elClient, clClient, reportDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find temp reports: %w", err)
+	}
+
+	if len(tempFiles) == 0 {
+		s.log.WithFields(logrus.Fields{
+			"network":   network,
+			"el_client": elClient,
+			"cl_client": clClient,
+		}).Debug("No temporary reports found")
+		return nil, nil
+	}
+
+	// Load the most recent temp report
+	tempFilePath := tempFiles[0]
+	s.log.WithField("temp_file", tempFilePath).Debug("Loading temporary report")
+
+	data, err := os.ReadFile(tempFilePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read temp report: %w", err)
+	}
+
+	var result Result
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal temp report: %w", err)
+	}
+
+	s.log.WithField("temp_file", tempFilePath).Info("Temporary report loaded successfully")
+	return &result, nil
+}
+
+// RemoveTempReport removes temporary reports that match the given configuration
+func (s *service) RemoveTempReport(ctx context.Context, network, elClient, clClient string) error {
+	reportDir := "./reports"
+
+	// Find temp reports matching the configuration
+	tempFiles, err := s.findTempReports(network, elClient, clClient, reportDir)
+	if err != nil {
+		return fmt.Errorf("failed to find temp reports: %w", err)
+	}
+
+	// Remove all matching temp files
+	for _, tempFile := range tempFiles {
+		if err := os.Remove(tempFile); err != nil {
+			s.log.WithField("temp_file", tempFile).WithError(err).Warn("Failed to remove temp report")
+		} else {
+			s.log.WithField("temp_file", tempFile).Debug("Removed temporary report")
+		}
+	}
+
+	s.log.WithField("removed_count", len(tempFiles)).Info("Temporary reports cleaned up")
+	return nil
+}
+
+// ListTempReports lists all temporary report files
+func (s *service) ListTempReports(ctx context.Context) ([]string, error) {
+	reportDir := "./reports"
+	pattern := filepath.Join(reportDir, "*.tmp.json")
+
+	files, err := filepath.Glob(pattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list temp reports: %w", err)
+	}
+
+	s.log.WithField("temp_reports_count", len(files)).Debug("Listed temporary reports")
+	return files, nil
+}
+
+// generateTempReportFilename generates a temporary report filename from report data
+func (s *service) generateTempReportFilename(report *Result) string {
+	// Extract client info from report
+	network := report.Network
+	elClient := report.ExecutionClientInfo.Type
+	clClient := report.ConsensusClientInfo.Type
+
+	// Use configuration-based naming (not RunID) for consistent temp file names
+	if elClient == "" || clClient == "" {
+		return "sync-temp.tmp.json"
+	}
+
+	return fmt.Sprintf("sync-temp-%s_%s_%s.tmp.json", network, elClient, clClient)
+}
+
+// findTempReports finds temporary reports matching the given configuration
+func (s *service) findTempReports(network, elClient, clClient, reportDir string) ([]string, error) {
+	// Pattern: sync-temp-{network}_{elclient}_{clclient}.tmp.json
+	pattern := fmt.Sprintf("sync-temp-%s_%s_%s.tmp.json", network, elClient, clClient)
+	globPattern := filepath.Join(reportDir, pattern)
+
+	files, err := filepath.Glob(globPattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to glob temp reports: %w", err)
+	}
+
+	// Sort by modification time (newest first)
+	if len(files) > 1 {
+		// Simple sorting by filename (contains timestamp)
+		for i := 0; i < len(files)-1; i++ {
+			for j := i + 1; j < len(files); j++ {
+				if strings.Compare(files[i], files[j]) < 0 {
+					files[i], files[j] = files[j], files[i]
+				}
+			}
+		}
+	}
+
+	return files, nil
+}
+
+// GetCurrentReport returns a copy of the current report state
+func (s *service) GetCurrentReport(ctx context.Context) (*Result, error) {
+	if s.result == nil {
+		return nil, fmt.Errorf("report service not started")
+	}
+
+	// Create a deep copy of the current report
+	reportCopy := &Result{
+		RunID:     s.result.RunID,
+		Timestamp: s.result.Timestamp,
+		Network:   s.result.Network,
+		Labels:    make(map[string]string),
+		SyncStatus: SyncStatus{
+			Start:        s.result.SyncStatus.Start,
+			End:          s.result.SyncStatus.End,
+			Block:        s.result.SyncStatus.Block,
+			Slot:         s.result.SyncStatus.Slot,
+			SyncProgress: make([]SyncProgressEntry, len(s.result.SyncStatus.SyncProgress)),
+		},
+		ExecutionClientInfo: s.result.ExecutionClientInfo,
+		ConsensusClientInfo: s.result.ConsensusClientInfo,
+	}
+
+	// Copy labels
+	for k, v := range s.result.Labels {
+		reportCopy.Labels[k] = v
+	}
+
+	// Copy sync progress entries
+	copy(reportCopy.SyncStatus.SyncProgress, s.result.SyncStatus.SyncProgress)
+
+	return reportCopy, nil
+}
+
+// RestoreReportState restores the report state from recovered data
+func (s *service) RestoreReportState(ctx context.Context, restoredReport *Result) error {
+	if s.result == nil {
+		return fmt.Errorf("report service not started")
+	}
+
+	s.log.WithFields(logrus.Fields{
+		"restored_progress_entries": len(restoredReport.SyncStatus.SyncProgress),
+		"restored_runid":            restoredReport.RunID,
+		"restored_start_time":       restoredReport.SyncStatus.Start,
+	}).Info("Restoring report state from recovery")
+
+	// Restore the report state completely, preserving original RunID and timestamp
+	s.result = restoredReport
+
+	// Reset end time since we're resuming
+	s.result.SyncStatus.End = 0
+
+	s.log.WithField("progress_entries", len(s.result.SyncStatus.SyncProgress)).Info("Report state restored successfully")
+	return nil
 }
 
 // Interface compliance check

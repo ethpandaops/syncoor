@@ -17,6 +17,7 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/execution"
 	"github.com/ethpandaops/syncoor/pkg/kurtosis"
 	metrics_exporter "github.com/ethpandaops/syncoor/pkg/metrics-exporter"
+	"github.com/ethpandaops/syncoor/pkg/recovery"
 	"github.com/ethpandaops/syncoor/pkg/report"
 	"github.com/ethpandaops/syncoor/pkg/reporting"
 )
@@ -26,6 +27,10 @@ type Service interface {
 	Start(ctx context.Context) error
 	Stop() error
 	WaitForSync(ctx context.Context) error
+
+	// Recovery methods
+	EnableRecovery(recovery.Service)
+	SaveTempReport(ctx context.Context) error
 }
 
 // service implements the Service interface
@@ -43,6 +48,11 @@ type service struct {
 	kurtosisClient               kurtosis.Client
 	reportService                report.Service
 	reportingClient              *reporting.Client
+
+	// Recovery support
+	recoveryService recovery.Service
+	tempReportSaved bool
+	recoveredReport *report.Result
 
 	cancel context.CancelFunc
 }
@@ -127,6 +137,46 @@ func (s *service) Start(ctx context.Context) error {
 		runOpts = append(runOpts, ethereum.WithTimeout(s.cfg.RunTimeout))
 	}
 
+	// Check for recovery opportunity if recovery service is enabled
+	if s.recoveryService != nil {
+		// Convert synctest.Config to recovery.Config
+		recoveryConfig := &recovery.Config{
+			Network:     s.cfg.Network,
+			ELClient:    s.cfg.ELClient,
+			CLClient:    s.cfg.CLClient,
+			ELImage:     s.cfg.ELImage,
+			CLImage:     s.cfg.CLImage,
+			ELExtraArgs: s.cfg.ELExtraArgs,
+			CLExtraArgs: s.cfg.CLExtraArgs,
+			EnclaveName: s.cfg.EnclaveName,
+		}
+
+		recoveryState, err := s.recoveryService.CheckRecoverable(ctx, recoveryConfig)
+		if err != nil {
+			s.log.WithError(err).Warn("Failed to check recoverable state, proceeding with fresh start")
+		} else if recoveryState != nil {
+			s.log.WithField("enclave", recoveryState.EnclaveName).Info("Found recoverable state, validating enclave")
+
+			// Validate the enclave is in good state
+			if err := s.recoveryService.ValidateEnclave(ctx, recoveryState.EnclaveName, recoveryConfig); err != nil {
+				s.log.WithError(err).Warn("Enclave validation failed, proceeding with fresh start")
+			} else {
+				s.log.Info("Enclave validation successful, attempting recovery")
+
+				// Load temporary report if available
+				if tempReport, err := s.reportService.LoadTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
+					s.log.WithError(err).Warn("Failed to load temp report, but continuing with recovery")
+				} else if tempReport != nil {
+					s.log.WithField("progress_entries", len(tempReport.SyncStatus.SyncProgress)).Info("Loaded temporary report for recovery")
+					// Store the recovered report to restore after report service starts
+					s.recoveredReport = tempReport
+				}
+			}
+		} else {
+			s.log.Info("No recoverable state found, proceeding with fresh start")
+		}
+	}
+
 	network, err := ethereum.Run(ctx, runOpts...,
 	)
 	if err != nil {
@@ -141,6 +191,16 @@ func (s *service) Start(ctx context.Context) error {
 	// Set network in report
 	if err := s.reportService.SetNetwork(ctx, s.cfg.Network); err != nil {
 		return fmt.Errorf("failed to set network in report: %w", err)
+	}
+
+	// Restore recovered report state if available
+	if s.recoveredReport != nil {
+		s.log.WithField("progress_entries", len(s.recoveredReport.SyncStatus.SyncProgress)).Info("Restoring progress from recovered report")
+		if err := s.reportService.RestoreReportState(ctx, s.recoveredReport); err != nil {
+			s.log.WithError(err).Warn("Failed to restore report state from recovery")
+		} else {
+			s.log.Info("Successfully restored report state from recovery")
+		}
 	}
 
 	s.network = network
@@ -401,6 +461,13 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 			s.reportService.AddSyncProgressEntry(ctx, progressEntry)
 
+			// Periodically save temp report for recovery (every 10 progress entries)
+			if s.recoveryService != nil && len(s.getCurrentProgressEntries())%10 == 0 {
+				if err := s.SaveTempReport(ctx); err != nil {
+					s.log.WithError(err).Warn("Failed to save periodic temp report")
+				}
+			}
+
 			// Report progress to centralized server if configured
 			if s.reportingClient != nil {
 				progressMetrics := reporting.ProgressMetrics{
@@ -452,6 +519,15 @@ func (s *service) WaitForSync(ctx context.Context) error {
 				return fmt.Errorf("failed to save report: %w", err)
 			}
 
+			// Clean up temporary reports on successful completion
+			if s.recoveryService != nil {
+				if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
+					s.log.WithError(err).Warn("Failed to clean up temporary reports")
+				} else {
+					s.log.Info("Cleaned up temporary reports after successful completion")
+				}
+			}
+
 			logrus.WithFields(logrus.Fields{
 				"enclave":          s.network.EnclaveName(),
 				"execution_client": s.executionClient.Name(),
@@ -477,6 +553,72 @@ func (s *service) metricsExporterServiceEndpoint() (string, error) {
 		return "", fmt.Errorf("failed to inspect metrics exporter service: %w", err)
 	}
 	return fmt.Sprintf("http://127.0.0.1:%d/metrics", kservice.PublicPorts["http"].Number), nil
+}
+
+// EnableRecovery enables the recovery service for this sync test
+func (s *service) EnableRecovery(recoveryService recovery.Service) {
+	s.recoveryService = recoveryService
+	s.log.Info("Recovery service enabled")
+}
+
+// SaveTempReport saves a temporary report for recovery purposes
+func (s *service) SaveTempReport(ctx context.Context) error {
+	if s.recoveryService == nil {
+		s.log.Debug("Recovery service not enabled, skipping temp report save")
+		return nil
+	}
+
+	// Get current report state from the report service
+	currentReport, err := s.reportService.GetCurrentReport(ctx)
+	if err != nil {
+		s.log.WithError(err).Warn("Failed to get current report, creating basic temp report")
+		currentReport = s.createBasicReport()
+	}
+
+	// Ensure we have the basic configuration in the report
+	if currentReport.Network == "" {
+		currentReport.Network = s.cfg.Network
+	}
+	if currentReport.ExecutionClientInfo.Type == "" {
+		currentReport.ExecutionClientInfo.Type = s.cfg.ELClient
+	}
+	if currentReport.ConsensusClientInfo.Type == "" {
+		currentReport.ConsensusClientInfo.Type = s.cfg.CLClient
+	}
+
+	// Save temporary report with current progress
+	if err := s.reportService.SaveTempReport(ctx, currentReport); err != nil {
+		return fmt.Errorf("failed to save temp report: %w", err)
+	}
+
+	s.tempReportSaved = true
+	s.log.WithField("progress_entries", len(currentReport.SyncStatus.SyncProgress)).Info("Temporary report saved for recovery")
+	return nil
+}
+
+// createBasicReport creates a basic report structure as fallback
+func (s *service) createBasicReport() *report.Result {
+	return &report.Result{
+		Network: s.cfg.Network,
+		ExecutionClientInfo: report.ClientInfo{
+			Type: s.cfg.ELClient,
+		},
+		ConsensusClientInfo: report.ClientInfo{
+			Type: s.cfg.CLClient,
+		},
+		SyncStatus: report.SyncStatus{
+			SyncProgress: make([]report.SyncProgressEntry, 0),
+		},
+	}
+}
+
+// getCurrentProgressEntries gets the current progress entries from the report service
+func (s *service) getCurrentProgressEntries() []report.SyncProgressEntry {
+	currentReport, err := s.reportService.GetCurrentReport(context.Background())
+	if err != nil {
+		return []report.SyncProgressEntry{}
+	}
+	return currentReport.SyncStatus.SyncProgress
 }
 
 // Interface compliance check
