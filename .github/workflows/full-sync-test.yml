@@ -45,7 +45,7 @@ jobs:
         network: ${{ inputs.network || 'hoodi' }}
         el-client: ${{ inputs.el-client || 'geth' }}
         cl-client: ${{ inputs.cl-client || 'teku' }}
-        el-extra-args: |
+        el-extra-args: >-
           ${{
             (inputs.el-client == 'reth' || github.event.inputs.el-client == 'reth') && '--full' ||
             (inputs.el-client == 'erigon' || github.event.inputs.el-client == 'erigon') && '--prune.mode=full' ||
