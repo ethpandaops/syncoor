@@ -140,17 +140,17 @@ export default function TestDetails() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Name</span>
-                <span className="text-sm font-medium">{mainReport?.execution_client_info.name || testReport.execution_client_info.name}</span>
+                <div className="text-sm font-medium mt-1">{mainReport?.execution_client_info.name || testReport.execution_client_info.name}</div>
               </div>
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Version</span>
-                <span className="text-sm font-mono">{mainReport?.execution_client_info.version || testReport.execution_client_info.version}</span>
+                <div className="text-sm font-mono mt-1">{mainReport?.execution_client_info.version || testReport.execution_client_info.version}</div>
               </div>
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Image</span>
-                <span className="text-sm font-mono">{mainReport?.execution_client_info.image || testReport.execution_client_info.image}</span>
+                <div className="text-sm font-mono mt-1">{mainReport?.execution_client_info.image || testReport.execution_client_info.image}</div>
               </div>
               {(mainReport?.execution_client_info.entrypoint || mainReport?.execution_client_info.cmd) && (
                 <div className="space-y-2">
@@ -198,17 +198,17 @@ export default function TestDetails() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Name</span>
-                <span className="text-sm font-medium">{mainReport?.consensus_client_info.name || testReport.consensus_client_info.name}</span>
+                <div className="text-sm font-medium mt-1">{mainReport?.consensus_client_info.name || testReport.consensus_client_info.name}</div>
               </div>
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Version</span>
-                <span className="text-sm font-mono">{mainReport?.consensus_client_info.version || testReport.consensus_client_info.version}</span>
+                <div className="text-sm font-mono mt-1">{mainReport?.consensus_client_info.version || testReport.consensus_client_info.version}</div>
               </div>
-              <div className="flex items-center justify-between">
+              <div>
                 <span className="text-sm font-medium text-muted-foreground">Image</span>
-                <span className="text-sm font-mono">{mainReport?.consensus_client_info.image || testReport.consensus_client_info.image}</span>
+                <div className="text-sm font-mono mt-1">{mainReport?.consensus_client_info.image || testReport.consensus_client_info.image}</div>
               </div>
               {(mainReport?.consensus_client_info.entrypoint || mainReport?.consensus_client_info.cmd) && (
                 <div className="space-y-2">
