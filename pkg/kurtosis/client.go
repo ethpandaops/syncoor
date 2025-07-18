@@ -1,6 +1,7 @@
 package kurtosis
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os/exec"
@@ -11,6 +12,7 @@ import (
 // Client defines the interface for execution layer operations
 type Client interface {
 	InspectService(enclaveName, service string) (*KurtosisServiceInspectResult, error)
+	DoesEnclaveExist(ctx context.Context, enclaveName string) (bool, error)
 }
 
 type client struct {
@@ -70,6 +72,29 @@ func (c *client) InspectService(enclaveName, service string) (*KurtosisServiceIn
 	}
 
 	return &result, nil
+}
+
+// DoesEnclaveExist checks if an enclave exists by running `kurtosis enclave inspect {name}`
+// Returns true if the enclave exists (exit code 0), false otherwise
+func (c *client) DoesEnclaveExist(ctx context.Context, enclaveName string) (bool, error) {
+	cmd := exec.CommandContext(ctx, "kurtosis", "enclave", "inspect", enclaveName)
+
+	err := cmd.Run()
+	if err != nil {
+		// Check if it's an exit error (enclave doesn't exist)
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			c.log.WithFields(logrus.Fields{
+				"enclave":   enclaveName,
+				"exit_code": exitErr.ExitCode(),
+			}).Debug("Enclave does not exist")
+			return false, nil
+		}
+		// Command execution failed for other reasons
+		return false, fmt.Errorf("failed to check enclave existence: %w", err)
+	}
+
+	c.log.WithField("enclave", enclaveName).Debug("Enclave exists")
+	return true, nil
 }
 
 // Interface compliance check
