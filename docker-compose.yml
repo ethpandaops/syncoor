@@ -74,7 +74,7 @@ services:
 
 
   # Nginx web server for serving reports
-  nginx-reports:
+  syncoor-nginx-reports:
     image: nginx:alpine
     container_name: syncoor-nginx-reports
     ports:
