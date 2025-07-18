@@ -1,7 +1,4 @@
-name: Lint and Build
-
-permissions:
-  contents: read
+name: Check - CI Web
 
 on:
   pull_request:
@@ -15,7 +12,7 @@ on:
       - 'web/**'
 
 concurrency:
-  group: "lint-build-${{ github.head_ref || github.ref }}"
+  group: "web-lint-build-${{ github.head_ref || github.ref }}"
   cancel-in-progress: true
 
 jobs:

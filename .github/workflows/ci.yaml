@@ -15,7 +15,7 @@ on:
       - 'go.sum'
 
 concurrency:
-  group: "lint-build-${{ github.head_ref || github.ref }}"
+  group: "go-lint-build-${{ github.head_ref || github.ref }}"
   cancel-in-progress: true
 
 jobs:
