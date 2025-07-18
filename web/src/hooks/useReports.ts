@@ -153,6 +153,7 @@ export function useReports(params: UseReportsParams): UseReportsResult {
             error: null,
           };
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.warn(`Failed to fetch index from ${directory.name}:`, error);
           return {
             directory,

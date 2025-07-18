@@ -75,20 +75,22 @@ const PerformanceMatrix: React.FC<PerformanceMatrixProps> = ({
               value = report.progress ? calculateSyncRate(report.progress) : 0;
               displayValue = `${value.toFixed(2)} b/s`;
               break;
-            case 'disk_usage':
+            case 'disk_usage': {
               const lastProgress = report.progress && report.progress.length > 0 
                 ? report.progress[report.progress.length - 1] 
                 : null;
               value = lastProgress ? (lastProgress.de + lastProgress.dc) : 0;
               displayValue = value > 0 ? `${(value / (1024 ** 3)).toFixed(1)} GB` : 'N/A';
               break;
-            case 'peer_count':
+            }
+            case 'peer_count': {
               const avgProgress = report.progress && report.progress.length > 0
                 ? report.progress.reduce((sum, p) => sum + p.pe + p.pc, 0) / report.progress.length
                 : 0;
               value = avgProgress;
               displayValue = value > 0 ? Math.round(value).toString() : 'N/A';
               break;
+            }
             default:
               value = 0;
               displayValue = 'N/A';
