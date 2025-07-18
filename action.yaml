@@ -133,7 +133,7 @@ runs:
         fi
 
         # Build docker run command
-        DOCKER_CMD="docker run --rm"
+        DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm"
 
         # Add Docker socket mount for Kurtosis
         DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
