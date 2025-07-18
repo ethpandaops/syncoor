@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # Syncoor centralized server
+  syncoor-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syncoor-server
+    ports:
+      - "10001:8080"
+    command: ["server", "--listen", ":8080", "--auth-token", "${SYNCOOR_AUTH_TOKEN:-}", "--log-level", "${LOG_LEVEL:-info}"]
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SYNCOOR_AUTH_TOKEN=${SYNCOOR_AUTH_TOKEN:-}
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - syncoor-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Example sync client - hoodi network with geth+teku
+  syncoor-client-hoodi-geth-teku:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: syncoor-client
+    depends_on:
+      - syncoor-server
+    command: [
+      "sync",
+      "--network", "${NETWORK:-hoodi}",
+      "--el-client", "${EL_CLIENT:-geth}",
+      "--cl-client", "${CL_CLIENT:-teku}",
+      "--server", "http://host.docker.internal:8080",
+      "--server-auth", "${SYNCOOR_AUTH_TOKEN:-}",
+      "--log-level", "${LOG_LEVEL:-info}",
+      "--report-dir", "/app/reports"
+    ]
+    environment:
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - SYNCOOR_AUTH_TOKEN=${SYNCOOR_AUTH_TOKEN:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ${HOME}/.docker:/root/.docker:ro
+      - ./reports:/app/reports
+    network_mode: host
+    restart: "no"  # Don't restart sync tests automatically
+
+  # Nginx web server for serving reports
+  nginx-reports:
+    image: nginx:alpine
+    container_name: syncoor-nginx-reports
+    ports:
+      - "10002:80"
+    volumes:
+      - ./reports:/usr/share/nginx/html:ro
+    networks:
+      - syncoor-net
+    restart: unless-stopped
+
+networks:
+  syncoor-net:
+    driver: bridge
