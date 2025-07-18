@@ -23,8 +23,8 @@ services:
       retries: 3
       start_period: 30s
 
-  # Sync client
-  syncoor-client-hoodi-geth-teku:
+  # Syncoor run
+  syncoor-run:
     build:
       context: .
       dockerfile: Dockerfile
