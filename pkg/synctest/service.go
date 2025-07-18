@@ -54,6 +54,9 @@ type service struct {
 	tempReportSaved bool
 	recoveredReport *report.Result
 
+	// Completion state
+	testCompleted bool
+
 	cancel context.CancelFunc
 }
 
@@ -468,8 +471,8 @@ func (s *service) WaitForSync(ctx context.Context) error {
 				}
 			}
 
-			// Report progress to centralized server if configured
-			if s.reportingClient != nil {
+			// Report progress to centralized server if configured and test not completed
+			if s.reportingClient != nil && !s.testCompleted {
 				progressMetrics := reporting.ProgressMetrics{
 					Block:           blockNumber,
 					Slot:            slotNumber,
@@ -492,6 +495,9 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			consensusSyncStatus.IsSyncing == false &&
 			execSyncStatus.IsSyncing == false &&
 			execSyncStatus.BlockNumber > 0 {
+
+			// Mark test as completed to prevent further progress reports
+			s.testCompleted = true
 
 			// Report completion to centralized server if configured
 			if s.reportingClient != nil {
