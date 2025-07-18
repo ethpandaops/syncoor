@@ -64,9 +64,9 @@ inputs:
     default: 'hoodi'
 
   enclave:
-    description: 'Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)'
+    description: 'Enclave name (optional - defaults to "sync-test"'
     required: false
-    default: ''
+    default: 'sync-test'
 
   report-dir:
     description: 'Directory to save reports'
@@ -88,6 +88,16 @@ inputs:
     required: false
     default: 'true'
 
+  artifact-retention-days-test-report:
+    description: 'Number of days to retain test report artifacts'
+    required: false
+    default: '30'
+
+  artifact-retention-days-enclave-dump:
+    description: 'Number of days to retain enclave dump artifacts'
+    required: false
+    default: '7'
+
 outputs:
   report-path:
     description: 'Path to the generated report'
@@ -96,7 +106,7 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout and Build Syncoor
+    - name: Checkout and build Syncoor
       if: inputs.git-ref != ''
       shell: bash
       run: |
@@ -121,7 +131,7 @@ runs:
         kurtosis engine start
         kurtosis engine status
 
-    - name: Run Syncoor Test
+    - name: Run Syncoor test
       id: run-test
       shell: bash
       run: |
@@ -155,6 +165,7 @@ runs:
         DOCKER_CMD="$DOCKER_CMD --network=${{ inputs.network }}"
         DOCKER_CMD="$DOCKER_CMD --report-dir=${{ inputs.report-dir }}"
         DOCKER_CMD="$DOCKER_CMD --log-level=${{ inputs.log-level }}"
+        DOCKER_CMD="$DOCKER_CMD --enclave=${{ inputs.enclave }}"
 
         # Add optional parameters if provided
         if [ -n "${{ inputs.el-image }}" ]; then
@@ -163,10 +174,6 @@ runs:
 
         if [ -n "${{ inputs.cl-image }}" ]; then
           DOCKER_CMD="$DOCKER_CMD --cl-image=${{ inputs.cl-image }}"
-        fi
-
-        if [ -n "${{ inputs.enclave }}" ]; then
-          DOCKER_CMD="$DOCKER_CMD --enclave=${{ inputs.enclave }}"
         fi
 
         if [ -n "${{ inputs.el-extra-args }}" ]; then
@@ -192,10 +199,24 @@ runs:
         # Set output
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
 
-    - name: Upload Test Reports
+    - name: Get kurtosis enclave dump
+      id: enclave-dump
+      shell: bash
+      run: |
+        kurtosis enclave ${{ inputs.enclave }} kurtosis-enclave-dump
+
+    - name: Upload test reports
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true'
       with:
-        name: syncoor-test-reports
+        name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
         path: ${{ inputs.report-dir }}
-        retention-days: 30
+        retention-days: ${{ inputs.artifact-retention-days-test-report }}
+
+    - name: Upload enclave dump
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
+        path: kurtosis-enclave-dump
+        retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
