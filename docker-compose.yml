@@ -36,7 +36,7 @@ services:
       "--network", "${NETWORK:-hoodi}",
       "--el-client", "${EL_CLIENT:-geth}",
       "--cl-client", "${CL_CLIENT:-teku}",
-      "--server", "http://host.docker.internal:8080",
+      "--server", "http://host.docker.internal:10001",
       "--server-auth", "${SYNCOOR_AUTH_TOKEN:-}",
       "--log-level", "${LOG_LEVEL:-info}",
       "--report-dir", "/app/reports"
@@ -72,18 +72,21 @@ services:
       - syncoor-net
     restart: unless-stopped
 
-
-  # Nginx web server for serving reports
-  nginx-reports:
-    image: nginx:alpine
-    container_name: syncoor-nginx-reports
+  # Syncoor web UI
+  syncoor-web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: syncoor-web
     ports:
-      - "10002:80"
+      - "3000:80"
     volumes:
-      - ./reports:/usr/share/nginx/html:ro
+      - ./reports:/usr/share/nginx/html/reports:ro
     networks:
       - syncoor-net
     restart: unless-stopped
+    depends_on:
+      - syncoor-server
 
 networks:
   syncoor-net:

@@ -3,8 +3,20 @@ name: Check - CI
 on:
   push:
     branches: [ master ]
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
   pull_request:
     branches: [ master ]
+    paths:
+      - '**/*.go'
+      - 'go.mod'
+      - 'go.sum'
+
+concurrency:
+  group: "go-lint-build-${{ github.head_ref || github.ref }}"
+  cancel-in-progress: true
 
 jobs:
   lint-and-test:

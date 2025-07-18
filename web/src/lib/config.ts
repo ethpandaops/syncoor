@@ -1,0 +1,132 @@
+import { Config, Directory, ThemeConfig } from '../types/config';
+
+/**
+ * Validates that the theme config is properly structured
+ */
+function validateThemeConfig(theme: unknown): ThemeConfig {
+  if (typeof theme === 'string') {
+    // Handle legacy string format
+    return {
+      mode: theme as 'light' | 'dark' | 'auto',
+    };
+  }
+
+  if (typeof theme !== 'object' || theme === null) {
+    throw new Error('Theme configuration must be an object or string');
+  }
+
+  const themeObj = theme as Record<string, unknown>;
+  
+  const mode = themeObj.mode;
+  if (mode !== 'light' && mode !== 'dark' && mode !== 'auto') {
+    throw new Error(`Invalid theme mode: ${mode}. Must be 'light', 'dark', or 'auto'`);
+  }
+
+  const validatedTheme: ThemeConfig = { mode };
+
+  if ('primaryColor' in themeObj && typeof themeObj.primaryColor === 'string') {
+    validatedTheme.primaryColor = themeObj.primaryColor;
+  }
+
+  return validatedTheme;
+}
+
+/**
+ * Validates that a directory entry is properly structured
+ */
+function validateDirectory(dir: unknown, index: number): Directory {
+  if (typeof dir !== 'object' || dir === null) {
+    throw new Error(`Directory at index ${index} must be an object`);
+  }
+
+  const dirObj = dir as Record<string, unknown>;
+
+  if (typeof dirObj.name !== 'string' || !dirObj.name.trim()) {
+    throw new Error(`Directory at index ${index} must have a non-empty name`);
+  }
+
+  if (typeof dirObj.url !== 'string' || !dirObj.url.trim()) {
+    throw new Error(`Directory at index ${index} must have a non-empty url`);
+  }
+
+  // Validate URL format
+  try {
+    new URL(dirObj.url);
+  } catch {
+    throw new Error(`Directory at index ${index} has invalid URL: ${dirObj.url}`);
+  }
+
+  const enabled = dirObj.enabled !== false; // Default to true if not specified
+
+  return {
+    name: dirObj.name,
+    url: dirObj.url.endsWith('/') ? dirObj.url : `${dirObj.url}/`,
+    enabled,
+  };
+}
+
+/**
+ * Validates the configuration data and returns a typed Config object
+ * @param data - The raw configuration data to validate
+ * @returns A validated Config object
+ * @throws Error if validation fails
+ */
+export function validateConfig(data: unknown): Config {
+  if (typeof data !== 'object' || data === null) {
+    throw new Error('Configuration must be an object');
+  }
+
+  const config = data as Record<string, unknown>;
+
+  // Validate directories
+  if (!Array.isArray(config.directories)) {
+    throw new Error('Configuration must have a directories array');
+  }
+
+  if (config.directories.length === 0) {
+    throw new Error('Configuration must have at least one directory');
+  }
+
+  const directories = config.directories.map((dir, index) => validateDirectory(dir, index));
+
+  // Validate refresh interval
+  const refreshInterval = typeof config.refreshInterval === 'number' 
+    ? config.refreshInterval 
+    : 30000; // Default to 30 seconds
+
+  if (refreshInterval < 1000) {
+    throw new Error('Refresh interval must be at least 1000ms (1 second)');
+  }
+
+  // Validate theme
+  const theme = validateThemeConfig(config.theme || { mode: 'light' });
+
+  return {
+    directories,
+    refreshInterval,
+    theme,
+  };
+}
+
+/**
+ * Loads the configuration from the public config.json file
+ * @returns A promise that resolves to the validated Config object
+ * @throws Error if the configuration cannot be loaded or is invalid
+ */
+export async function loadConfig(): Promise<Config> {
+  try {
+    const response = await fetch('/config.json');
+    
+    if (!response.ok) {
+      throw new Error(`Failed to load configuration: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return validateConfig(data);
+  } catch (error) {
+    if (error instanceof Error) {
+      throw new Error(`Configuration error: ${error.message}`);
+    }
+    throw new Error('Unknown error loading configuration');
+  }
+}
