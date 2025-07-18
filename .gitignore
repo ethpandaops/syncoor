@@ -22,7 +22,7 @@ go.work
 bin/
 
 # Reports directory (generated at runtime)
-reports/
+reports/*.json
 
 # IDE files
 .vscode/
