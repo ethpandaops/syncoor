@@ -19,6 +19,8 @@ type Config struct {
 	EnclaveName   string
 	ReportDir     string
 	Labels        map[string]string
+	ServerURL     string // e.g., "https://api.syncoor.example"
+	ServerAuth    string // Bearer token for authentication
 }
 
 // Validate validates the configuration

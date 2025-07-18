@@ -1,4 +1,4 @@
-.PHONY: build test lint clean install deps docker-build docker-run
+.PHONY: build test lint clean install deps docker-build docker-run docker-run-server
 
 # Build configuration
 BINARY_NAME=syncoor
@@ -72,10 +72,11 @@ docker-build:
 	@echo "Building Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)..."
 	@docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
-# Run Docker container with mounted Docker socket and reports volume
+# Run Docker container for sync tests with mounted Docker socket and reports volume
 # Usage:
 #  make docker-run ARGS="--help"
 #  make docker-run ARGS="sync --el-client nethermind --cl-client teku --network hoodi"
+#  make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth token123 --el-client geth --cl-client teku --network hoodi"
 # ARGS are passed to the syncoor binary
 docker-run:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."
@@ -85,3 +86,15 @@ docker-run:
 		-v $(PWD)/reports:/app/reports \
 		--network host \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) $(ARGS)
+
+# Run Docker container as centralized server
+# Usage:
+#  make docker-run-server
+#  make docker-run-server ARGS="--listen :8080 --auth-token mytoken123"
+# ARGS are passed to the syncoor server command
+docker-run-server:
+	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG) as server..."
+	@docker run -it --rm \
+		-p 8080:8080 \
+		--network host \
+		$(DOCKER_IMAGE):$(DOCKER_TAG) server $(ARGS)
