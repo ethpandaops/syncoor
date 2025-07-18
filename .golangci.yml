@@ -21,7 +21,6 @@ linters:
     - unparam
     - nakedret
     - prealloc
-    - scopelint
     - gocritic
     - gochecknoinits
     - gochecknoglobals
