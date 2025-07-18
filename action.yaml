@@ -114,6 +114,13 @@ runs:
         # Clean up
         rm -rf syncoor-build
 
+    - name: Make sure kurtosis engine is started
+      id: engine-start
+      shell: bash
+      run: |
+        kurtosis engine start
+        kurtosis engine status
+
     - name: Run Syncoor Test
       id: run-test
       shell: bash
