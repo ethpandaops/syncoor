@@ -31,9 +31,12 @@ jobs:
 
       - name: Install dependencies
         run: make setup
+        working-directory: web
 
       - name: Run linter
         run: make lint
+        working-directory: web
 
       - name: Build application
         run: make build
+        working-directory: web
