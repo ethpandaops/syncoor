@@ -13,10 +13,9 @@ import {
 import { 
   SyncProgressChart, 
   DiskUsageChart, 
-  PeerCountChart, 
-  PerformanceMatrix 
+  PeerCountChart
 } from '../components/charts';
-import { useReports, useConfig, useTestDetails } from '../hooks';
+import { useReports, useConfig } from '../hooks';
 import { ReportEntry } from '../hooks/useReports';
 import { TestDetails } from '../hooks/useTestDetails';
 import { formatDuration, formatBytes } from '../lib/utils';
@@ -125,10 +124,6 @@ const ComparisonTable: React.FC<{
     );
   }
 
-  const metrics = selectedTests.map(test => ({
-    report: test.report,
-    details: test.details
-  }));
 
   return (
     <div className="space-y-6">
@@ -275,13 +270,7 @@ const ComparisonTable: React.FC<{
           <CardContent>
             <div className="h-80">
               <SyncProgressChart 
-                data={selectedTests[0]?.report.sync_info}
-                progress={selectedTests[0]?.details?.progress || []}
-                comparisons={selectedTests.slice(1).map(test => ({
-                  data: test.report.sync_info,
-                  progress: test.details?.progress || [],
-                  label: test.report.execution_client_info.name
-                }))}
+                data={selectedTests[0]?.details?.progress || []}
               />
             </div>
           </CardContent>
@@ -294,11 +283,7 @@ const ComparisonTable: React.FC<{
           <CardContent>
             <div className="h-80">
               <DiskUsageChart 
-                progress={selectedTests[0]?.details?.progress || []}
-                comparisons={selectedTests.slice(1).map(test => ({
-                  progress: test.details?.progress || [],
-                  label: test.report.execution_client_info.name
-                }))}
+                data={selectedTests[0]?.details?.progress || []}
               />
             </div>
           </CardContent>
@@ -311,34 +296,30 @@ const ComparisonTable: React.FC<{
           <CardContent>
             <div className="h-80">
               <PeerCountChart 
-                progress={selectedTests[0]?.details?.progress || []}
-                comparisons={selectedTests.slice(1).map(test => ({
-                  progress: test.details?.progress || [],
-                  label: test.report.execution_client_info.name
-                }))}
+                data={selectedTests[0]?.details?.progress || []}
               />
             </div>
           </CardContent>
         </Card>
 
-        <Card>
+        {/* <Card>
           <CardHeader>
             <CardTitle>Performance Matrix</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-80">
               <PerformanceMatrix 
-                reports={selectedTests.map(test => test.report)} 
+                data={selectedTests.map(test => test.report)} 
               />
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );
 };
 
-export const Compare: React.FC<CompareProps> = ({ onTestClick }) => {
+export const Compare: React.FC<CompareProps> = () => {
   const { data: config } = useConfig();
   const { data: reports, isLoading, error } = useReports({
     directories: config?.directories || [],

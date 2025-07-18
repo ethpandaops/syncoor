@@ -19,7 +19,6 @@ interface BlockProgressChartProps {
   showLegend?: boolean;
   showGrid?: boolean;
   color?: string;
-  targetValue?: number;
 }
 
 interface ChartDataPoint {
@@ -35,7 +34,6 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
   showLegend = true,
   showGrid = true,
   color = '#3b82f6',
-  targetValue,
 }) => {
   // Transform data for the chart
   const chartData: ChartDataPoint[] = React.useMemo(() => {

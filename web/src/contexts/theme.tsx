@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useConfig } from '../hooks/useConfig';
 
 type Theme = 'light' | 'dark';
 
@@ -12,7 +11,6 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { data: config } = useConfig();
   const [theme, setTheme] = useState<Theme>(() => {
     // Get theme from localStorage or default to light
     const stored = localStorage.getItem('theme');

@@ -32,7 +32,7 @@ export default function TestDetails() {
 
   // Fetch main report data for detailed client information
   const mainUrl = testReport ? `${testReport.source_url}${testReport.main_file}` : '';
-  const { data: mainReport, isLoading: mainLoading, error: mainError } = useMainReport({
+  const { data: mainReport, isLoading: mainLoading } = useMainReport({
     mainUrl,
     enabled: !!testReport && !configLoading && !reportsLoading
   });

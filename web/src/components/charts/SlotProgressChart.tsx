@@ -19,7 +19,6 @@ interface SlotProgressChartProps {
   showLegend?: boolean;
   showGrid?: boolean;
   color?: string;
-  targetValue?: number;
 }
 
 interface ChartDataPoint {
@@ -35,7 +34,6 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
   showLegend = true,
   showGrid = true,
   color = '#10b981',
-  targetValue,
 }) => {
   // Transform data for the chart
   const chartData: ChartDataPoint[] = React.useMemo(() => {
@@ -50,20 +48,6 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
       }));
   }, [data]);
 
-  // Calculate Y-axis domain to start from first data point
-  const yAxisDomain = React.useMemo(() => {
-    if (!chartData || chartData.length === 0) return ['auto', 'auto'];
-    
-    const minSlot = Math.min(...chartData.map(d => d.slots));
-    const maxSlot = Math.max(...chartData.map(d => d.slots));
-    
-    // Add a small buffer (5%) to make the chart more readable
-    const buffer = (maxSlot - minSlot) * 0.05;
-    const domainMin = Math.max(0, minSlot - buffer);
-    const domainMax = maxSlot + buffer;
-    
-    return [domainMin, domainMax];
-  }, [chartData]);
 
   // Custom tooltip component
   const CustomTooltip = ({ active, payload }: any) => {
