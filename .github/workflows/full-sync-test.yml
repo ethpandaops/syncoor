@@ -23,6 +23,16 @@ on:
         required: false
         default: '60m'
         type: string
+      el-image:
+        description: 'Execution layer client image'
+        required: false
+        default: ''
+        type: string
+      cl-image:
+        description: 'Consensus layer client image'
+        required: false
+        default: ''
+        type: string
 
 jobs:
   sync-test:
@@ -45,6 +55,8 @@ jobs:
         network: ${{ inputs.network || 'hoodi' }}
         el-client: ${{ inputs.el-client || 'geth' }}
         cl-client: ${{ inputs.cl-client || 'teku' }}
+        el-image: ${{ inputs.el-image || '' }}
+        cl-image: ${{ inputs.cl-image || '' }}
         el-extra-args: >-
           ${{
             (inputs.el-client == 'reth' || github.event.inputs.el-client == 'reth') && '--full' ||
