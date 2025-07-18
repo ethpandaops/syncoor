@@ -18,6 +18,7 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/kurtosis"
 	metrics_exporter "github.com/ethpandaops/syncoor/pkg/metrics-exporter"
 	"github.com/ethpandaops/syncoor/pkg/report"
+	"github.com/ethpandaops/syncoor/pkg/reporting"
 )
 
 // Service defines the interface for the sync test service
@@ -41,6 +42,7 @@ type service struct {
 	metricsExporterClientFetcher metrics_exporter.Client
 	kurtosisClient               kurtosis.Client
 	reportService                report.Service
+	reportingClient              *reporting.Client
 
 	cancel context.CancelFunc
 }
@@ -53,12 +55,23 @@ func NewService(
 	log logrus.FieldLogger,
 	cfg Config,
 ) Service {
-	return &service{
+	svc := &service{
 		log:            log.WithField("package", "synctest"),
 		cfg:            cfg,
 		kurtosisClient: kurtosis.NewClient(log),
 		reportService:  report.NewService(log),
 	}
+
+	// Initialize reporting client if configured
+	if cfg.ServerURL != "" {
+		svc.reportingClient = reporting.NewClient(
+			cfg.ServerURL,
+			cfg.ServerAuth,
+			log.WithField("component", "reporting"),
+		)
+	}
+
+	return svc
 }
 
 // Start initializes the synctest service
@@ -67,6 +80,11 @@ func (s *service) Start(ctx context.Context) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
+
+	// Start reporting client if configured
+	if s.reportingClient != nil {
+		s.reportingClient.Start(ctx)
+	}
 
 	// Prepare participant config
 	participantConfig := config.ParticipantConfig{
@@ -126,6 +144,33 @@ func (s *service) Start(ctx context.Context) error {
 	}
 
 	s.network = network
+
+	// Report test start if reporting client is configured
+	if s.reportingClient != nil {
+		runID := fmt.Sprintf("sync-test-%d-%s_%s_%s", time.Now().UnixNano(), s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
+		startReq := reporting.TestStartRequest{
+			RunID:     runID,
+			Timestamp: time.Now().Unix(),
+			Network:   s.cfg.Network,
+			Labels:    s.cfg.Labels,
+			ELClient: reporting.ClientConfig{
+				Type:      s.cfg.ELClient,
+				Image:     s.cfg.ELImage,
+				ExtraArgs: s.cfg.ELExtraArgs,
+			},
+			CLClient: reporting.ClientConfig{
+				Type:      s.cfg.CLClient,
+				Image:     s.cfg.CLImage,
+				ExtraArgs: s.cfg.CLExtraArgs,
+			},
+			EnclaveName: s.cfg.EnclaveName,
+		}
+
+		if err := s.reportingClient.ReportTestStart(ctx, startReq); err != nil {
+			s.log.WithError(err).Warn("Failed to report test start")
+			// Continue anyway - reporting is optional
+		}
+	}
 
 	// Create execution client fetcher
 	executionClients := s.network.ExecutionClients().All()
@@ -203,6 +248,10 @@ func (s *service) Start(ctx context.Context) error {
 // Stop cleans up and stops the sync test service
 func (s *service) Stop() error {
 	s.log.Info("Stopping synctest service")
+
+	if s.reportingClient != nil {
+		s.reportingClient.Stop()
+	}
 
 	if s.cancel != nil {
 		s.cancel()
@@ -351,6 +400,23 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			}
 
 			s.reportService.AddSyncProgressEntry(ctx, progressEntry)
+
+			// Report progress to centralized server if configured
+			if s.reportingClient != nil {
+				progressMetrics := reporting.ProgressMetrics{
+					Block:           blockNumber,
+					Slot:            slotNumber,
+					ExecDiskUsage:   metrics.ExeDiskUsage,
+					ConsDiskUsage:   metrics.ConDiskUsage,
+					ExecPeers:       metrics.ExePeers,
+					ConsPeers:       metrics.ConPeers,
+					ExecSyncPercent: metrics.ExeSyncPercentage,
+					ConsSyncPercent: metrics.ConSyncPercentage,
+					ExecVersion:     metrics.ExeVersion,
+					ConsVersion:     metrics.ConVersion,
+				}
+				s.reportingClient.ReportProgress(progressMetrics) // Non-blocking
+			}
 		}
 
 		// Check if we are synced and exit the loop
@@ -359,6 +425,21 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			consensusSyncStatus.IsSyncing == false &&
 			execSyncStatus.IsSyncing == false &&
 			execSyncStatus.BlockNumber > 0 {
+
+			// Report completion to centralized server if configured
+			if s.reportingClient != nil {
+				finalSlot, _ := strconv.ParseUint(consensusSyncStatus.HeadSlot, 10, 64)
+				completeReq := reporting.TestCompleteRequest{
+					Timestamp:  time.Now().Unix(),
+					FinalBlock: execSyncStatus.BlockNumber,
+					FinalSlot:  finalSlot,
+					Success:    true,
+				}
+
+				if err := s.reportingClient.ReportTestComplete(ctx, completeReq); err != nil {
+					s.log.WithError(err).Warn("Failed to report test completion")
+				}
+			}
 
 			// Stop report service
 			if err := s.reportService.Stop(ctx); err != nil {

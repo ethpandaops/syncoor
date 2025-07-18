@@ -29,6 +29,8 @@ var (
 	enclaveName   string
 	reportDir     string
 	labels        []string
+	serverURL     string
+	serverAuth    string
 )
 
 var rootCmd = &cobra.Command{
@@ -61,9 +63,12 @@ func init() {
 	syncCmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
 	syncCmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")
 	syncCmd.Flags().StringSliceVar(&labels, "label", []string{}, "Labels in key=value format (can be used multiple times)")
+	syncCmd.Flags().StringVar(&serverURL, "server", "", "Centralized server URL (e.g., https://api.syncoor.example)")
+	syncCmd.Flags().StringVar(&serverAuth, "server-auth", "", "Bearer token for server authentication")
 
-	// Add sync command to root
+	// Add commands to root
 	rootCmd.AddCommand(syncCmd)
+	rootCmd.AddCommand(NewServerCommand())
 }
 
 func main() {
@@ -103,6 +108,8 @@ func runSyncTest(cmd *cobra.Command, args []string) {
 		Network:       networkName,
 		EnclaveName:   enclaveName,
 		ReportDir:     reportDir,
+		ServerURL:     serverURL,
+		ServerAuth:    serverAuth,
 	}
 
 	// Parse labels

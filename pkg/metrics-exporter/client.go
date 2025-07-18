@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -298,7 +299,12 @@ func (c *client) parseExeSyncIsSyncingFamily(family *io_prometheus_client.Metric
 func (c *client) parseExeSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
-			parsed.ExeSyncPercentage = metric.GetGauge().GetValue()
+			value := metric.GetGauge().GetValue()
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				parsed.ExeSyncPercentage = 0.0
+			} else {
+				parsed.ExeSyncPercentage = value
+			}
 			break
 		}
 	}
@@ -338,7 +344,12 @@ func (c *client) parseConSyncIsSyncingFamily(family *io_prometheus_client.Metric
 func (c *client) parseConSyncPercentageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
 		if metric.GetGauge() != nil {
-			parsed.ConSyncPercentage = metric.GetGauge().GetValue()
+			value := metric.GetGauge().GetValue()
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				parsed.ConSyncPercentage = 0.0
+			} else {
+				parsed.ConSyncPercentage = value
+			}
 			break
 		}
 	}

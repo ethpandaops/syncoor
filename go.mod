@@ -4,10 +4,13 @@ go 1.23.5
 
 require (
 	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250717091044-9351197ed983
+	github.com/prometheus/client_golang v1.20.4
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.65.0
+	github.com/r3labs/sse/v2 v2.10.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
+	gopkg.in/cenkalti/backoff.v1 v1.1.0
 )
 
 require (
@@ -32,6 +35,7 @@ require (
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/go-clone v1.6.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
 	github.com/kurtosis-tech/kurtosis-portal/api/golang v0.0.0-20230818182330-1a86869414d2 // indirect
 	github.com/kurtosis-tech/kurtosis/api/golang v1.10.1 // indirect
@@ -50,10 +54,8 @@ require (
 	github.com/pk910/dynamic-ssz v0.0.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.20.4 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/prysmaticlabs/go-bitfield v0.0.0-20240618144021-706c95b2dd15 // indirect
-	github.com/r3labs/sse/v2 v2.10.0 // indirect
 	github.com/rs/zerolog v1.32.0 // indirect
 	github.com/spf13/pflag v1.0.6 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
@@ -75,7 +77,6 @@ require (
 	google.golang.org/grpc v1.57.1 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
-	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
