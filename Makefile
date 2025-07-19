@@ -1,4 +1,4 @@
-.PHONY: build test lint clean install deps docker-build docker-run docker-run-server
+.PHONY: build test lint clean install deps docker-build docker-run docker-run-server mock-reports
 
 # Build configuration
 BINARY_NAME=syncoor
@@ -98,3 +98,10 @@ docker-run-server:
 		-p 8080:8080 \
 		--network host \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) server $(ARGS)
+
+# Generate mock test reports for UI development and testing
+mock-reports:
+	@echo "Generating mock test reports..."
+	@node scripts/generate-mock-reports.js
+	@echo "Mock reports generated successfully in reports/mock/"
+	@echo "Add 'reports/mock/' to your web UI config.json to use the mock data"
