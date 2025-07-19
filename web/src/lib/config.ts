@@ -1,4 +1,4 @@
-import { Config, Directory, ThemeConfig } from '../types/config';
+import { Config, Directory, ThemeConfig, SyncoorApiEndpoint } from '../types/config';
 
 /**
  * Validates that the theme config is properly structured
@@ -66,6 +66,40 @@ function validateDirectory(dir: unknown, index: number): Directory {
 }
 
 /**
+ * Validates that a syncoor API endpoint entry is properly structured
+ */
+function validateSyncoorApiEndpoint(endpoint: unknown, index: number): SyncoorApiEndpoint {
+  if (typeof endpoint !== 'object' || endpoint === null) {
+    throw new Error(`Syncoor API endpoint at index ${index} must be an object`);
+  }
+
+  const endpointObj = endpoint as Record<string, unknown>;
+
+  if (typeof endpointObj.name !== 'string' || !endpointObj.name.trim()) {
+    throw new Error(`Syncoor API endpoint at index ${index} must have a non-empty name`);
+  }
+
+  if (typeof endpointObj.url !== 'string' || !endpointObj.url.trim()) {
+    throw new Error(`Syncoor API endpoint at index ${index} must have a non-empty url`);
+  }
+
+  // Validate URL format
+  try {
+    new URL(endpointObj.url);
+  } catch {
+    throw new Error(`Syncoor API endpoint at index ${index} has invalid URL: ${endpointObj.url}`);
+  }
+
+  const enabled = endpointObj.enabled !== false; // Default to true if not specified
+
+  return {
+    name: endpointObj.name,
+    url: endpointObj.url,
+    enabled,
+  };
+}
+
+/**
  * Validates the configuration data and returns a typed Config object
  * @param data - The raw configuration data to validate
  * @returns A validated Config object
@@ -89,6 +123,17 @@ export function validateConfig(data: unknown): Config {
 
   const directories = config.directories.map((dir, index) => validateDirectory(dir, index));
 
+  // Validate syncoor API endpoints (optional)
+  let syncoorApiEndpoints: SyncoorApiEndpoint[] | undefined;
+  if (config.syncoorApiEndpoints) {
+    if (!Array.isArray(config.syncoorApiEndpoints)) {
+      throw new Error('syncoorApiEndpoints must be an array');
+    }
+    syncoorApiEndpoints = config.syncoorApiEndpoints.map((endpoint, index) => 
+      validateSyncoorApiEndpoint(endpoint, index)
+    );
+  }
+
   // Validate refresh interval
   const refreshInterval = typeof config.refreshInterval === 'number'
     ? config.refreshInterval
@@ -103,6 +148,7 @@ export function validateConfig(data: unknown): Config {
 
   return {
     directories,
+    syncoorApiEndpoints,
     refreshInterval,
     theme,
   };

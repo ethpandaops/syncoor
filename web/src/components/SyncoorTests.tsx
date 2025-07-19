@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { SyncoorApiEndpoint } from '../types/config';
 import { TestSummary, HealthResponse } from '../types/syncoor';
-import { fetchSyncoorTests, fetchSyncoorHealth, SyncoorApiError } from '../lib/syncoorApi';
+import { fetchSyncoorTests, fetchSyncoorHealth } from '../lib/syncoorApi';
+import { useSearchParams } from 'react-router-dom';
 
 interface SyncoorTestsProps {
   endpoints: SyncoorApiEndpoint[];
@@ -19,7 +20,26 @@ interface EndpointData {
 }
 
 const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [endpointData, setEndpointData] = useState<EndpointData[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const testsPerPage = 10;
+
+  // Initialize collapsed state from URL or default to true
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    const collapsed = searchParams.get('liveTestsCollapsed');
+    return collapsed === null ? true : collapsed === 'true';
+  });
+
+  // Function to toggle collapsed state and update URL
+  const toggleCollapsed = () => {
+    const newCollapsed = !isCollapsed;
+    setIsCollapsed(newCollapsed);
+    
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('liveTestsCollapsed', newCollapsed.toString());
+    setSearchParams(newParams);
+  };
 
   // Initialize endpoint data
   useEffect(() => {
@@ -50,22 +70,22 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
 
           const tests = testsResponse.status === 'fulfilled' ? testsResponse.value.tests : [];
           const health = healthResponse.status === 'fulfilled' ? healthResponse.value : null;
-          const error = testsResponse.status === 'rejected' 
+          const error = testsResponse.status === 'rejected'
             ? `${testsResponse.reason instanceof Error ? testsResponse.reason.message : 'Unknown error'}`
             : null;
 
-          setEndpointData(prev => prev.map((item, index) => 
-            index === i 
+          setEndpointData(prev => prev.map((item, index) =>
+            index === i
               ? { ...item, tests, health, loading: false, error }
               : item
           ));
         } catch (error) {
-          setEndpointData(prev => prev.map((item, index) => 
-            index === i 
-              ? { 
-                  ...item, 
-                  loading: false, 
-                  error: error instanceof Error ? error.message : 'Unknown error' 
+          setEndpointData(prev => prev.map((item, index) =>
+            index === i
+              ? {
+                  ...item,
+                  loading: false,
+                  error: error instanceof Error ? error.message : 'Unknown error'
                 }
               : item
           ));
@@ -73,16 +93,23 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
       }
     };
 
-    if (endpointData.length > 0) {
+    // Trigger fetch if there are endpoints and any of them are loading
+    const hasLoadingEndpoints = endpointData.some(item => item.loading);
+    if (endpointData.length > 0 && hasLoadingEndpoints) {
       fetchData();
     }
-  }, [endpointData.length]);
+  }, [endpointData]);
 
-  // Auto-refresh every 30 seconds
+  // Auto-refresh every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      setEndpointData(prev => prev.map(item => ({ ...item, loading: true, error: null })));
-    }, 30000);
+      // Trigger refresh by resetting loading state for all endpoints
+      setEndpointData(prev => prev.map(item => ({
+        ...item,
+        loading: true,
+        error: null
+      })));
+    }, 60000);
 
     return () => clearInterval(interval);
   }, []);
@@ -101,7 +128,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     const diffMs = end.getTime() - start.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     }
@@ -124,6 +151,21 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
 
   const capitalizeClient = (clientType: string): string => {
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
+  };
+
+  const getNetworkSummary = (tests: TestSummary[]) => {
+    const runningTests = tests.filter(test => test.is_running);
+    const networkCounts = runningTests.reduce((acc, test) => {
+      acc[test.network] = (acc[test.network] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return Object.entries(networkCounts)
+      .sort(([a], [b]) => {
+        if (a === 'mainnet') return -1;
+        if (b === 'mainnet') return 1;
+        return a.localeCompare(b);
+      });
   };
 
   if (endpointData.length === 0) {
@@ -149,8 +191,22 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <ServerIcon className="h-5 w-5" />
-                Live Tests - {data.endpoint.name}
+                <button
+                  onClick={toggleCollapsed}
+                  className="flex items-center gap-2 hover:bg-muted/50 rounded p-1 -ml-1"
+                >
+                  <ChevronIcon className={`h-4 w-4 transition-transform ${isCollapsed ? 'rotate-0' : 'rotate-90'}`} />
+                  <div className="flex items-center gap-2">
+                    {(() => {
+                      const runningTests = data.tests.filter(test => test.is_running);
+                      return runningTests.length > 0 && (
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      );
+                    })()}
+                    <ServerIcon className="h-5 w-5" />
+                    Live Running Tests - {data.endpoint.name}
+                  </div>
+                </button>
                 {data.loading && <LoaderIcon className="h-4 w-4 animate-spin" />}
               </div>
               {data.health && (
@@ -178,26 +234,54 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                 <LoaderIcon className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Loading tests...</span>
               </div>
-            ) : data.tests.length === 0 ? (
-              <p className="text-muted-foreground py-4">No tests available.</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b text-left">
-                      <th className="pb-2 font-medium">Status</th>
-                      <th className="pb-2 font-medium">Network</th>
-                      <th className="pb-2 font-medium">EL Client</th>
-                      <th className="pb-2 font-medium">CL Client</th>
-                      <th className="pb-2 font-medium">Block/Slot</th>
-                      <th className="pb-2 font-medium">EL Peers</th>
-                      <th className="pb-2 font-medium">CL Peers</th>
-                      <th className="pb-2 font-medium">EL Disk</th>
-                      <th className="pb-2 font-medium">Duration</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.tests.slice(0, 10).map((test, testIndex) => (
+            ) : (() => {
+                const runningTests = data.tests.filter(test => test.is_running);
+                const completedTests = data.tests.filter(test => !test.is_running);
+                const allTests = [...runningTests, ...completedTests]; // Running tests first
+
+                if (allTests.length === 0) {
+                  return <p className="text-muted-foreground py-4">No tests available.</p>;
+                }
+
+                if (isCollapsed) {
+                  // Show network summary when collapsed
+                  const networkSummary = getNetworkSummary(data.tests);
+                  return (
+                    <div className="flex flex-wrap gap-2">
+                      {networkSummary.map(([network, count]) => (
+                        <Badge key={network} variant="secondary" className="text-sm">
+                          {network}: {count} running
+                        </Badge>
+                      ))}
+                    </div>
+                  );
+                }
+
+                // Show full table when expanded
+                const totalPages = Math.ceil(allTests.length / testsPerPage);
+                const startIndex = (currentPage - 1) * testsPerPage;
+                const endIndex = startIndex + testsPerPage;
+                const paginatedTests = allTests.slice(startIndex, endIndex);
+
+                return (
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b text-left">
+                            <th className="pb-2 font-medium">Status</th>
+                            <th className="pb-2 font-medium">Network</th>
+                            <th className="pb-2 font-medium">EL Client</th>
+                            <th className="pb-2 font-medium">CL Client</th>
+                            <th className="pb-2 font-medium">Block/Slot</th>
+                            <th className="pb-2 font-medium">EL Peers</th>
+                            <th className="pb-2 font-medium">CL Peers</th>
+                            <th className="pb-2 font-medium">EL Disk</th>
+                            <th className="pb-2 font-medium">Duration</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginatedTests.map((test, testIndex) => (
                       <tr key={testIndex} className="border-b">
                         <td className="py-2">
                           {getStatusBadge(test)}
@@ -207,8 +291,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-2">
-                            <img 
-                              src={getClientLogo(test.el_client)} 
+                            <img
+                              src={getClientLogo(test.el_client)}
                               alt={test.el_client}
                               className="w-5 h-5 rounded"
                               onError={(e) => {
@@ -220,8 +304,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-2">
-                            <img 
-                              src={getClientLogo(test.cl_client)} 
+                            <img
+                              src={getClientLogo(test.cl_client)}
                               alt={test.cl_client}
                               className="w-5 h-5 rounded"
                               onError={(e) => {
@@ -280,14 +364,39 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                       </tr>
                     ))}
                   </tbody>
-                </table>
-                {data.tests.length > 10 && (
-                  <div className="mt-4 text-center text-sm text-muted-foreground">
-                    Showing 10 of {data.tests.length} tests
+                      </table>
+                    </div>
+                    
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-muted-foreground">
+                          Showing {startIndex + 1}-{Math.min(endIndex, allTests.length)} of {allTests.length} tests
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3 py-1 text-sm border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm">
+                            Page {currentPage} of {totalPages}
+                          </span>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            disabled={currentPage === totalPages}
+                            className="px-3 py-1 text-sm border rounded hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                );
+              })()}
           </CardContent>
         </Card>
       ))}
@@ -386,6 +495,20 @@ function UsersIcon({ className }: { className?: string }) {
       <circle cx="9" cy="7" r="4" />
       <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <polyline points="9,18 15,12 9,6" />
     </svg>
   );
 }

@@ -131,7 +131,7 @@ func (s *Server) SetCORSOrigins(origins string) {
 func (s *Server) generateMockData() {
 	s.log.Info("Generating mock test data")
 
-	// Create some sample test entries
+	// Create more sample test entries with emphasis on running tests
 	mockTests := []struct {
 		runID   string
 		network string
@@ -139,11 +139,24 @@ func (s *Server) generateMockData() {
 		clType  string
 		status  string
 	}{
-		{"mock-test-001", "mainnet", "geth", "lighthouse", "completed"},
+		// Running tests (more of these for better demo)
+		{"mock-test-001", "mainnet", "geth", "lighthouse", "running"},
 		{"mock-test-002", "mainnet", "besu", "prysm", "running"},
-		{"mock-test-003", "sepolia", "nethermind", "teku", "completed"},
+		{"mock-test-003", "sepolia", "nethermind", "teku", "running"},
 		{"mock-test-004", "holesky", "reth", "nimbus", "running"},
-		{"mock-test-005", "mainnet", "erigon", "lighthouse", "completed"},
+		{"mock-test-005", "mainnet", "erigon", "lighthouse", "running"},
+		{"mock-test-006", "sepolia", "geth", "prysm", "running"},
+		{"mock-test-007", "holesky", "besu", "teku", "running"},
+		{"mock-test-008", "mainnet", "nethermind", "nimbus", "running"},
+		{"mock-test-009", "sepolia", "reth", "lighthouse", "running"},
+		{"mock-test-010", "holesky", "erigon", "prysm", "running"},
+
+		// Some completed tests for variety
+		{"mock-test-011", "mainnet", "geth", "teku", "completed"},
+		{"mock-test-012", "sepolia", "besu", "nimbus", "completed"},
+		{"mock-test-013", "holesky", "nethermind", "lighthouse", "completed"},
+		{"mock-test-014", "mainnet", "reth", "prysm", "completed"},
+		{"mock-test-015", "sepolia", "erigon", "teku", "completed"},
 	}
 
 	for _, test := range mockTests {
