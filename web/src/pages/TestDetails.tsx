@@ -85,9 +85,31 @@ export default function TestDetails() {
             <h1 className="text-3xl font-bold">Test Details</h1>
             <Badge variant="outline">{testReport.network}</Badge>
           </div>
-          <p className="text-muted-foreground">
-            {testReport.execution_client_info.name} + {testReport.consensus_client_info.name}
-          </p>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="flex items-center gap-1">
+              <img 
+                src={`/img/clients/${testReport.execution_client_info.type}.jpg`} 
+                alt={`${testReport.execution_client_info.type} logo`}
+                className="w-5 h-5 rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <span>{testReport.execution_client_info.name}</span>
+            </div>
+            <span>+</span>
+            <div className="flex items-center gap-1">
+              <img 
+                src={`/img/clients/${testReport.consensus_client_info.type}.jpg`} 
+                alt={`${testReport.consensus_client_info.type} logo`}
+                className="w-5 h-5 rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <span>{testReport.consensus_client_info.name}</span>
+            </div>
+          </div>
         </div>
         <Link to="/tests">
           <Button variant="outline">Back to Tests</Button>
@@ -133,9 +155,16 @@ export default function TestDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Execution Client</CardTitle>
-              <Badge variant="secondary">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</Badge>
+            <div className="flex items-center gap-2">
+              <img 
+                src={`/img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
+                alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
+                className="w-6 h-6 rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <CardTitle className="capitalize">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
@@ -191,9 +220,16 @@ export default function TestDetails() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Consensus Client</CardTitle>
-              <Badge variant="secondary">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</Badge>
+            <div className="flex items-center gap-2">
+              <img 
+                src={`/img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
+                alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
+                className="w-6 h-6 rounded"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <CardTitle className="capitalize">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
