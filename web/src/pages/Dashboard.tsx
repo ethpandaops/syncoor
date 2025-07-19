@@ -10,7 +10,7 @@ export default function Dashboard() {
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
   const { data: reports, isLoading: reportsLoading, error: reportsError, total } = useReports({
     directories: config?.directories || [],
-    pagination: { page: 1, limit: 10, sortBy: 'timestamp', sortOrder: 'desc' }
+    pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
 
   if (configLoading || reportsLoading) {
