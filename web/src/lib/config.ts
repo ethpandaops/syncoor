@@ -16,7 +16,7 @@ function validateThemeConfig(theme: unknown): ThemeConfig {
   }
 
   const themeObj = theme as Record<string, unknown>;
-  
+
   const mode = themeObj.mode;
   if (mode !== 'light' && mode !== 'dark' && mode !== 'auto') {
     throw new Error(`Invalid theme mode: ${mode}. Must be 'light', 'dark', or 'auto'`);
@@ -90,8 +90,8 @@ export function validateConfig(data: unknown): Config {
   const directories = config.directories.map((dir, index) => validateDirectory(dir, index));
 
   // Validate refresh interval
-  const refreshInterval = typeof config.refreshInterval === 'number' 
-    ? config.refreshInterval 
+  const refreshInterval = typeof config.refreshInterval === 'number'
+    ? config.refreshInterval
     : 30000; // Default to 30 seconds
 
   if (refreshInterval < 1000) {
@@ -99,7 +99,7 @@ export function validateConfig(data: unknown): Config {
   }
 
   // Validate theme
-  const theme = validateThemeConfig(config.theme || { mode: 'light' });
+  const theme = validateThemeConfig(config.theme || { mode: 'dark' });
 
   return {
     directories,
@@ -116,7 +116,7 @@ export function validateConfig(data: unknown): Config {
 export async function loadConfig(): Promise<Config> {
   try {
     const response = await fetch('/config.json');
-    
+
     if (!response.ok) {
       throw new Error(`Failed to load configuration: ${response.status} ${response.statusText}`);
     }
