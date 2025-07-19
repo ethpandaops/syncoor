@@ -1,17 +1,78 @@
+import { useState, useMemo, useEffect } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 
 export default function Dashboard() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
   const { data: reports, isLoading: reportsLoading, error: reportsError, total } = useReports({
     directories: config?.directories || [],
     pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
+
+  // Get all unique directories
+  const availableDirectories = useMemo(() => {
+    if (!reports || reports.length === 0) return [];
+    const directories = new Set(reports.map(report => report.source_directory));
+    return Array.from(directories).sort();
+  }, [reports]);
+
+  // Get networks for the active directory
+  const getNetworksForDirectory = (directory: string) => {
+    const directoryReports = reports.filter(r => r.source_directory === directory);
+    const networks = new Set(directoryReports.map(report => report.network));
+    const networkArray = Array.from(networks);
+    
+    // Sort with mainnet first, then alphabetically
+    return networkArray.sort((a, b) => {
+      if (a === 'mainnet') return -1;
+      if (b === 'mainnet') return 1;
+      return a.localeCompare(b);
+    });
+  };
+
+  // Initialize state from URL params or defaults
+  const [activeDirectory, setActiveDirectory] = useState<string | null>(() => {
+    return searchParams.get('directory');
+  });
+  const [activeNetworks, setActiveNetworks] = useState<Record<string, string>>(() => {
+    const network = searchParams.get('network');
+    const directory = searchParams.get('directory');
+    if (directory && network) {
+      return { [directory]: network };
+    }
+    return {};
+  });
+
+  // Update URL when directory changes
+  const handleDirectoryChange = (directory: string) => {
+    setActiveDirectory(directory);
+    const network = activeNetworks[directory] || getNetworksForDirectory(directory)[0];
+    setSearchParams({ directory, network });
+  };
+
+  // Update URL when network changes
+  const handleNetworkChange = (directory: string, network: string) => {
+    setActiveNetworks(prev => ({ ...prev, [directory]: network }));
+    setSearchParams({ directory, network });
+  };
+
+  // Set defaults when data loads
+  useEffect(() => {
+    if (availableDirectories.length > 0 && !activeDirectory) {
+      const defaultDirectory = availableDirectories[0];
+      const defaultNetwork = getNetworksForDirectory(defaultDirectory)[0];
+      setActiveDirectory(defaultDirectory);
+      setActiveNetworks({ [defaultDirectory]: defaultNetwork });
+      setSearchParams({ directory: defaultDirectory, network: defaultNetwork });
+    }
+  }, [availableDirectories, activeDirectory]);
 
   if (configLoading || reportsLoading) {
     return (
@@ -65,33 +126,67 @@ export default function Dashboard() {
             <p className="text-muted-foreground">No test results found.</p>
           </Card>
         ) : (
-          <div className="space-y-8">
-            {Object.entries(groupReportsByDirectoryNetworkAndClient(reports)).map(([directory, networkGroups]) => (
-              <div key={directory} className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-semibold">{directory}</h3>
-                  <Badge variant="outline">
-                    {Object.values(networkGroups).flatMap(clientGroups =>
-                      Object.values(clientGroups).flat()
-                    ).length} tests
+          <Tabs value={activeDirectory || availableDirectories[0]} onValueChange={handleDirectoryChange} className="w-full">
+            <TabsList className="mb-4">
+              {availableDirectories.map(directory => (
+                <TabsTrigger key={directory} value={directory}>
+                  {directory}
+                  <Badge variant="outline" className="ml-2">
+                    {reports.filter(r => r.source_directory === directory).length}
                   </Badge>
-                </div>
-
-                <div className="space-y-6 ">
-                  {Object.entries(networkGroups).map(([network, clientGroups]) => (
-                    <div key={`${directory}-${network}`} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-lg font-medium">{network}</h4>
-                        <Badge variant="secondary">{Object.values(clientGroups).flat().length} tests</Badge>
-                      </div>
-
-                      <div className="grid gap-4">
-                        {Object.entries(clientGroups).map(([clientType, clientReports]) => (
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            
+            {availableDirectories.map(directory => {
+              const networksForDirectory = getNetworksForDirectory(directory);
+              const activeNetwork = activeNetworks[directory] || networksForDirectory[0];
+              
+              return (
+                <TabsContent key={directory} value={directory} className="space-y-4">
+                  <Tabs 
+                    value={activeNetwork} 
+                    onValueChange={(network) => handleNetworkChange(directory, network)}
+                    className="w-full"
+                  >
+                    <TabsList className="mb-4">
+                      {networksForDirectory.map(network => (
+                        <TabsTrigger key={network} value={network}>
+                          {network}
+                          <Badge variant="outline" className="ml-2">
+                            {reports.filter(r => r.source_directory === directory && r.network === network).length}
+                          </Badge>
+                        </TabsTrigger>
+                      ))}
+                    </TabsList>
+                    
+                    {networksForDirectory.map(network => {
+                      const filteredReports = reports.filter(r => r.source_directory === directory && r.network === network);
+                      const grouped = groupReportsByDirectoryNetworkAndClient(filteredReports);
+                      const clientGroups = grouped[directory]?.[network] || {};
+                      
+                      return (
+                        <TabsContent key={network} value={network} className="space-y-4">
+                          <div className="grid gap-4">
+                            {Object.entries(clientGroups).map(([clientType, clientReports]) => (
                           <Card key={`${directory}-${network}-${clientType}`} className="p-4">
                             <div className="space-y-4">
-                              <div className="flex items-center gap-2">
-                                <h5 className="font-medium">{clientType}</h5>
-                                <Badge variant="outline">{clientReports.length} tests</Badge>
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <img 
+                                    src={`/img/clients/${clientType}.jpg`} 
+                                    alt={`${clientType} logo`}
+                                    className="w-8 h-8 rounded"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                  <h5 className="font-medium capitalize">{clientType}</h5>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary">{network}</Badge>
+                                  <Badge variant="outline">{clientReports.length} tests</Badge>
+                                </div>
                               </div>
 
                               {/* Stats Cards */}
@@ -208,13 +303,15 @@ export default function Dashboard() {
                             </div>
                           </Card>
                         ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+                          </div>
+                        </TabsContent>
+                      );
+                    })}
+                  </Tabs>
+                </TabsContent>
+              );
+            })}
+          </Tabs>
         )}
       </div>
     </div>
