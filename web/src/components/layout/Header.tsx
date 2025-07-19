@@ -10,7 +10,6 @@ import { Switch } from '../ui/switch';
 const navigationItems = [
   { name: 'Dashboard', href: '/' },
   { name: 'Tests', href: '/tests' },
-  { name: 'Compare', href: '/compare' },
 ];
 
 export function Header() {
