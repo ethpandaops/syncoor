@@ -36,6 +36,8 @@ export interface SyncInfo {
   slot: number;
   /** Number of progress entries recorded */
   entries_count: number;
+  /** Last progress entry recorded */
+  last_entry?: ProgressEntry;
 }
 
 /**

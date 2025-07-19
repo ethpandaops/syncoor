@@ -9,3 +9,5 @@ export { default as DiskUsageChart } from './DiskUsageChart';
 export { default as PeerCountChart } from './PeerCountChart';
 export { default as PerformanceMatrix } from './PerformanceMatrix';
 export { default as ChartExample } from './ChartExample';
+export { default as ClientGroupDurationChart } from './ClientGroupDurationChart';
+export { default as ClientGroupDiskChart } from './ClientGroupDiskChart';

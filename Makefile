@@ -1,4 +1,4 @@
-.PHONY: build test lint clean install deps docker-build docker-run docker-run-server
+.PHONY: build test lint clean install deps docker-build docker-run docker-run-server mock-reports
 
 # Build configuration
 BINARY_NAME=syncoor
@@ -76,7 +76,7 @@ docker-build:
 # Usage:
 #  make docker-run ARGS="--help"
 #  make docker-run ARGS="sync --el-client nethermind --cl-client teku --network hoodi"
-#  make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth token123 --el-client geth --cl-client teku --network hoodi"
+#  make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --el-client geth --cl-client teku --network hoodi"
 # ARGS are passed to the syncoor binary
 docker-run:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."
@@ -90,7 +90,7 @@ docker-run:
 # Run Docker container as centralized server
 # Usage:
 #  make docker-run-server
-#  make docker-run-server ARGS="--listen :8080 --auth-token mytoken123"
+#  make docker-run-server ARGS="--auth-token mytoken123"
 # ARGS are passed to the syncoor server command
 docker-run-server:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG) as server..."
@@ -98,3 +98,10 @@ docker-run-server:
 		-p 8080:8080 \
 		--network host \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) server $(ARGS)
+
+# Generate mock test reports for UI development and testing
+mock-reports:
+	@echo "Generating mock test reports..."
+	@node scripts/generate-mock-reports.js
+	@echo "Mock reports generated successfully in reports/mock/"
+	@echo "Add 'reports/mock/' to your web UI config.json to use the mock data"

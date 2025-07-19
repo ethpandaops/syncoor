@@ -89,6 +89,11 @@ services:
             "name": "Local Dev",
             "url": "http://localhost:'${SYNCOOR_WEB_PORT:-10002}'/reports/",
             "enabled": true
+          },
+          {
+            "name": "Mock Reports",
+            "url": "http://localhost:'${SYNCOOR_WEB_PORT:-10002}'/reports/mock/",
+            "enabled": true
           }
         ],
         "refreshInterval": 30000,

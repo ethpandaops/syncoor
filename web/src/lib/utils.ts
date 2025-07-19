@@ -319,3 +319,77 @@ export function getUniqueExecutionClients<T extends { execution_client_info: { t
   const clientTypes = new Set(reports.map(report => report.execution_client_info.type));
   return Array.from(clientTypes).sort();
 }
+
+/**
+ * Calculates a simple moving average for chart data
+ * @param data - Array of data points with numeric values
+ * @param valueKey - Key to extract numeric value from each data point
+ * @param windowSize - Number of points to include in moving average (default: 3)
+ * @returns Array of data points with moving average values
+ */
+export function calculateMovingAverage<T extends Record<string, any>>(
+  data: T[],
+  valueKey: keyof T,
+  windowSize: number = 3
+): (T & { movingAverage: number })[] {
+  if (!data || data.length === 0) return [];
+  
+  return data.map((point, index) => {
+    // Calculate the start index for the window
+    const start = Math.max(0, index - Math.floor(windowSize / 2));
+    // Calculate the end index for the window
+    const end = Math.min(data.length, start + windowSize);
+    
+    // Extract values for the window
+    const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
+    
+    // Calculate average
+    const average = windowValues.length > 0 
+      ? windowValues.reduce((sum, val) => sum + val, 0) / windowValues.length
+      : Number(point[valueKey]);
+    
+    return {
+      ...point,
+      movingAverage: average
+    };
+  });
+}
+
+/**
+ * Calculates stats for a group of test reports
+ * @param reports - Array of IndexEntry reports
+ * @returns Object with last runtime, average duration, and most recent disk usage
+ */
+export function calculateClientGroupStats(reports: any[]) {
+  if (!reports || reports.length === 0) {
+    return {
+      lastRuntime: null,
+      avgDuration: null,
+      mostRecentDiskUsage: null
+    };
+  }
+
+  // Sort by timestamp (most recent first)
+  const sortedReports = [...reports].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  
+  // Last runtime (most recent test timestamp)
+  const lastRuntime = Number(sortedReports[0].timestamp);
+  
+  // Average duration
+  const validDurations = reports
+    .map(r => r.sync_info.duration)
+    .filter(d => typeof d === 'number' && d > 0);
+  const avgDuration = validDurations.length > 0
+    ? validDurations.reduce((sum, d) => sum + d, 0) / validDurations.length
+    : null;
+  
+  // Most recent disk usage (from most recent test with disk data)
+  const mostRecentWithDisk = sortedReports.find(r => r.sync_info.last_entry?.de);
+  const mostRecentDiskUsage = mostRecentWithDisk?.sync_info.last_entry?.de || null;
+  
+  return {
+    lastRuntime,
+    avgDuration,
+    mostRecentDiskUsage
+  };
+}
