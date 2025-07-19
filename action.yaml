@@ -83,6 +83,16 @@ inputs:
     required: false
     default: ''
 
+  server:
+    description: 'Centralized server URL (e.g., https://api.syncoor.example)'
+    required: false
+    default: ''
+
+  server-auth:
+    description: 'Bearer token for server authentication'
+    required: false
+    default: ''
+
   upload-artifacts:
     description: 'Whether to upload test reports as artifacts'
     required: false
@@ -190,6 +200,15 @@ runs:
           for label in "${LABEL_ARRAY[@]}"; do
             DOCKER_CMD="$DOCKER_CMD --label=$label"
           done
+        fi
+
+        # Add server parameters if provided
+        if [ -n "${{ inputs.server }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --server=\"${{ inputs.server }}\""
+        fi
+
+        if [ -n "${{ inputs.server-auth }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --server-auth=\"${{ inputs.server-auth }}\""
         fi
 
         # Execute the command

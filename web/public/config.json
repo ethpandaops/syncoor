@@ -10,5 +10,12 @@
       "url": "http://localhost:3000/reports/",
       "enabled": true
     }
+  ],
+  "syncoorApiEndpoints": [
+    {
+      "name": "Local Syncoor",
+      "url": "http://localhost:8080",
+      "enabled": true
+    }
   ]
 }

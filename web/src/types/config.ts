@@ -15,11 +15,25 @@ export interface Directory {
 }
 
 /**
+ * Represents a syncoor API endpoint in the configuration
+ */
+export interface SyncoorApiEndpoint {
+  /** Display name for the endpoint */
+  name: string;
+  /** URL for the syncoor API */
+  url: string;
+  /** Whether this endpoint is enabled */
+  enabled: boolean;
+}
+
+/**
  * Main configuration interface for the application
  */
 export interface Config {
   /** List of configured directories */
   directories: Directory[];
+  /** List of syncoor API endpoints */
+  syncoorApiEndpoints?: SyncoorApiEndpoint[];
   /** Refresh interval in milliseconds */
   refreshInterval: number;
   /** Theme settings */

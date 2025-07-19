@@ -96,11 +96,14 @@ services:
             "enabled": true
           }
         ],
-        "refreshInterval": 30000,
-        "theme": {
-          "mode": "dark",
-          "primaryColor": "#ff0000"
-        }
+        "syncoorApiEndpoints": [
+          {
+            "name": "Local Syncoor",
+            "url": "http://localhost:${SYNCOOR_SERVER_PORT:-10001}",
+            "enabled": true
+          }
+        ]
+
       }' > /usr/share/nginx/html/config.json &&
       nginx -g 'daemon off;'
     volumes:

@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams } from 'react-router-dom';
+import SyncoorTests from '../components/SyncoorTests';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -28,7 +29,7 @@ export default function Dashboard() {
     const directoryReports = reports.filter(r => r.source_directory === directory);
     const networks = new Set(directoryReports.map(report => report.network));
     const networkArray = Array.from(networks);
-    
+
     // Sort with mainnet first, then alphabetically
     return networkArray.sort((a, b) => {
       if (a === 'mainnet') return -1;
@@ -98,9 +99,6 @@ export default function Dashboard() {
   if (configError || reportsError) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Syncoor Dashboard</h1>
-        </div>
         <Card className="p-6">
           <div className="text-destructive">
             <h3 className="font-semibold mb-2">Error Loading Data</h3>
@@ -113,12 +111,16 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+
+
+      {/* Syncoor Live Tests */}
+      {config?.syncoorApiEndpoints && config.syncoorApiEndpoints.length > 0 && (
+        <SyncoorTests endpoints={config.syncoorApiEndpoints} />
+      )}
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Syncoor Dashboard</h1>
+        <h2 className="text-3xl font-bold">Finished test runs:</h2>
         <Badge variant="outline">{total} total tests</Badge>
       </div>
-
-
       <div className="space-y-6">
 
         {reports.length === 0 ? (
@@ -137,15 +139,15 @@ export default function Dashboard() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            
+
             {availableDirectories.map(directory => {
               const networksForDirectory = getNetworksForDirectory(directory);
               const activeNetwork = activeNetworks[directory] || networksForDirectory[0];
-              
+
               return (
                 <TabsContent key={directory} value={directory} className="space-y-4">
-                  <Tabs 
-                    value={activeNetwork} 
+                  <Tabs
+                    value={activeNetwork}
                     onValueChange={(network) => handleNetworkChange(directory, network)}
                     className="w-full"
                   >
@@ -159,12 +161,12 @@ export default function Dashboard() {
                         </TabsTrigger>
                       ))}
                     </TabsList>
-                    
+
                     {networksForDirectory.map(network => {
                       const filteredReports = reports.filter(r => r.source_directory === directory && r.network === network);
                       const grouped = groupReportsByDirectoryNetworkAndClient(filteredReports);
                       const clientGroups = grouped[directory]?.[network] || {};
-                      
+
                       return (
                         <TabsContent key={network} value={network} className="space-y-4">
                           <div className="grid gap-4">
@@ -175,8 +177,8 @@ export default function Dashboard() {
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                  <img 
-                                    src={`/img/clients/${clientType}.jpg`} 
+                                  <img
+                                    src={`/img/clients/${clientType}.jpg`}
                                     alt={`${clientType} logo`}
                                     className="w-8 h-8 rounded"
                                     onError={(e) => {
@@ -272,8 +274,8 @@ export default function Dashboard() {
                                         </td>
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1">
-                                            <img 
-                                              src={`/img/clients/${report.execution_client_info.type}.jpg`} 
+                                            <img
+                                              src={`/img/clients/${report.execution_client_info.type}.jpg`}
                                               alt={`${report.execution_client_info.type} logo`}
                                               className="w-5 h-5 rounded"
                                               onError={(e) => {
@@ -285,8 +287,8 @@ export default function Dashboard() {
                                         </td>
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1">
-                                            <img 
-                                              src={`/img/clients/${report.consensus_client_info.type}.jpg`} 
+                                            <img
+                                              src={`/img/clients/${report.consensus_client_info.type}.jpg`}
                                               alt={`${report.consensus_client_info.type} logo`}
                                               className="w-5 h-5 rounded"
                                               onError={(e) => {
