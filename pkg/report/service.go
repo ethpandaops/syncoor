@@ -65,6 +65,7 @@ type SyncStatus struct {
 	Slot             uint64              `json:"slot"`
 	SyncProgress     []SyncProgressEntry `json:"sync_progress,omitempty"`
 	SyncProgressFile string              `json:"sync_progress_file,omitempty"`
+	LastEntry        *SyncProgressEntry  `json:"last_entry,omitempty"`
 }
 
 // SyncProgressEntry represents the progress data at a specific timestamp
@@ -216,6 +217,13 @@ func (s *service) SaveReportToFiles(ctx context.Context, baseFilename string, di
 	// Create a copy of the report for the main file (without sync progress data)
 	mainReport := *s.result
 	mainReport.SyncStatus.SyncProgressFile = fullFilePrefix + ".progress.json"
+
+	// Set the last entry if there are sync progress entries
+	if len(s.result.SyncStatus.SyncProgress) > 0 {
+		lastEntry := s.result.SyncStatus.SyncProgress[len(s.result.SyncStatus.SyncProgress)-1]
+		mainReport.SyncStatus.LastEntry = &lastEntry
+	}
+
 	mainReport.SyncStatus.SyncProgress = nil // Remove the sync progress data from main report
 
 	jsonData, err := json.MarshalIndent(&mainReport, "", "  ")
@@ -257,12 +265,13 @@ type IndexClientInfo struct {
 
 // IndexSyncInfo represents sync information in the index
 type IndexSyncInfo struct {
-	Start        int64  `json:"start"`
-	End          int64  `json:"end"`
-	Duration     int64  `json:"duration"`
-	Block        uint64 `json:"block"`
-	Slot         uint64 `json:"slot"`
-	EntriesCount int    `json:"entries_count"`
+	Start        int64              `json:"start"`
+	End          int64              `json:"end"`
+	Duration     int64              `json:"duration"`
+	Block        uint64             `json:"block"`
+	Slot         uint64             `json:"slot"`
+	EntriesCount int                `json:"entries_count"`
+	LastEntry    *SyncProgressEntry `json:"last_entry,omitempty"`
 }
 
 // Index represents the complete index structure
@@ -404,6 +413,7 @@ func (s *indexService) processMainFile(mainFilePath, reportDir string) (*IndexEn
 			Block:        result.SyncStatus.Block,
 			Slot:         result.SyncStatus.Slot,
 			EntriesCount: entriesCount,
+			LastEntry:    result.SyncStatus.LastEntry,
 		},
 		MainFile:     filepath.Base(mainFilePath),
 		ProgressFile: result.SyncStatus.SyncProgressFile,
