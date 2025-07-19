@@ -5,7 +5,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
-import { formatDuration, formatTimestamp, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
 import { Link, useSearchParams } from 'react-router-dom';
 
 export default function TestList() {
@@ -170,32 +170,51 @@ export default function TestList() {
                                 <Badge variant="outline">{clientReports.length} tests</Badge>
                               </div>
                               
-                              <div className="grid gap-3">
-                                {clientReports.map((report) => (
-                                  <Link key={report.run_id} to={`/test/${report.run_id}`}>
-                                    <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div className="space-y-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm">{report.run_id}</span>
-                                          </div>
-                                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                            <span>EL: {report.execution_client_info.name}</span>
-                                            <span>CL: {report.consensus_client_info.name}</span>
-                                            <span>Duration: {formatDuration(report.sync_info.duration)}</span>
-                                            <span>Block: {report.sync_info.block.toLocaleString()}</span>
-                                            <span>Slot: {report.sync_info.slot.toLocaleString()}</span>
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="text-xs text-muted-foreground">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b text-muted-foreground">
+                                      <th className="text-left py-2 px-2">Timestamp</th>
+                                      <th className="text-left py-2 px-2">EL</th>
+                                      <th className="text-left py-2 px-2">CL</th>
+                                      <th className="text-right py-2 px-2">Block</th>
+                                      <th className="text-right py-2 px-2">Slot</th>
+                                      <th className="text-right py-2 px-2">EL Disk</th>
+                                      <th className="text-right py-2 px-2">CL Disk</th>
+                                      <th className="text-center py-2 px-2">EL Peers</th>
+                                      <th className="text-center py-2 px-2">CL Peers</th>
+                                      <th className="text-right py-2 px-2">Duration</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {clientReports.map((report) => (
+                                      <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
+                                        <td className="py-2 px-2">
+                                          <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
                                             {formatTimestamp(Number(report.timestamp))}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </Link>
-                                ))}
+                                          </Link>
+                                        </td>
+                                        <td className="py-2 px-2 font-medium">{report.execution_client_info.type}</td>
+                                        <td className="py-2 px-2 font-medium">{report.consensus_client_info.type}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center text-muted-foreground">
+                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center text-muted-foreground">
+                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
                           </Card>
@@ -209,34 +228,59 @@ export default function TestList() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="grid gap-4">
-              {reports.map((report) => (
-                <Link key={report.run_id} to={`/test/${report.run_id}`}>
-                  <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                      <div className="space-y-2">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-muted-foreground">
+                    <th className="text-left py-3 px-3">Timestamp</th>
+                    <th className="text-left py-3 px-3">EL</th>
+                    <th className="text-left py-3 px-3">CL</th>
+                    <th className="text-right py-3 px-3">Block</th>
+                    <th className="text-right py-3 px-3">Slot</th>
+                    <th className="text-right py-3 px-3">EL Disk</th>
+                    <th className="text-right py-3 px-3">CL Disk</th>
+                    <th className="text-center py-3 px-3">EL Peers</th>
+                    <th className="text-center py-3 px-3">CL Peers</th>
+                    <th className="text-right py-3 px-3">Duration</th>
+                    <th className="text-left py-3 px-3">Network/Directory</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reports.map((report) => (
+                    <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
+                      <td className="py-3 px-3">
+                        <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
+                          {formatTimestamp(Number(report.timestamp))}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 font-medium">{report.execution_client_info.type}</td>
+                      <td className="py-3 px-3 font-medium">{report.consensus_client_info.type}</td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-center text-muted-foreground">
+                        {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-center text-muted-foreground">
+                        {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                      <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-sm">{report.run_id}</h3>
                           <Badge variant="outline">{report.network}</Badge>
                           <Badge variant="secondary">{report.source_directory}</Badge>
                         </div>
-                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                          <span>EL: {report.execution_client_info.name}</span>
-                          <span>CL: {report.consensus_client_info.name}</span>
-                          <span>Duration: {formatDuration(report.sync_info.duration)}</span>
-                          <span>Block: {report.sync_info.block.toLocaleString()}</span>
-                          <span>Slot: {report.sync_info.slot.toLocaleString()}</span>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-sm text-muted-foreground">
-                          {formatTimestamp(Number(report.timestamp))}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </Link>
-              ))}
+                        <div className="text-xs text-muted-foreground mt-1">{report.run_id}</div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
 
             <div className="flex items-center justify-between">

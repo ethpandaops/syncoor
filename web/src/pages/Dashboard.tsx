@@ -2,7 +2,7 @@ import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { formatDuration, formatTimestamp, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -133,35 +133,55 @@ export default function Dashboard() {
                                 <Badge variant="outline">{clientReports.length} tests</Badge>
                               </div>
                               
-                              <div className="grid gap-3">
-                                {clientReports.slice(0, 3).map((report) => (
-                                  <Link key={report.run_id} to={`/test/${report.run_id}`}>
-                                    <div className="p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
-                                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                                        <div className="space-y-1">
-                                          <div className="flex items-center gap-2">
-                                            <span className="font-medium text-sm">{report.run_id}</span>
-                                          </div>
-                                          <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                                            <span>EL: {report.execution_client_info.name}</span>
-                                            <span>CL: {report.consensus_client_info.name}</span>
-                                            <span>Duration: {formatDuration(report.sync_info.duration)}</span>
-                                            <span>Block: {report.sync_info.block.toLocaleString()}</span>
-                                          </div>
-                                        </div>
-                                        <div className="text-right">
-                                          <div className="text-xs text-muted-foreground">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="border-b text-muted-foreground">
+                                      <th className="text-left py-2 px-2">Timestamp</th>
+                                      <th className="text-left py-2 px-2">EL</th>
+                                      <th className="text-left py-2 px-2">CL</th>
+                                      <th className="text-right py-2 px-2">Block</th>
+                                      <th className="text-right py-2 px-2">Slot</th>
+                                      <th className="text-right py-2 px-2">EL Disk</th>
+                                      <th className="text-right py-2 px-2">CL Disk</th>
+                                      <th className="text-center py-2 px-2">EL Peers</th>
+                                      <th className="text-center py-2 px-2">CL Peers</th>
+                                      <th className="text-right py-2 px-2">Duration</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {clientReports.slice(0, 3).map((report) => (
+                                      <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
+                                        <td className="py-2 px-2">
+                                          <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
                                             {formatTimestamp(Number(report.timestamp))}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </Link>
-                                ))}
+                                          </Link>
+                                        </td>
+                                        <td className="py-2 px-2 font-medium">{report.execution_client_info.type}</td>
+                                        <td className="py-2 px-2 font-medium">{report.consensus_client_info.type}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center text-muted-foreground">
+                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-center text-muted-foreground">
+                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                                 
                                 {clientReports.length > 3 && (
                                   <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&client=${encodeURIComponent(clientType)}`}>
-                                    <div className="p-3 rounded-lg border-dashed border-2 hover:bg-muted/50 transition-colors cursor-pointer text-center">
+                                    <div className="mt-3 p-3 rounded-lg border-dashed border-2 hover:bg-muted/50 transition-colors cursor-pointer text-center">
                                       <span className="text-sm text-muted-foreground">
                                         View {clientReports.length - 3} more {clientType} tests...
                                       </span>
