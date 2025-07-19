@@ -12,8 +12,7 @@ To be written...
 
 ## Dependencies
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 - [Kurtosis](https://docs.kurtosis.com/install/)
 
 ## Quick start
@@ -25,7 +24,7 @@ docker compose up -d
 ```
 
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to view the web UI.
+Open [http://localhost:10002](http://localhost:10002) in your browser to view the web UI.
 
 
 

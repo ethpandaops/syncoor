@@ -5,10 +5,5 @@
       "url": "http://localhost:3000/reports/",
       "enabled": true
     }
-  ],
-  "refreshInterval": 30000,
-  "theme": {
-    "mode": "light",
-    "primaryColor": "#3b82f6"
-  }
+  ]
 }
