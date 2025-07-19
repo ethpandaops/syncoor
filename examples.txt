@@ -1,8 +1,0 @@
-make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --network hoodi --report-dir=/reports/hoodi/geth --cl-client teku --el-client geth"
-make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --network hoodi --report-dir=/reports/hoodi/nethermind --cl-client teku --el-client nethermind"
-make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --network hoodi --report-dir=/reports/hoodi/besu --cl-client teku --el-client besu"
-make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --network hoodi --report-dir=/reports/hoodi/reth --cl-client teku --el-client reth --el-extra-args '--full'"
-make docker-run ARGS="sync --server http://host.docker.internal:8080 --server-auth mytoken123 --network hoodi --report-dir=/reports/hoodi/erigon --cl-client teku --el-client erigon --el-extra-args '--prune.mode=full'"
-
-
-make docker-run-server ARGS="--auth-token mytoken123"
