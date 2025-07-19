@@ -5,7 +5,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select } from '../components/ui/select';
-import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes } from '../lib/utils';
 import { Link, useSearchParams } from 'react-router-dom';
 
 export default function TestList() {
@@ -14,7 +14,6 @@ export default function TestList() {
   const [limit, setLimit] = useState(20);
   const [sortBy, setSortBy] = useState('timestamp');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [groupedView, setGroupedView] = useState(true);
   
   // Get filters from URL params
   const directoryFilter = searchParams.get('directory') || '';
@@ -107,14 +106,6 @@ export default function TestList() {
 
       <Card className="p-6">
         <div className="flex flex-wrap gap-4 mb-6">
-          <Button
-            variant={groupedView ? "default" : "outline"}
-            size="sm"
-            onClick={() => setGroupedView(!groupedView)}
-          >
-            {groupedView ? "List View" : "Grouped View"}
-          </Button>
-          
           <Select value={sortBy} onValueChange={setSortBy}>
             <option value="timestamp">Sort by Date</option>
             <option value="duration">Sort by Duration</option>
@@ -139,92 +130,6 @@ export default function TestList() {
         {reports.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground">No test results found.</p>
-          </div>
-        ) : groupedView ? (
-          <div className="space-y-8">
-            {Object.entries(groupReportsByDirectoryNetworkAndClient(reports)).map(([directory, networkGroups]) => (
-              <div key={directory} className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-semibold">{directory}</h3>
-                  <Badge variant="outline">
-                    {Object.values(networkGroups).flatMap(clientGroups => 
-                      Object.values(clientGroups).flat()
-                    ).length} tests
-                  </Badge>
-                </div>
-                
-                <div className="space-y-6 ml-4">
-                  {Object.entries(networkGroups).map(([network, clientGroups]) => (
-                    <div key={`${directory}-${network}`} className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <h4 className="text-lg font-medium">{network}</h4>
-                        <Badge variant="secondary">{Object.values(clientGroups).flat().length} tests</Badge>
-                      </div>
-                      
-                      <div className="grid gap-4 ml-4">
-                        {Object.entries(clientGroups).map(([clientType, clientReports]) => (
-                          <Card key={`${directory}-${network}-${clientType}`} className="p-4">
-                            <div className="space-y-4">
-                              <div className="flex items-center gap-2">
-                                <h5 className="font-medium">{clientType}</h5>
-                                <Badge variant="outline">{clientReports.length} tests</Badge>
-                              </div>
-                              
-                              <div className="overflow-x-auto">
-                                <table className="w-full text-xs">
-                                  <thead>
-                                    <tr className="border-b text-muted-foreground">
-                                      <th className="text-left py-2 px-2">Timestamp</th>
-                                      <th className="text-left py-2 px-2">EL</th>
-                                      <th className="text-left py-2 px-2">CL</th>
-                                      <th className="text-right py-2 px-2">Block</th>
-                                      <th className="text-right py-2 px-2">Slot</th>
-                                      <th className="text-right py-2 px-2">EL Disk</th>
-                                      <th className="text-right py-2 px-2">CL Disk</th>
-                                      <th className="text-center py-2 px-2">EL Peers</th>
-                                      <th className="text-center py-2 px-2">CL Peers</th>
-                                      <th className="text-right py-2 px-2">Duration</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {clientReports.map((report) => (
-                                      <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
-                                        <td className="py-2 px-2">
-                                          <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
-                                            {formatTimestamp(Number(report.timestamp))}
-                                          </Link>
-                                        </td>
-                                        <td className="py-2 px-2 font-medium">{report.execution_client_info.type}</td>
-                                        <td className="py-2 px-2 font-medium">{report.consensus_client_info.type}</td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">
-                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
-                                        </td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">
-                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
-                                        </td>
-                                        <td className="py-2 px-2 text-center text-muted-foreground">
-                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
-                                        </td>
-                                        <td className="py-2 px-2 text-center text-muted-foreground">
-                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
-                                        </td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
           </div>
         ) : (
           <div className="space-y-4">
@@ -253,8 +158,32 @@ export default function TestList() {
                           {formatTimestamp(Number(report.timestamp))}
                         </Link>
                       </td>
-                      <td className="py-3 px-3 font-medium">{report.execution_client_info.type}</td>
-                      <td className="py-3 px-3 font-medium">{report.consensus_client_info.type}</td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1">
+                          <img 
+                            src={`/img/clients/${report.execution_client_info.type}.jpg`} 
+                            alt={`${report.execution_client_info.type} logo`}
+                            className="w-5 h-5 rounded"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="font-medium capitalize">{report.execution_client_info.type}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="flex items-center gap-1">
+                          <img 
+                            src={`/img/clients/${report.consensus_client_info.type}.jpg`} 
+                            alt={`${report.consensus_client_info.type} logo`}
+                            className="w-5 h-5 rounded"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="font-medium capitalize">{report.consensus_client_info.type}</span>
+                        </div>
+                      </td>
                       <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
                       <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
                       <td className="py-3 px-3 text-right text-muted-foreground">

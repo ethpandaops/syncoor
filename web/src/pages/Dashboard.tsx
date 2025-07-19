@@ -268,8 +268,32 @@ export default function Dashboard() {
                                             {formatTimestamp(Number(report.timestamp))}
                                           </Link>
                                         </td>
-                                        <td className="py-2 px-2 font-medium">{report.execution_client_info.type}</td>
-                                        <td className="py-2 px-2 font-medium">{report.consensus_client_info.type}</td>
+                                        <td className="py-2 px-2">
+                                          <div className="flex items-center gap-1">
+                                            <img 
+                                              src={`/img/clients/${report.execution_client_info.type}.jpg`} 
+                                              alt={`${report.execution_client_info.type} logo`}
+                                              className="w-5 h-5 rounded"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                              }}
+                                            />
+                                            <span className="font-medium capitalize">{report.execution_client_info.type}</span>
+                                          </div>
+                                        </td>
+                                        <td className="py-2 px-2">
+                                          <div className="flex items-center gap-1">
+                                            <img 
+                                              src={`/img/clients/${report.consensus_client_info.type}.jpg`} 
+                                              alt={`${report.consensus_client_info.type} logo`}
+                                              className="w-5 h-5 rounded"
+                                              onError={(e) => {
+                                                e.currentTarget.style.display = 'none';
+                                              }}
+                                            />
+                                            <span className="font-medium capitalize">{report.consensus_client_info.type}</span>
+                                          </div>
+                                        </td>
                                         <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
                                         <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
                                         <td className="py-2 px-2 text-right text-muted-foreground">
