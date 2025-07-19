@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
@@ -10,35 +10,161 @@ import { Link, useSearchParams } from 'react-router-dom';
 
 export default function TestList() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(20);
-  const [sortBy, setSortBy] = useState('timestamp');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  
+  // Get all params from URL with defaults
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '20');
+  const sortBy = searchParams.get('sortBy') || 'timestamp';
+  const sortOrder = (searchParams.get('sortOrder') as 'asc' | 'desc') || 'desc';
   
   // Get filters from URL params
   const directoryFilter = searchParams.get('directory') || '';
   const networkFilter = searchParams.get('network') || '';
-  const clientFilter = searchParams.get('client') || '';
+  // Legacy client filter (now split into elClient and clClient)
+  const elClientFilter = searchParams.get('elClient') || '';
+  const clClientFilter = searchParams.get('clClient') || '';
+  const minDuration = searchParams.get('minDuration') || '';
+  const maxDuration = searchParams.get('maxDuration') || '';
   
-  // Apply filters to the reports
-  const filters = {
-    directory: directoryFilter,
-    network: networkFilter,
-    execution_client: clientFilter
+  // Note: Filters are applied client-side in the useMemo below
+  
+  // Update URL params helper
+  const updateUrlParams = (updates: Record<string, string | number>) => {
+    const newParams = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === '' || value === 0) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, value.toString());
+      }
+    });
+    // Reset to page 1 when filters change
+    if (Object.keys(updates).some(key => key !== 'page' && key !== 'limit')) {
+      newParams.set('page', '1');
+    }
+    setSearchParams(newParams);
+  };
+  
+  // Handle sorting
+  const handleSort = (column: string) => {
+    const newSortOrder = sortBy === column && sortOrder === 'desc' ? 'asc' : 'desc';
+    updateUrlParams({ sortBy: column, sortOrder: newSortOrder });
+  };
+  
+  // Handle pagination
+  const handlePageChange = (newPage: number) => {
+    updateUrlParams({ page: newPage });
+  };
+  
+  const handleLimitChange = (newLimit: number) => {
+    updateUrlParams({ limit: newLimit, page: 1 });
   };
 
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
   const { 
-    data: reports, 
+    data: allReports, 
     isLoading: reportsLoading, 
-    error: reportsError, 
-    total,
-    totalPages
+    error: reportsError 
   } = useReports({
     directories: config?.directories || [],
-    filters: filters,
-    pagination: { page, limit, sortBy, sortOrder }
+    pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
+  
+  // Get unique values for filter dropdowns
+  const uniqueValues = useMemo(() => {
+    if (!allReports) return { directories: [], networks: [], elClients: [], clClients: [] };
+    
+    return {
+      directories: [...new Set(allReports.map(r => r.source_directory))].sort(),
+      networks: [...new Set(allReports.map(r => r.network))].sort(),
+      elClients: [...new Set(allReports.map(r => r.execution_client_info.type))].sort(),
+      clClients: [...new Set(allReports.map(r => r.consensus_client_info.type))].sort()
+    };
+  }, [allReports]);
+  
+  // Filter and sort reports client-side
+  const filteredAndSortedReports = useMemo(() => {
+    if (!allReports) return [];
+    
+    let filtered = allReports.filter(report => {
+      if (directoryFilter && report.source_directory !== directoryFilter) return false;
+      if (networkFilter && report.network !== networkFilter) return false;
+      if (elClientFilter && report.execution_client_info.type !== elClientFilter) return false;
+      if (clClientFilter && report.consensus_client_info.type !== clClientFilter) return false;
+      if (minDuration && report.sync_info.duration < parseInt(minDuration)) return false;
+      if (maxDuration && report.sync_info.duration > parseInt(maxDuration)) return false;
+      return true;
+    });
+    
+    // Sort
+    filtered.sort((a, b) => {
+      let aVal: string | number, bVal: string | number;
+      
+      switch (sortBy) {
+        case 'timestamp':
+          aVal = Number(a.timestamp);
+          bVal = Number(b.timestamp);
+          break;
+        case 'duration':
+          aVal = a.sync_info.duration;
+          bVal = b.sync_info.duration;
+          break;
+        case 'network':
+          aVal = a.network;
+          bVal = b.network;
+          break;
+        case 'execution_client':
+          aVal = a.execution_client_info.type;
+          bVal = b.execution_client_info.type;
+          break;
+        case 'consensus_client':
+          aVal = a.consensus_client_info.type;
+          bVal = b.consensus_client_info.type;
+          break;
+        case 'block':
+          aVal = a.sync_info.block;
+          bVal = b.sync_info.block;
+          break;
+        case 'slot':
+          aVal = a.sync_info.slot;
+          bVal = b.sync_info.slot;
+          break;
+        case 'el_disk':
+          aVal = a.sync_info.last_entry?.de || 0;
+          bVal = b.sync_info.last_entry?.de || 0;
+          break;
+        case 'cl_disk':
+          aVal = a.sync_info.last_entry?.dc || 0;
+          bVal = b.sync_info.last_entry?.dc || 0;
+          break;
+        case 'el_peers':
+          aVal = a.sync_info.last_entry?.pe || 0;
+          bVal = b.sync_info.last_entry?.pe || 0;
+          break;
+        case 'cl_peers':
+          aVal = a.sync_info.last_entry?.pc || 0;
+          bVal = b.sync_info.last_entry?.pc || 0;
+          break;
+        default:
+          aVal = Number(a.timestamp);
+          bVal = Number(b.timestamp);
+      }
+      
+      if (typeof aVal === 'string') {
+        return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+      }
+      
+      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+    });
+    
+    return filtered;
+  }, [allReports, directoryFilter, networkFilter, elClientFilter, clClientFilter, minDuration, maxDuration, sortBy, sortOrder]);
+  
+  // Paginate results
+  const total = filteredAndSortedReports.length;
+  const totalPages = Math.ceil(total / limit);
+  const startIndex = (page - 1) * limit;
+  const reports = filteredAndSortedReports.slice(startIndex, startIndex + limit);
 
   if (configLoading || reportsLoading) {
     return (
@@ -84,20 +210,15 @@ export default function TestList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Test Results</h1>
-          {(directoryFilter || networkFilter || clientFilter) && (
+          {(directoryFilter || networkFilter || elClientFilter || clClientFilter || minDuration || maxDuration) && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-muted-foreground">Filtered by:</span>
               {directoryFilter && <Badge variant="outline">{directoryFilter}</Badge>}
               {networkFilter && <Badge variant="secondary">{networkFilter}</Badge>}
-              {clientFilter && <Badge variant="default">{clientFilter}</Badge>}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSearchParams({})}
-                className="text-xs"
-              >
-                Clear filters
-              </Button>
+              {elClientFilter && <Badge variant="default">EL: {elClientFilter}</Badge>}
+              {clClientFilter && <Badge variant="default">CL: {clClientFilter}</Badge>}
+              {minDuration && <Badge variant="outline">Min: {formatDuration(parseInt(minDuration))}</Badge>}
+              {maxDuration && <Badge variant="outline">Max: {formatDuration(parseInt(maxDuration))}</Badge>}
             </div>
           )}
         </div>
@@ -105,27 +226,95 @@ export default function TestList() {
       </div>
 
       <Card className="p-6">
-        <div className="flex flex-wrap gap-4 mb-6">
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <option value="timestamp">Sort by Date</option>
-            <option value="duration">Sort by Duration</option>
-            <option value="network">Sort by Network</option>
-            <option value="execution_client">Sort by Execution Client</option>
-            <option value="consensus_client">Sort by Consensus Client</option>
-          </Select>
+        {/* Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Directory</label>
+            <Select value={directoryFilter} onValueChange={(value) => updateUrlParams({ directory: value })}>
+              <option value="">All Directories</option>
+              {uniqueValues.directories.map(dir => (
+                <option key={dir} value={dir}>{dir}</option>
+              ))}
+            </Select>
+          </div>
           
-          <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as 'asc' | 'desc')}>
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Network</label>
+            <Select value={networkFilter} onValueChange={(value) => updateUrlParams({ network: value })}>
+              <option value="">All Networks</option>
+              {uniqueValues.networks.map(network => (
+                <option key={network} value={network}>{network}</option>
+              ))}
+            </Select>
+          </div>
           
-          <Select value={limit.toString()} onValueChange={(value) => setLimit(Number(value))}>
-            <option value="10">10 per page</option>
-            <option value="20">20 per page</option>
-            <option value="50">50 per page</option>
-            <option value="100">100 per page</option>
-          </Select>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">EL Client</label>
+            <Select value={elClientFilter} onValueChange={(value) => updateUrlParams({ elClient: value })}>
+              <option value="">All EL Clients</option>
+              {uniqueValues.elClients.map(client => (
+                <option key={client} value={client} className="capitalize">{client}</option>
+              ))}
+            </Select>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">CL Client</label>
+            <Select value={clClientFilter} onValueChange={(value) => updateUrlParams({ clClient: value })}>
+              <option value="">All CL Clients</option>
+              {uniqueValues.clClients.map(client => (
+                <option key={client} value={client} className="capitalize">{client}</option>
+              ))}
+            </Select>
+          </div>
         </div>
+        
+        {/* Duration filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Min Duration (seconds)</label>
+            <input 
+              type="number" 
+              value={minDuration} 
+              onChange={(e) => updateUrlParams({ minDuration: e.target.value })}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+              placeholder="e.g. 3600"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Max Duration (seconds)</label>
+            <input 
+              type="number" 
+              value={maxDuration} 
+              onChange={(e) => updateUrlParams({ maxDuration: e.target.value })}
+              className="w-full px-3 py-2 border rounded-md text-sm"
+              placeholder="e.g. 43200"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Results per page</label>
+            <Select value={limit.toString()} onValueChange={(value) => handleLimitChange(Number(value))}>
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+              <option value="200">200 per page</option>
+            </Select>
+          </div>
+        </div>
+        
+        {/* Clear filters button */}
+        {(directoryFilter || networkFilter || elClientFilter || clClientFilter || minDuration || maxDuration) && (
+          <div className="mb-6">
+            <Button
+              variant="outline"
+              onClick={() => setSearchParams({ sortBy, sortOrder, page: '1', limit: limit.toString() })}
+              className="text-sm"
+            >
+              Clear all filters
+            </Button>
+          </div>
+        )}
 
         {reports.length === 0 ? (
           <div className="text-center py-8">
@@ -137,17 +326,127 @@ export default function TestList() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-muted-foreground">
-                    <th className="text-left py-3 px-3">Timestamp</th>
-                    <th className="text-left py-3 px-3">EL</th>
-                    <th className="text-left py-3 px-3">CL</th>
-                    <th className="text-right py-3 px-3">Block</th>
-                    <th className="text-right py-3 px-3">Slot</th>
-                    <th className="text-right py-3 px-3">EL Disk</th>
-                    <th className="text-right py-3 px-3">CL Disk</th>
-                    <th className="text-center py-3 px-3">EL Peers</th>
-                    <th className="text-center py-3 px-3">CL Peers</th>
-                    <th className="text-right py-3 px-3">Duration</th>
-                    <th className="text-left py-3 px-3">Network/Directory</th>
+                    <th className="text-left py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('timestamp')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium"
+                      >
+                        Timestamp
+                        {sortBy === 'timestamp' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('execution_client')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium"
+                      >
+                        EL
+                        {sortBy === 'execution_client' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('consensus_client')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium"
+                      >
+                        CL
+                        {sortBy === 'consensus_client' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('block')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium ml-auto"
+                      >
+                        Block
+                        {sortBy === 'block' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('slot')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium ml-auto"
+                      >
+                        Slot
+                        {sortBy === 'slot' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('el_disk')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium ml-auto"
+                      >
+                        EL Disk
+                        {sortBy === 'el_disk' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('cl_disk')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium ml-auto"
+                      >
+                        CL Disk
+                        {sortBy === 'cl_disk' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-center py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('el_peers')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium mx-auto"
+                      >
+                        EL Peers
+                        {sortBy === 'el_peers' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-center py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('cl_peers')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium mx-auto"
+                      >
+                        CL Peers
+                        {sortBy === 'cl_peers' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-right py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('duration')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium ml-auto"
+                      >
+                        Duration
+                        {sortBy === 'duration' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-left py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('network')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium"
+                      >
+                        Network/Directory
+                        {sortBy === 'network' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,24 +513,69 @@ export default function TestList() {
 
             <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Page {page} of {totalPages} ({total} total tests)
+                Showing {startIndex + 1}-{Math.min(startIndex + limit, total)} of {total} tests
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(Math.max(1, page - 1))}
+                  onClick={() => handlePageChange(1)}
                   disabled={page === 1}
                 >
-                  Previous
+                  First
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage(Math.min(totalPages, page + 1))}
+                  onClick={() => handlePageChange(Math.max(1, page - 1))}
+                  disabled={page === 1}
+                >
+                  Previous
+                </Button>
+                
+                {/* Page numbers */}
+                <div className="flex gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (page <= 3) {
+                      pageNum = i + 1;
+                    } else if (page >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = page - 2 + i;
+                    }
+                    
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={page === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handlePageChange(pageNum)}
+                        className="w-8 h-8 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages}
                 >
                   Next
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={page === totalPages}
+                >
+                  Last
                 </Button>
               </div>
             </div>

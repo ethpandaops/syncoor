@@ -1,13 +1,13 @@
 {
   "directories": [
     {
-      "name": "Local Dev",
-      "url": "http://localhost:3000/reports/",
+      "name": "Mock Reports",
+      "url": "http://localhost:3000/reports/mock/",
       "enabled": true
     },
     {
-      "name": "Mock Reports",
-      "url": "http://localhost:3000/reports/mock/",
+      "name": "🔧 - Local Dev",
+      "url": "http://localhost:3000/reports/",
       "enabled": true
     }
   ]

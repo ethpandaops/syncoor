@@ -317,7 +317,7 @@ export default function Dashboard() {
                                 </table>
 
                                 {clientReports.length > 3 && (
-                                  <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&client=${encodeURIComponent(clientType)}`}>
+                                  <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&elClient=${encodeURIComponent(clientType)}`}>
                                     <div className="mt-3 p-3 rounded-lg border-dashed border-2 hover:bg-muted/50 transition-colors cursor-pointer text-center">
                                       <span className="text-sm text-muted-foreground">
                                         View {clientReports.length - 3} more {clientType} tests...
