@@ -35,9 +35,26 @@ func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 func (s *Server) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		origin := r.Header.Get("Origin")
+
+		// Set CORS headers
+		if s.corsOrigins == "*" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if origin != "" {
+			// Check if origin is in allowed list
+			allowedOrigins := strings.Split(s.corsOrigins, ",")
+			for _, allowedOrigin := range allowedOrigins {
+				allowedOrigin = strings.TrimSpace(allowedOrigin)
+				if allowedOrigin == origin {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					break
+				}
+			}
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		if r.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -46,6 +63,38 @@ func (s *Server) corsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 
 		next.ServeHTTP(w, r)
 	}
+}
+
+func (s *Server) corsHandlerWrapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+
+		// Set CORS headers
+		if s.corsOrigins == "*" {
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		} else if origin != "" {
+			// Check if origin is in allowed list
+			allowedOrigins := strings.Split(s.corsOrigins, ",")
+			for _, allowedOrigin := range allowedOrigins {
+				allowedOrigin = strings.TrimSpace(allowedOrigin)
+				if allowedOrigin == origin {
+					w.Header().Set("Access-Control-Allow-Origin", origin)
+					break
+				}
+			}
+		}
+
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
 }
 
 func (s *Server) loggingMiddleware(next http.HandlerFunc) http.HandlerFunc {
