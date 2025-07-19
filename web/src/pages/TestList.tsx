@@ -4,7 +4,7 @@ import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Select } from '../components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { formatDuration, formatTimestamp, formatBytes } from '../lib/utils';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -150,11 +150,11 @@ export default function TestList() {
           bVal = Number(b.timestamp);
       }
       
-      if (typeof aVal === 'string') {
+      if (typeof aVal === 'string' && typeof bVal === 'string') {
         return sortOrder === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
       }
       
-      return sortOrder === 'asc' ? aVal - bVal : bVal - aVal;
+      return sortOrder === 'asc' ? (aVal as number) - (bVal as number) : (bVal as number) - (aVal as number);
     });
     
     return filtered;
@@ -230,41 +230,65 @@ export default function TestList() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="space-y-2">
             <label className="text-sm font-medium">Directory</label>
-            <Select value={directoryFilter} onValueChange={(value) => updateUrlParams({ directory: value })}>
-              <option value="">All Directories</option>
-              {uniqueValues.directories.map(dir => (
-                <option key={dir} value={dir}>{dir}</option>
-              ))}
+            <Select value={directoryFilter || "__all__"} onValueChange={(value) => updateUrlParams({ directory: value === "__all__" ? "" : value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Directories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Directories</SelectItem>
+                {uniqueValues.directories.map(dir => (
+                  <SelectItem key={dir} value={dir}>{dir}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           
           <div className="space-y-2">
             <label className="text-sm font-medium">Network</label>
-            <Select value={networkFilter} onValueChange={(value) => updateUrlParams({ network: value })}>
-              <option value="">All Networks</option>
-              {uniqueValues.networks.map(network => (
-                <option key={network} value={network}>{network}</option>
-              ))}
+            <Select value={networkFilter || "__all__"} onValueChange={(value) => updateUrlParams({ network: value === "__all__" ? "" : value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Networks" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Networks</SelectItem>
+                {uniqueValues.networks.map(network => (
+                  <SelectItem key={network} value={network}>{network}</SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           
           <div className="space-y-2">
             <label className="text-sm font-medium">EL Client</label>
-            <Select value={elClientFilter} onValueChange={(value) => updateUrlParams({ elClient: value })}>
-              <option value="">All EL Clients</option>
-              {uniqueValues.elClients.map(client => (
-                <option key={client} value={client} className="capitalize">{client}</option>
-              ))}
+            <Select value={elClientFilter || "__all__"} onValueChange={(value) => updateUrlParams({ elClient: value === "__all__" ? "" : value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All EL Clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All EL Clients</SelectItem>
+                {uniqueValues.elClients.map(client => (
+                  <SelectItem key={client} value={client}>
+                    <span className="capitalize">{client}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
           
           <div className="space-y-2">
             <label className="text-sm font-medium">CL Client</label>
-            <Select value={clClientFilter} onValueChange={(value) => updateUrlParams({ clClient: value })}>
-              <option value="">All CL Clients</option>
-              {uniqueValues.clClients.map(client => (
-                <option key={client} value={client} className="capitalize">{client}</option>
-              ))}
+            <Select value={clClientFilter || "__all__"} onValueChange={(value) => updateUrlParams({ clClient: value === "__all__" ? "" : value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All CL Clients" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All CL Clients</SelectItem>
+                {uniqueValues.clClients.map(client => (
+                  <SelectItem key={client} value={client}>
+                    <span className="capitalize">{client}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
           </div>
         </div>
@@ -277,7 +301,7 @@ export default function TestList() {
               type="number" 
               value={minDuration} 
               onChange={(e) => updateUrlParams({ minDuration: e.target.value })}
-              className="w-full px-3 py-2 border rounded-md text-sm"
+              className="flex h-9 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="e.g. 3600"
             />
           </div>
@@ -287,18 +311,23 @@ export default function TestList() {
               type="number" 
               value={maxDuration} 
               onChange={(e) => updateUrlParams({ maxDuration: e.target.value })}
-              className="w-full px-3 py-2 border rounded-md text-sm"
+              className="flex h-9 w-full rounded-sm border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               placeholder="e.g. 43200"
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Results per page</label>
             <Select value={limit.toString()} onValueChange={(value) => handleLimitChange(Number(value))}>
-              <option value="10">10 per page</option>
-              <option value="20">20 per page</option>
-              <option value="50">50 per page</option>
-              <option value="100">100 per page</option>
-              <option value="200">200 per page</option>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="20">20 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+                <SelectItem value="100">100 per page</SelectItem>
+                <SelectItem value="200">200 per page</SelectItem>
+              </SelectContent>
             </Select>
           </div>
         </div>

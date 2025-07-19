@@ -6,7 +6,7 @@
       "enabled": true
     },
     {
-      "name": "🔧 - Local Dev",
+      "name": "ZLocal Dev",
       "url": "http://localhost:3000/reports/",
       "enabled": true
     }
