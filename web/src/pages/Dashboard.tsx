@@ -2,7 +2,7 @@ import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
-import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link } from 'react-router-dom';
 
@@ -56,50 +56,10 @@ export default function Dashboard() {
         <h1 className="text-3xl font-bold">Syncoor Dashboard</h1>
         <Badge variant="outline">{total} total tests</Badge>
       </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Total Tests</h3>
-              <p className="text-2xl font-bold">{total}</p>
-            </div>
-            <div className="text-muted-foreground">
-              📊
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Active Directories</h3>
-              <p className="text-2xl font-bold">{config?.directories.filter(d => d.enabled).length || 0}</p>
-            </div>
-            <div className="text-muted-foreground">
-              📁
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">Latest Test</h3>
-              <p className="text-sm text-muted-foreground">
-                {reports[0] ? formatTimestamp(Number(reports[0].timestamp)) : 'No tests'}
-              </p>
-            </div>
-            <div className="text-muted-foreground">
-              🕐
-            </div>
-          </div>
-        </Card>
-      </div>
+
 
       <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Test Results by Directory, Network & Client</h2>
-        
+
         {reports.length === 0 ? (
           <Card className="p-6">
             <p className="text-muted-foreground">No test results found.</p>
@@ -111,21 +71,21 @@ export default function Dashboard() {
                 <div className="flex items-center gap-2">
                   <h3 className="text-xl font-semibold">{directory}</h3>
                   <Badge variant="outline">
-                    {Object.values(networkGroups).flatMap(clientGroups => 
+                    {Object.values(networkGroups).flatMap(clientGroups =>
                       Object.values(clientGroups).flat()
                     ).length} tests
                   </Badge>
                 </div>
-                
-                <div className="space-y-6 ml-4">
+
+                <div className="space-y-6 ">
                   {Object.entries(networkGroups).map(([network, clientGroups]) => (
                     <div key={`${directory}-${network}`} className="space-y-4">
                       <div className="flex items-center gap-2">
                         <h4 className="text-lg font-medium">{network}</h4>
                         <Badge variant="secondary">{Object.values(clientGroups).flat().length} tests</Badge>
                       </div>
-                      
-                      <div className="grid gap-4 ml-4">
+
+                      <div className="grid gap-4">
                         {Object.entries(clientGroups).map(([clientType, clientReports]) => (
                           <Card key={`${directory}-${network}-${clientType}`} className="p-4">
                             <div className="space-y-4">
@@ -133,7 +93,40 @@ export default function Dashboard() {
                                 <h5 className="font-medium">{clientType}</h5>
                                 <Badge variant="outline">{clientReports.length} tests</Badge>
                               </div>
-                              
+
+                              {/* Stats Cards */}
+                              {(() => {
+                                const stats = calculateClientGroupStats(clientReports);
+                                return (
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                    <Card className="p-3">
+                                      <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">Last Runtime</p>
+                                        <p className="text-sm font-medium">
+                                          {stats.lastRuntime ? formatTimestamp(stats.lastRuntime) : 'No data'}
+                                        </p>
+                                      </div>
+                                    </Card>
+                                    <Card className="p-3">
+                                      <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">Avg Duration</p>
+                                        <p className="text-sm font-medium">
+                                          {stats.avgDuration ? formatDuration(stats.avgDuration) : 'No data'}
+                                        </p>
+                                      </div>
+                                    </Card>
+                                    <Card className="p-3">
+                                      <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">Recent EL Disk Usage</p>
+                                        <p className="text-sm font-medium">
+                                          {stats.mostRecentDiskUsage ? formatBytes(stats.mostRecentDiskUsage, 1) : 'No data'}
+                                        </p>
+                                      </div>
+                                    </Card>
+                                  </div>
+                                );
+                              })()}
+
                               {/* Charts for client group */}
                               {clientReports.length > 1 && (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
@@ -155,7 +148,7 @@ export default function Dashboard() {
                                   </div>
                                 </div>
                               )}
-                              
+
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                   <thead>
@@ -201,7 +194,7 @@ export default function Dashboard() {
                                     ))}
                                   </tbody>
                                 </table>
-                                
+
                                 {clientReports.length > 3 && (
                                   <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&client=${encodeURIComponent(clientType)}`}>
                                     <div className="mt-3 p-3 rounded-lg border-dashed border-2 hover:bg-muted/50 transition-colors cursor-pointer text-center">

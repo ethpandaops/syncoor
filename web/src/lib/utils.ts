@@ -354,3 +354,42 @@ export function calculateMovingAverage<T extends Record<string, any>>(
     };
   });
 }
+
+/**
+ * Calculates stats for a group of test reports
+ * @param reports - Array of IndexEntry reports
+ * @returns Object with last runtime, average duration, and most recent disk usage
+ */
+export function calculateClientGroupStats(reports: any[]) {
+  if (!reports || reports.length === 0) {
+    return {
+      lastRuntime: null,
+      avgDuration: null,
+      mostRecentDiskUsage: null
+    };
+  }
+
+  // Sort by timestamp (most recent first)
+  const sortedReports = [...reports].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  
+  // Last runtime (most recent test timestamp)
+  const lastRuntime = Number(sortedReports[0].timestamp);
+  
+  // Average duration
+  const validDurations = reports
+    .map(r => r.sync_info.duration)
+    .filter(d => typeof d === 'number' && d > 0);
+  const avgDuration = validDurations.length > 0
+    ? validDurations.reduce((sum, d) => sum + d, 0) / validDurations.length
+    : null;
+  
+  // Most recent disk usage (from most recent test with disk data)
+  const mostRecentWithDisk = sortedReports.find(r => r.sync_info.last_entry?.de);
+  const mostRecentDiskUsage = mostRecentWithDisk?.sync_info.last_entry?.de || null;
+  
+  return {
+    lastRuntime,
+    avgDuration,
+    mostRecentDiskUsage
+  };
+}
