@@ -168,7 +168,9 @@ export default function Dashboard() {
                       return (
                         <TabsContent key={network} value={network} className="space-y-4">
                           <div className="grid gap-4">
-                            {Object.entries(clientGroups).map(([clientType, clientReports]) => (
+                            {Object.entries(clientGroups)
+                              .sort(([a], [b]) => a.localeCompare(b))
+                              .map(([clientType, clientReports]) => (
                           <Card key={`${directory}-${network}-${clientType}`} className="p-4">
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
