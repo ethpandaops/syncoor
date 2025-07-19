@@ -3,6 +3,7 @@ import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient } from '../lib/utils';
+import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
@@ -189,6 +190,28 @@ export default function Dashboard() {
                                   </Link>
                                 )}
                               </div>
+                              
+                              {/* Charts for client group */}
+                              {clientReports.length > 1 && (
+                                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                  <Card className="p-4">
+                                    <ClientGroupDurationChart
+                                      data={clientReports}
+                                      height={250}
+                                      color="#3b82f6"
+                                      title={`${clientType} - Duration Trends`}
+                                    />
+                                  </Card>
+                                  <Card className="p-4">
+                                    <ClientGroupDiskChart
+                                      data={clientReports}
+                                      height={250}
+                                      color="#10b981"
+                                      title={`${clientType} - EL Disk Usage Trends`}
+                                    />
+                                  </Card>
+                                </div>
+                              )}
                             </div>
                           </Card>
                         ))}
