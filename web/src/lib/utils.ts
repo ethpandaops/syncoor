@@ -319,3 +319,38 @@ export function getUniqueExecutionClients<T extends { execution_client_info: { t
   const clientTypes = new Set(reports.map(report => report.execution_client_info.type));
   return Array.from(clientTypes).sort();
 }
+
+/**
+ * Calculates a simple moving average for chart data
+ * @param data - Array of data points with numeric values
+ * @param valueKey - Key to extract numeric value from each data point
+ * @param windowSize - Number of points to include in moving average (default: 3)
+ * @returns Array of data points with moving average values
+ */
+export function calculateMovingAverage<T extends Record<string, any>>(
+  data: T[],
+  valueKey: keyof T,
+  windowSize: number = 3
+): (T & { movingAverage: number })[] {
+  if (!data || data.length === 0) return [];
+  
+  return data.map((point, index) => {
+    // Calculate the start index for the window
+    const start = Math.max(0, index - Math.floor(windowSize / 2));
+    // Calculate the end index for the window
+    const end = Math.min(data.length, start + windowSize);
+    
+    // Extract values for the window
+    const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
+    
+    // Calculate average
+    const average = windowValues.length > 0 
+      ? windowValues.reduce((sum, val) => sum + val, 0) / windowValues.length
+      : Number(point[valueKey]);
+    
+    return {
+      ...point,
+      movingAverage: average
+    };
+  });
+}

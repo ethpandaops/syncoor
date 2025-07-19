@@ -7,10 +7,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatBytes, formatTimestamp } from '../../lib/utils';
+import { formatBytes, formatTimestamp, calculateMovingAverage } from '../../lib/utils';
 
 interface ClientGroupDiskChartProps {
   data: IndexEntry[];
@@ -27,6 +28,7 @@ interface ChartDataPoint {
   diskUsage: number;
   runId: string;
   network: string;
+  movingAverage?: number;
 }
 
 const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
@@ -50,16 +52,24 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   const chartData: ChartDataPoint[] = React.useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    return data
+    const filteredData = data
       .filter((entry) => entry.sync_info.last_entry?.de) // Only include entries with disk usage data
-      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
-      .map((entry) => ({
-        timestamp: Number(entry.timestamp),
-        formattedTime: formatTimestamp(Number(entry.timestamp)),
-        diskUsage: entry.sync_info.last_entry!.de,
-        runId: entry.run_id,
-        network: entry.network,
-      }));
+      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+
+    const baseData = filteredData.map((entry) => ({
+      timestamp: Number(entry.timestamp),
+      formattedTime: formatTimestamp(Number(entry.timestamp)),
+      diskUsage: entry.sync_info.last_entry!.de,
+      runId: entry.run_id,
+      network: entry.network,
+    }));
+
+    // Calculate moving average only if we have enough data points
+    if (baseData.length >= 3) {
+      return calculateMovingAverage(baseData, 'diskUsage', 3);
+    }
+
+    return baseData;
   }, [data]);
 
   // Custom tooltip component
@@ -76,6 +86,14 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
                 {formatBytes(data.diskUsage)}
               </span>
             </div>
+            {data.movingAverage && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600">Trend:</span>
+                <span className="font-medium text-gray-800">
+                  {formatBytes(data.movingAverage)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm">
               <span className="text-gray-600">Network:</span>
               <span className="font-medium text-gray-800">{data.network}</span>
@@ -155,11 +173,20 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
           
           <Tooltip content={<CustomTooltip />} />
           
+          <Legend
+            wrapperStyle={{
+              paddingTop: '10px',
+              fontSize: '12px',
+              color: 'var(--foreground)',
+            }}
+          />
+          
           <Line
             type="monotone"
             dataKey="diskUsage"
             stroke={color}
             strokeWidth={2}
+            name="Actual Disk Usage"
             dot={{ 
               fill: color, 
               strokeWidth: 2, 
@@ -173,6 +200,21 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               cursor: 'pointer'
             }}
           />
+          
+          {/* Moving Average Line */}
+          {chartData.length >= 3 && chartData[0].movingAverage !== undefined && (
+            <Line
+              type="monotone"
+              dataKey="movingAverage"
+              stroke={color}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              name="Trend (3-point avg)"
+              dot={false}
+              activeDot={false}
+              opacity={0.7}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

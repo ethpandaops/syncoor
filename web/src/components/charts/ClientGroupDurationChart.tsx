@@ -7,10 +7,11 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  Legend,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatDuration, formatTimestamp } from '../../lib/utils';
+import { formatDuration, formatTimestamp, calculateMovingAverage } from '../../lib/utils';
 
 interface ClientGroupDurationChartProps {
   data: IndexEntry[];
@@ -27,6 +28,7 @@ interface ChartDataPoint {
   duration: number;
   runId: string;
   network: string;
+  movingAverage?: number;
 }
 
 const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
@@ -51,15 +53,21 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   const chartData: ChartDataPoint[] = React.useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    return data
-      .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
-      .map((entry) => ({
-        timestamp: Number(entry.timestamp),
-        formattedTime: formatTimestamp(Number(entry.timestamp)),
-        duration: entry.sync_info.duration,
-        runId: entry.run_id,
-        network: entry.network,
-      }));
+    const sortedData = data.sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
+    const baseData = sortedData.map((entry) => ({
+      timestamp: Number(entry.timestamp),
+      formattedTime: formatTimestamp(Number(entry.timestamp)),
+      duration: entry.sync_info.duration,
+      runId: entry.run_id,
+      network: entry.network,
+    }));
+
+    // Calculate moving average only if we have enough data points
+    if (baseData.length >= 3) {
+      return calculateMovingAverage(baseData, 'duration', 3);
+    }
+
+    return baseData;
   }, [data]);
 
   // Custom tooltip component
@@ -76,6 +84,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
                 {formatDuration(data.duration)}
               </span>
             </div>
+            {data.movingAverage && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600">Trend:</span>
+                <span className="font-medium text-gray-800">
+                  {formatDuration(data.movingAverage)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm">
               <span className="text-gray-600">Network:</span>
               <span className="font-medium text-gray-800">{data.network}</span>
@@ -155,11 +171,20 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
           
           <Tooltip content={<CustomTooltip />} />
           
+          <Legend
+            wrapperStyle={{
+              paddingTop: '10px',
+              fontSize: '12px',
+              color: 'var(--foreground)',
+            }}
+          />
+          
           <Line
             type="monotone"
             dataKey="duration"
             stroke={color}
             strokeWidth={2}
+            name="Actual Duration"
             dot={{ 
               fill: color, 
               strokeWidth: 2, 
@@ -173,6 +198,21 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               cursor: 'pointer'
             }}
           />
+          
+          {/* Moving Average Line */}
+          {chartData.length >= 3 && chartData[0].movingAverage !== undefined && (
+            <Line
+              type="monotone"
+              dataKey="movingAverage"
+              stroke={color}
+              strokeWidth={2}
+              strokeDasharray="5 5"
+              name="Trend (3-point avg)"
+              dot={false}
+              activeDot={false}
+              opacity={0.7}
+            />
+          )}
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -134,6 +134,28 @@ export default function Dashboard() {
                                 <Badge variant="outline">{clientReports.length} tests</Badge>
                               </div>
                               
+                              {/* Charts for client group */}
+                              {clientReports.length > 1 && (
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                  <div className="bg-muted/30 rounded-lg p-3">
+                                    <ClientGroupDurationChart
+                                      data={clientReports}
+                                      height={300}
+                                      color="#3b82f6"
+                                      title={`Duration Trends`}
+                                    />
+                                  </div>
+                                  <div className="bg-muted/30 rounded-lg p-3">
+                                    <ClientGroupDiskChart
+                                      data={clientReports}
+                                      height={300}
+                                      color="#10b981"
+                                      title={`EL Disk Usage Trends`}
+                                    />
+                                  </div>
+                                </div>
+                              )}
+                              
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
                                   <thead>
@@ -190,28 +212,6 @@ export default function Dashboard() {
                                   </Link>
                                 )}
                               </div>
-                              
-                              {/* Charts for client group */}
-                              {clientReports.length > 1 && (
-                                <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                  <Card className="p-4">
-                                    <ClientGroupDurationChart
-                                      data={clientReports}
-                                      height={250}
-                                      color="#3b82f6"
-                                      title={`${clientType} - Duration Trends`}
-                                    />
-                                  </Card>
-                                  <Card className="p-4">
-                                    <ClientGroupDiskChart
-                                      data={clientReports}
-                                      height={250}
-                                      color="#10b981"
-                                      title={`${clientType} - EL Disk Usage Trends`}
-                                    />
-                                  </Card>
-                                </div>
-                              )}
                             </div>
                           </Card>
                         ))}
