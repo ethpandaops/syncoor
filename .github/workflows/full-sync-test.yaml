@@ -35,7 +35,7 @@ on:
         type: string
 
 env:
-  RCLONE_VERSION: v1.68.2
+  INSTALL_RCLONE_VERSION: v1.68.2
   S3_BUCKET: ethpandaops-syncoor-data
   S3_PATH: test-reports
 
@@ -77,7 +77,7 @@ jobs:
         s3-bucket: ${{ env.S3_BUCKET }}
         s3-path: ${{ env.S3_PATH }}
         rclone-config: ${{ secrets.SYNCOOR_RCLONE_CONFIG }}
-        rclone-version: ${{ env.RCLONE_VERSION }}
+        rclone-version: ${{ env.INSTALL_RCLONE_VERSION }}
 
     - name: Display test results
       if: always()
