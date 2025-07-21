@@ -34,6 +34,11 @@ on:
         default: ''
         type: string
 
+env:
+  RCLONE_VERSION: v1.68.2
+  S3_BUCKET: ethpandaops-syncoor-data
+  S3_PATH: test-reports
+
 jobs:
   sync-test:
     runs-on: ubuntu-latest
@@ -68,6 +73,11 @@ jobs:
         log-level: info
         labels: "env=ci"
         report-dir: ./test-reports
+        s3-upload: true
+        s3-bucket: ${{ env.S3_BUCKET }}
+        s3-path: ${{ env.S3_PATH }}
+        rclone-config: ${{ secrets.SYNCOOR_RCLONE_CONFIG }}
+        rclone-version: ${{ env.RCLONE_VERSION }}
 
     - name: Display test results
       if: always()
