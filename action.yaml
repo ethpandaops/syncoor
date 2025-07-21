@@ -18,6 +18,8 @@ inputs:
     required: false
     default: 'https://github.com/ethpandaops/syncoor.git'
 
+  # Syncoor arguments
+
   check-interval:
     description: 'Interval in seconds between sync status checks'
     required: false
@@ -93,6 +95,7 @@ inputs:
     required: false
     default: ''
 
+  # Github artifacts upload
   upload-artifacts:
     description: 'Whether to upload test reports as artifacts'
     required: false
@@ -107,6 +110,35 @@ inputs:
     description: 'Number of days to retain enclave dump artifacts'
     required: false
     default: '7'
+
+  ## S3 upload using rclone
+  s3-upload:
+    description: 'Upload test results to S3'
+    required: false
+    default: 'false'
+
+  s3-bucket:
+    description: 'S3 bucket name'
+    required: false
+    type: string
+
+  s3-path:
+    description: 'Path prefix in S3 bucket'
+    required: false
+    type: string
+    default: ''
+
+  rclone-config:
+    description: 'Rclone config file'
+    required: false
+    type: string
+    default: '' # Should be base64 encoded. Example: base64 -w 0 rclone.conf
+
+  rclone-version:
+    description: 'Rclone version to use'
+    required: false
+    type: string
+    default: 'latest'
 
 outputs:
   report-path:
@@ -218,11 +250,18 @@ runs:
         # Set output
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
 
-    - name: Get kurtosis enclave dump
-      id: enclave-dump
+    - name: Setup Rclone for S3 upload
+      if: ${{ inputs.s3-upload == 'true' }}
+      uses: AnimMouse/setup-rclone@0d99fa3878a334d3e307c1a8372ad55550fdaea7 # v1.11.0
+      with:
+        rclone_config: ${{ inputs.rclone-config }}
+        version: ${{ inputs.rclone-version }}
+
+    - name: Upload results to S3
+      if: ${{ inputs.s3-upload == 'true' }}
       shell: bash
       run: |
-        kurtosis enclave ${{ inputs.enclave }} kurtosis-enclave-dump
+        rclone copy --no-traverse --exclude ${{ inputs.report-dir }} s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
 
     - name: Upload test reports
       uses: actions/upload-artifact@v4
@@ -231,6 +270,12 @@ runs:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
         path: ${{ inputs.report-dir }}
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
+
+    - name: Get kurtosis enclave dump
+      id: enclave-dump
+      shell: bash
+      run: |
+        kurtosis enclave ${{ inputs.enclave }} kurtosis-enclave-dump
 
     - name: Upload enclave dump
       uses: actions/upload-artifact@v4
