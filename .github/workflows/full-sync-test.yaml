@@ -9,14 +9,14 @@ on:
         default: 'hoodi'
         type: string
       el-client:
-        description: 'Execution layer client (geth, besu, nethermind, erigon, reth)'
+        description: 'Comma-separated list of execution layer clients (geth,besu,nethermind,erigon,reth)'
         required: false
-        default: 'geth'
+        default: 'geth,besu,nethermind,erigon,reth'
         type: string
       cl-client:
-        description: 'Consensus layer client (lighthouse, teku, prysm, nimbus, lodestar, grandine)'
+        description: 'Comma-separated list of consensus layer clients (lighthouse,teku,prysm,nimbus,lodestar,grandine)'
         required: false
-        default: 'teku'
+        default: 'lighthouse,teku,prysm,nimbus,lodestar,grandine'
         type: string
       run-timeout:
         description: 'Timeout for the sync test'
@@ -24,14 +24,14 @@ on:
         default: '60m'
         type: string
       el-image:
-        description: 'Execution layer client image'
+        description: 'Execution layer client images as JSON (e.g., {"geth": "ethereum/client-go:latest", "besu": "hyperledger/besu:latest"})'
         required: false
-        default: ''
+        default: '{}'
         type: string
       cl-image:
-        description: 'Consensus layer client image'
+        description: 'Consensus layer client images as JSON (e.g., {"lighthouse": "sigp/lighthouse:latest", "teku": "consensys/teku:latest"})'
         required: false
-        default: ''
+        default: '{}'
         type: string
 
 env:
@@ -40,8 +40,32 @@ env:
   S3_PATH: test-reports
 
 jobs:
-  sync-test:
+  determine-matrix:
     runs-on: ubuntu-latest
+    outputs:
+      el-clients: ${{ steps.set-matrix.outputs.el-clients }}
+      cl-clients: ${{ steps.set-matrix.outputs.cl-clients }}
+    steps:
+      - name: Set matrix
+        id: set-matrix
+        run: |
+          # Parse EL clients
+          EL_INPUT="${{ inputs.el-client }}"
+          EL_CLIENTS=$(echo "$EL_INPUT" | tr ',' '\n' | jq -R . | jq -s .)
+          echo "el-clients=$EL_CLIENTS" >> $GITHUB_OUTPUT
+
+          # Parse CL clients
+          CL_INPUT="${{ inputs.cl-client }}"
+          CL_CLIENTS=$(echo "$CL_INPUT" | tr ',' '\n' | jq -R . | jq -s .)
+          echo "cl-clients=$CL_CLIENTS" >> $GITHUB_OUTPUT
+
+  sync-test:
+    needs: determine-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        el-client: ${{ fromJson(needs.determine-matrix.outputs.el-clients) }}
+        cl-client: ${{ fromJson(needs.determine-matrix.outputs.cl-clients) }}
 
     steps:
     - name: Checkout repository
@@ -53,19 +77,42 @@ jobs:
         sudo apt update
         sudo apt install kurtosis-cli
 
+    - name: Parse client images
+      id: parse-images
+      run: |
+        # Parse EL images
+        EL_IMAGES='${{ inputs.el-image }}'
+        if [ "$EL_IMAGES" != '{}' ] && [ -n "$EL_IMAGES" ]; then
+          EL_CLIENT="${{ matrix.el-client }}"
+          EL_IMAGE=$(echo "$EL_IMAGES" | jq -r --arg client "$EL_CLIENT" '.[$client] // ""')
+          echo "el-image=$EL_IMAGE" >> $GITHUB_OUTPUT
+        else
+          echo "el-image=" >> $GITHUB_OUTPUT
+        fi
+
+        # Parse CL images
+        CL_IMAGES='${{ inputs.cl-image }}'
+        if [ "$CL_IMAGES" != '{}' ] && [ -n "$CL_IMAGES" ]; then
+          CL_CLIENT="${{ matrix.cl-client }}"
+          CL_IMAGE=$(echo "$CL_IMAGES" | jq -r --arg client "$CL_CLIENT" '.[$client] // ""')
+          echo "cl-image=$CL_IMAGE" >> $GITHUB_OUTPUT
+        else
+          echo "cl-image=" >> $GITHUB_OUTPUT
+        fi
+
     - name: Run Syncoor Test
       uses: ./
       with:
         #git-ref: main
         network: ${{ inputs.network || 'hoodi' }}
-        el-client: ${{ inputs.el-client || 'geth' }}
-        cl-client: ${{ inputs.cl-client || 'teku' }}
-        el-image: ${{ inputs.el-image || '' }}
-        cl-image: ${{ inputs.cl-image || '' }}
+        el-client: ${{ matrix.el-client }}
+        cl-client: ${{ matrix.cl-client }}
+        el-image: ${{ steps.parse-images.outputs.el-image }}
+        cl-image: ${{ steps.parse-images.outputs.cl-image }}
         el-extra-args: >-
           ${{
-            (inputs.el-client == 'reth' || github.event.inputs.el-client == 'reth') && '--full' ||
-            (inputs.el-client == 'erigon' || github.event.inputs.el-client == 'erigon') && '--prune.mode=full' ||
+            (matrix.el-client == 'reth') && '--full' ||
+            (matrix.el-client == 'erigon') && '--prune.mode=full' ||
             ''
           }}
         check-interval: 30s
