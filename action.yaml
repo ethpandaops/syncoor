@@ -187,7 +187,7 @@ runs:
       if: ${{ inputs.s3-upload == 'true' }}
       shell: bash
       run: |
-        rclone ls s3:${{ inputs.s3-bucket }}
+        rclone touch s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/healthcheck.txt
 
     - name: Make sure kurtosis engine is started
       if: ${{ inputs.run-tests == 'true' }}
@@ -292,19 +292,16 @@ runs:
       shell: bash
       run: |
         echo "Fetching results from S3"
-        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3_bucket }}/${{ inputs.s3_path }} tmp_results
+        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.workspace }}/tmp_results
 
         # Get image from determine-image step
         IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
 
         # Build docker run command
-        DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm"
-
-        # Add Docker socket mount for Kurtosis
-        DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
+        DOCKER_CMD="docker run --platform linux/amd64 --rm"
 
         # Mount report directory
-        DOCKER_CMD="$DOCKER_CMD -v tmp_results:/app/reports"
+        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/tmp_results:/app/reports"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
@@ -317,28 +314,26 @@ runs:
         eval $DOCKER_CMD
 
         echo "Upload index.json file to S3"
-        rclone copy tmp_results/index.json s3:${{ inputs.s3_bucket }}/${{ inputs.s3_path }}/
+        rclone copy ${{ github.workspace }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Upload test reports
-      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
-      if: always() && inputs.upload-artifacts == 'true'
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
         path: ${{ inputs.report-dir }}
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
 
     - name: Get kurtosis enclave dump
-      if: ${{ inputs.run-tests == 'true' }}
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       id: enclave-dump
       shell: bash
       run: |
         kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
 
     - name: Upload enclave dump
-      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
-      if: always()
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
         path: kurtosis-enclave-dump
