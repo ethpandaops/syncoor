@@ -143,6 +143,6 @@ jobs:
             workflow_id: 'generate-index.yaml',
             ref: context.ref,
             inputs: {
-              s3-path: '${{ env.S3_PATH }}'
+              's3-path': '${{ env.S3_PATH }}'
             }
           });
