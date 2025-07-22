@@ -161,7 +161,7 @@ export function validateConfig(data: unknown): Config {
  */
 export async function loadConfig(): Promise<Config> {
   try {
-    const response = await fetch('/config.json');
+    const response = await fetch('./config.json');
 
     if (!response.ok) {
       throw new Error(`Failed to load configuration: ${response.status} ${response.statusText}`);

@@ -14,6 +14,7 @@ const getGitHash = () => {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react()],
   define: {
     __GIT_HASH__: JSON.stringify(getGitHash()),
