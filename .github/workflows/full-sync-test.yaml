@@ -110,7 +110,7 @@ jobs:
       uses: ./
       with:
         #git-ref: main
-        network: ${{ inputs.network || 'hoodi' }}
+        network: ${{ matrix.network }}
         el-client: ${{ matrix.el-client }}
         cl-client: ${{ matrix.cl-client }}
         el-image: ${{ steps.parse-images.outputs.el-image }}
