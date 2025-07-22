@@ -182,18 +182,18 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
           <Line
             type="monotone"
             dataKey="duration"
-            stroke={color}
+            stroke="#3b82f6"
             strokeWidth={2}
             name="Actual Duration"
             dot={{ 
-              fill: color, 
+              fill: '#3b82f6', 
               strokeWidth: 2, 
               r: 4, 
               cursor: 'pointer'
             }}
             activeDot={{ 
               r: 6, 
-              stroke: color, 
+              stroke: '#3b82f6', 
               strokeWidth: 2, 
               cursor: 'pointer'
             }}
@@ -204,7 +204,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             <Line
               type="monotone"
               dataKey="movingAverage"
-              stroke={color}
+              stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="5 5"
               name="Trend (3-point avg)"
