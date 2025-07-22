@@ -18,6 +18,11 @@ inputs:
     required: false
     default: 'https://github.com/ethpandaops/syncoor.git'
 
+  run-tests:
+    description: 'Run tests. Useful for generating report index only. There you can set it to false and run the action again to generate the index.'
+    required: false
+    default: 'true'
+
   # Syncoor arguments
 
   check-interval:
@@ -128,6 +133,11 @@ inputs:
     type: string
     default: ''
 
+  s3-index-generate:
+    description: 'Generate index.json file in S3 bucket after test run'
+    required: false
+    default: 'false'
+
   rclone-config:
     description: 'Rclone config file'
     required: false
@@ -166,23 +176,44 @@ runs:
         # Clean up
         rm -rf syncoor-build
 
+    - name: Setup Rclone for S3 upload
+      if: ${{ inputs.s3-upload == 'true' }}
+      uses: AnimMouse/setup-rclone@0d99fa3878a334d3e307c1a8372ad55550fdaea7 # v1.11.0
+      with:
+        rclone_config: ${{ inputs.rclone-config }}
+        version: ${{ inputs.rclone-version }}
+
+    - name: Check S3 connectivity before running test
+      if: ${{ inputs.s3-upload == 'true' }}
+      shell: bash
+      run: |
+        rclone ls s3:${{ inputs.s3-bucket }}
+
     - name: Make sure kurtosis engine is started
+      if: ${{ inputs.run-tests == 'true' }}
       id: engine-start
       shell: bash
       run: |
         kurtosis engine start
         kurtosis engine status
 
-    - name: Run Syncoor test
-      id: run-test
+    - name: Determine which image to use
+      id: determine-image
       shell: bash
       run: |
-        # Determine which image to use
         if [ -n "${{ inputs.git-ref }}" ]; then
           IMAGE="syncoor:local"
         else
           IMAGE="${{ inputs.image }}"
         fi
+        echo "image=$(echo ${IMAGE})" >> $GITHUB_OUTPUT
+
+    - name: Run Syncoor test
+      if: ${{ inputs.run-tests == 'true' }}
+      id: run-test
+      shell: bash
+      run: |
+        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm"
@@ -250,20 +281,46 @@ runs:
         # Set output
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
 
-    - name: Setup Rclone for S3 upload
-      if: ${{ inputs.s3-upload == 'true' }}
-      uses: AnimMouse/setup-rclone@0d99fa3878a334d3e307c1a8372ad55550fdaea7 # v1.11.0
-      with:
-        rclone_config: ${{ inputs.rclone-config }}
-        version: ${{ inputs.rclone-version }}
-
     - name: Upload results to S3
-      if: ${{ inputs.s3-upload == 'true' }}
+      if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
       shell: bash
       run: |
         rclone copy --no-traverse ${{ inputs.report-dir }} s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
 
+    - name: Generate report index and upload to S3
+      if: ${{ inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
+      shell: bash
+      run: |
+        echo "Fetching results from S3"
+        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3_bucket }}/${{ inputs.s3_path }} tmp_results
+
+        # Get image from determine-image step
+        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+
+        # Build docker run command
+        DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm"
+
+        # Add Docker socket mount for Kurtosis
+        DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
+
+        # Mount report directory
+        DOCKER_CMD="$DOCKER_CMD -v tmp_results:/app/reports"
+
+        # Add the image
+        DOCKER_CMD="$DOCKER_CMD $IMAGE"
+
+        # Use 'report-index' command
+        DOCKER_CMD="$DOCKER_CMD report-index --report-dir /app/reports --output /app/reports/index.json"
+
+        # Execute the command
+        echo "Running: $DOCKER_CMD"
+        eval $DOCKER_CMD
+
+        echo "Upload index.json file to S3"
+        rclone copy tmp_results/index.json s3:${{ inputs.s3_bucket }}/${{ inputs.s3_path }}/
+
     - name: Upload test reports
+      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true'
       with:
@@ -272,12 +329,14 @@ runs:
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
 
     - name: Get kurtosis enclave dump
+      if: ${{ inputs.run-tests == 'true' }}
       id: enclave-dump
       shell: bash
       run: |
         kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
 
     - name: Upload enclave dump
+      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
       if: always()
       with:
