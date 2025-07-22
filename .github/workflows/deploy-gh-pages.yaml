@@ -24,6 +24,9 @@ jobs:
         with:
           fetch-depth: 0  # Needed for git hash in vite config
 
+      - name: Setup Pages
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5.0.0
+
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -32,6 +35,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
+        run: make setup
+        working-directory: ./web
+
+      - name: Build project
         run: make build
         working-directory: ./web
 
