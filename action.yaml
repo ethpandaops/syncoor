@@ -322,23 +322,22 @@ runs:
     - name: Upload test reports
       if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
-      if: always() && inputs.upload-artifacts == 'true'
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
         path: ${{ inputs.report-dir }}
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
 
     - name: Get kurtosis enclave dump
-      if: ${{ inputs.run-tests == 'true' }}
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       id: enclave-dump
       shell: bash
       run: |
         kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
 
     - name: Upload enclave dump
-      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
-      if: always()
+      if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
         path: kurtosis-enclave-dump
