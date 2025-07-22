@@ -41,7 +41,11 @@ env:
 
 jobs:
   sync-test:
-    runs-on: ubuntu-latest
+    runs-on: >-
+      ${{
+        inputs.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
+        'ubuntu-latest'
+      }}
     strategy:
       matrix:
         el-client: >-
