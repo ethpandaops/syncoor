@@ -47,7 +47,11 @@ jobs:
         inputs.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
         'ubuntu-latest'
       }}
+    #concurrency:
+    #  group: >-
+    #    ${{ matrix.network }}-${{ matrix.el-client }}-${{ matrix.cl-client }}
     strategy:
+      fail-fast: false
       matrix:
         network: ${{ fromJSON(format('[{0}]', inputs.network || '"hoodi"')) }}
         el-client: >-
