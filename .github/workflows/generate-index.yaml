@@ -11,6 +11,9 @@ env:
 jobs:
   generate-index:
     runs-on: ubuntu-latest
+    concurrency:
+      group: "generate-index"
+      cancel-in-progress: true
 
     steps:
     - name: Checkout repository
