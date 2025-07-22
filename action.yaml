@@ -320,7 +320,6 @@ runs:
         rclone copy tmp_results/index.json s3:${{ inputs.s3_bucket }}/${{ inputs.s3_path }}/
 
     - name: Upload test reports
-      if: ${{ inputs.run-tests == 'true' }}
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
