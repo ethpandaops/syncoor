@@ -40,7 +40,7 @@ env:
   S3_PATH: test-reports
 
 jobs:
-  sync-test:
+  sync:
     timeout-minutes: 1440 # 24 hours
     runs-on: >-
       ${{
