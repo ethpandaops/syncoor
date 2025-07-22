@@ -292,7 +292,7 @@ runs:
       shell: bash
       run: |
         echo "Fetching results from S3"
-        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3_bucket }}/${{ inputs.s3_path }} tmp_results
+        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} tmp_results
 
         # Get image from determine-image step
         IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
@@ -317,7 +317,7 @@ runs:
         eval $DOCKER_CMD
 
         echo "Upload index.json file to S3"
-        rclone copy tmp_results/index.json s3:${{ inputs.s3_bucket }}/${{ inputs.s3_path }}/
+        rclone copy tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Upload test reports
       uses: actions/upload-artifact@v4
