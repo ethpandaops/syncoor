@@ -1,4 +1,4 @@
-name: Deploy - Docker
+name: Deploy - Docker (Web)
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
           registry: ghcr.io
           registry_username: ${{ github.actor }}
           registry_password: ${{ secrets.GITHUB_TOKEN }}
-          image_name: ${{ github.repository }}
+          image_name: ${{ github.repository }}-web
           push: true
           platforms: linux/amd64
-          file: Dockerfile
+          file: Dockerfile.web
