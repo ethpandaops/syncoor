@@ -197,11 +197,10 @@ runs:
         kurtosis engine start
         kurtosis engine status
 
-    - name: Determin which image to use
+    - name: Determine which image to use
       id: determine-image
       shell: bash
       run: |
-        # Determine which image to use
         if [ -n "${{ inputs.git-ref }}" ]; then
           IMAGE="syncoor:local"
         else
@@ -312,6 +311,10 @@ runs:
 
         # Use 'report-index' command
         DOCKER_CMD="$DOCKER_CMD report-index --report-dir /app/reports --output /app/reports/index.json"
+
+        # Execute the command
+        echo "Running: $DOCKER_CMD"
+        eval $DOCKER_CMD
 
         echo "Upload index.json file to S3"
         rclone copy tmp_results/index.json s3:${{ inputs.s3_bucket }}/${{ inputs.s3_path }}/
