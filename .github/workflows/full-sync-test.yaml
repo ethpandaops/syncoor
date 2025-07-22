@@ -49,6 +49,7 @@ jobs:
       }}
     strategy:
       matrix:
+        network: "[${{ inputs.network || 'hoodi' }}]"
         el-client: >-
           ${{
             fromJSON(format('[{0}]', inputs.el-client || '
