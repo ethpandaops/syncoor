@@ -41,6 +41,7 @@ env:
 
 jobs:
   sync-test:
+    timeout-minutes: 1440 # 24 hours
     runs-on: >-
       ${{
         inputs.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
