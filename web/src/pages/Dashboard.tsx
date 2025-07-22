@@ -6,11 +6,12 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import SyncoorTests from '../components/SyncoorTests';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
   const { data: reports, isLoading: reportsLoading, error: reportsError, total } = useReports({
     directories: config?.directories || [],
@@ -266,11 +267,13 @@ export default function Dashboard() {
                                   </thead>
                                   <tbody>
                                     {clientReports.slice(0, 3).map((report) => (
-                                      <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
-                                        <td className="py-2 px-2">
-                                          <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
-                                            {formatTimestamp(Number(report.timestamp))}
-                                          </Link>
+                                      <tr 
+                                        key={report.run_id} 
+                                        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                                        onClick={() => navigate(`/test/${report.run_id}`)}
+                                      >
+                                        <td className="py-2 px-2 text-muted-foreground">
+                                          {formatTimestamp(Number(report.timestamp))}
                                         </td>
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1">
