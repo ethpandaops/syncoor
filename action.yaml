@@ -187,7 +187,7 @@ runs:
       if: ${{ inputs.s3-upload == 'true' }}
       shell: bash
       run: |
-        rclone ls s3:${{ inputs.s3-bucket }}
+        rclone touch s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/healthcheck.txt
 
     - name: Make sure kurtosis engine is started
       if: ${{ inputs.run-tests == 'true' }}
