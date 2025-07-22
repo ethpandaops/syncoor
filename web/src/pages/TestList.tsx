@@ -489,7 +489,7 @@ export default function TestList() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1">
                           <img 
-                            src={`/img/clients/${report.execution_client_info.type}.jpg`} 
+                            src={`img/clients/${report.execution_client_info.type}.jpg`} 
                             alt={`${report.execution_client_info.type} logo`}
                             className="w-5 h-5 rounded"
                             onError={(e) => {
@@ -502,7 +502,7 @@ export default function TestList() {
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1">
                           <img 
-                            src={`/img/clients/${report.consensus_client_info.type}.jpg`} 
+                            src={`img/clients/${report.consensus_client_info.type}.jpg`} 
                             alt={`${report.consensus_client_info.type} logo`}
                             className="w-5 h-5 rounded"
                             onError={(e) => {

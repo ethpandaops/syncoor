@@ -88,7 +88,7 @@ export default function TestDetails() {
           <div className="flex items-center gap-2 text-muted-foreground">
             <div className="flex items-center gap-1">
               <img 
-                src={`/img/clients/${testReport.execution_client_info.type}.jpg`} 
+                src={`img/clients/${testReport.execution_client_info.type}.jpg`} 
                 alt={`${testReport.execution_client_info.type} logo`}
                 className="w-5 h-5 rounded"
                 onError={(e) => {
@@ -100,7 +100,7 @@ export default function TestDetails() {
             <span>+</span>
             <div className="flex items-center gap-1">
               <img 
-                src={`/img/clients/${testReport.consensus_client_info.type}.jpg`} 
+                src={`img/clients/${testReport.consensus_client_info.type}.jpg`} 
                 alt={`${testReport.consensus_client_info.type} logo`}
                 className="w-5 h-5 rounded"
                 onError={(e) => {
@@ -157,7 +157,7 @@ export default function TestDetails() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <img 
-                src={`/img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
+                src={`img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
                 alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
                 className="w-6 h-6 rounded"
                 onError={(e) => {
@@ -222,7 +222,7 @@ export default function TestDetails() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <img 
-                src={`/img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
+                src={`img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
                 alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
                 className="w-6 h-6 rounded"
                 onError={(e) => {

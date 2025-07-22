@@ -146,7 +146,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   };
 
   const getClientLogo = (clientType: string): string => {
-    return `/img/clients/${clientType.toLowerCase()}.jpg`;
+    return `img/clients/${clientType.toLowerCase()}.jpg`;
   };
 
   const capitalizeClient = (clientType: string): string => {

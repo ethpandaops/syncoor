@@ -178,7 +178,7 @@ export default function Dashboard() {
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
                                   <img
-                                    src={`/img/clients/${clientType}.jpg`}
+                                    src={`img/clients/${clientType}.jpg`}
                                     alt={`${clientType} logo`}
                                     className="w-8 h-8 rounded"
                                     onError={(e) => {
@@ -275,7 +275,7 @@ export default function Dashboard() {
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1">
                                             <img
-                                              src={`/img/clients/${report.execution_client_info.type}.jpg`}
+                                              src={`img/clients/${report.execution_client_info.type}.jpg`}
                                               alt={`${report.execution_client_info.type} logo`}
                                               className="w-5 h-5 rounded"
                                               onError={(e) => {
@@ -288,7 +288,7 @@ export default function Dashboard() {
                                         <td className="py-2 px-2">
                                           <div className="flex items-center gap-1">
                                             <img
-                                              src={`/img/clients/${report.consensus_client_info.type}.jpg`}
+                                              src={`img/clients/${report.consensus_client_info.type}.jpg`}
                                               alt={`${report.consensus_client_info.type} logo`}
                                               className="w-5 h-5 rounded"
                                               onError={(e) => {
