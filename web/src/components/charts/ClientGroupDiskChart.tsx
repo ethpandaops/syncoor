@@ -36,7 +36,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   className = '',
   height = 300,
   showGrid = true,
-  color = '#10b981',
+  color: _color = '#10b981',
   title = 'EL Disk Usage Over Time',
 }) => {
   const navigate = useNavigate();
@@ -184,18 +184,18 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
           <Line
             type="monotone"
             dataKey="diskUsage"
-            stroke={color}
+            stroke="#3b82f6"
             strokeWidth={2}
             name="Actual Disk Usage"
             dot={{ 
-              fill: color, 
+              fill: '#3b82f6', 
               strokeWidth: 2, 
               r: 4, 
               cursor: 'pointer'
             }}
             activeDot={{ 
               r: 6, 
-              stroke: color, 
+              stroke: '#3b82f6', 
               strokeWidth: 2, 
               cursor: 'pointer'
             }}
@@ -206,7 +206,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             <Line
               type="monotone"
               dataKey="movingAverage"
-              stroke={color}
+              stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="5 5"
               name="Trend (3-point avg)"

@@ -12,9 +12,13 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>(() => {
-    // Get theme from localStorage or default to light
+    // Get theme from localStorage or default to system preference
     const stored = localStorage.getItem('theme');
-    return (stored as Theme) || 'light';
+    if (stored) {
+      return stored as Theme;
+    }
+    // If nothing stored, use system preference
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
   // Detect system theme preference
@@ -45,13 +49,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.add(effectiveTheme);
   }, [effectiveTheme]);
 
-  // Save theme preference to localStorage
-  useEffect(() => {
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
   const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    // Save theme preference when user explicitly toggles
+    localStorage.setItem('theme', newTheme);
   };
 
   return (

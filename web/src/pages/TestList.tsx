@@ -6,10 +6,11 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { formatDuration, formatTimestamp, formatBytes } from '../lib/utils';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 export default function TestList() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   // Get all params from URL with defaults
   const page = parseInt(searchParams.get('page') || '1');
@@ -480,11 +481,13 @@ export default function TestList() {
                 </thead>
                 <tbody>
                   {reports.map((report) => (
-                    <tr key={report.run_id} className="border-b hover:bg-muted/50 transition-colors">
-                      <td className="py-3 px-3">
-                        <Link to={`/test/${report.run_id}`} className="text-muted-foreground hover:text-foreground">
-                          {formatTimestamp(Number(report.timestamp))}
-                        </Link>
+                    <tr 
+                      key={report.run_id} 
+                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => navigate(`/test/${report.run_id}`)}
+                    >
+                      <td className="py-3 px-3 text-muted-foreground">
+                        {formatTimestamp(Number(report.timestamp))}
                       </td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-1">
