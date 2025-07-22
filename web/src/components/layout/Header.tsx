@@ -58,7 +58,7 @@ export function Header() {
         <div className="mr-8">
           <Link to="/" className="flex items-center space-x-2">
             <img 
-              src="./img/logo.png" 
+              src="img/logo.png" 
               alt="Syncoor Logo" 
               className="h-10 w-10"
             />
