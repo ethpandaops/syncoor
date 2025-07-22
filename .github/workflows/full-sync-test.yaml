@@ -11,12 +11,12 @@ on:
       el-client:
         description: 'Comma-separated list of execution layer clients (geth,besu,nethermind,erigon,reth)'
         required: false
-        default: 'geth,besu,nethermind,erigon,reth'
+        default: '"geth","reth","nethermind","besu","erigon"'
         type: string
       cl-client:
         description: 'Comma-separated list of consensus layer clients (lighthouse,teku,prysm,nimbus,lodestar,grandine)'
         required: false
-        default: 'lighthouse,teku,prysm,nimbus,lodestar,grandine'
+        default: '"lighthouse","teku","prysm","nimbus","lodestar","grandine"'
         type: string
       run-timeout:
         description: 'Timeout for the sync test'
@@ -40,32 +40,29 @@ env:
   S3_PATH: test-reports
 
 jobs:
-  determine-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      el-clients: ${{ steps.set-matrix.outputs.el-clients }}
-      cl-clients: ${{ steps.set-matrix.outputs.cl-clients }}
-    steps:
-      - name: Set matrix
-        id: set-matrix
-        run: |
-          # Parse EL clients
-          EL_INPUT="${{ inputs.el-client }}"
-          EL_CLIENTS=$(echo "$EL_INPUT" | tr ',' '\n' | jq -R . | jq -s .)
-          echo "el-clients=$EL_CLIENTS" >> $GITHUB_OUTPUT
-
-          # Parse CL clients
-          CL_INPUT="${{ inputs.cl-client }}"
-          CL_CLIENTS=$(echo "$CL_INPUT" | tr ',' '\n' | jq -R . | jq -s .)
-          echo "cl-clients=$CL_CLIENTS" >> $GITHUB_OUTPUT
-
   sync-test:
-    needs: determine-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        el-client: ${{ fromJson(needs.determine-matrix.outputs.el-clients) }}
-        cl-client: ${{ fromJson(needs.determine-matrix.outputs.cl-clients) }}
+        el-client: >-
+          ${{
+            fromJSON(format('[{0}]', inputs.el-client || '
+              "besu",
+              "erigon",
+              "geth",
+              "nethermind",
+              "reth"
+          '))}}
+        cl-client: >-
+          ${{
+            fromJSON(format('[{0}]', inputs.cl-client || '
+              "lighthouse",
+              "teku",
+              "prysm",
+              "nimbus",
+              "lodestar",
+              "grandine"
+          '))}}
 
     steps:
     - name: Checkout repository
@@ -125,12 +122,3 @@ jobs:
         s3-path: ${{ env.S3_PATH }}
         rclone-config: ${{ secrets.SYNCOOR_RCLONE_CONFIG }}
         rclone-version: ${{ env.INSTALL_RCLONE_VERSION }}
-
-    - name: Display test results
-      if: always()
-      run: |
-        echo "Test completed. Reports saved in ./test-reports"
-        if [ -d "./test-reports" ]; then
-          echo "Report files:"
-          ls -la ./test-reports/
-        fi
