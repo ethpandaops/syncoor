@@ -32,6 +32,10 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
+        run: make setup
+        working-directory: ./web
+
+      - name: Build project
         run: make build
         working-directory: ./web
 
