@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 )
 
 // API response types
@@ -28,6 +29,7 @@ type TestSummary struct {
 	ELClient       string                     `json:"el_client"`
 	CLClient       string                     `json:"cl_client"`
 	CurrentMetrics *reporting.ProgressMetrics `json:"current_metrics,omitempty"`
+	SystemInfo     *sysinfo.SystemInfo        `json:"system_info,omitempty"`
 }
 
 type TestDetail struct {

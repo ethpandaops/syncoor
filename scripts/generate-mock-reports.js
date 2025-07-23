@@ -270,6 +270,62 @@ function generateConsensusCmd(client, network) {
   return cmds[client] || cmds.teku;
 }
 
+function generateSystemInfo() {
+  // Generate mock system information
+  const hostnames = [
+    'sync-node-01', 'sync-node-02', 'sync-node-03', 'test-machine-01',
+    'validator-node-01', 'eth-sync-test', 'benchmark-server', 'sync-test-runner'
+  ];
+  
+  const cpuModels = [
+    'Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz',
+    'Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz',
+    'AMD Ryzen 9 5900X 12-Core Processor',
+    'Apple M1 Max',
+    'Intel(R) Core(TM) i9-10900K CPU @ 3.70GHz',
+    'AMD EPYC 7542 32-Core Processor',
+    'Intel(R) Xeon(R) Gold 6248 CPU @ 2.50GHz',
+    'ARM Cortex-A72'
+  ];
+  
+  const platforms = ['linux', 'darwin', 'windows'];
+  const architectures = ['amd64', 'arm64', 'x86_64'];
+  
+  const selectedPlatform = platforms[randomInt(0, platforms.length - 1)];
+  const selectedArch = architectures[randomInt(0, architectures.length - 1)];
+  
+  // Platform-specific details
+  let kernelVersion = '';
+  let platformFamily = selectedPlatform;
+  let platformVersion = '';
+  
+  if (selectedPlatform === 'linux') {
+    kernelVersion = `5.${randomInt(10, 19)}.${randomInt(0, 20)}-generic`;
+    platformVersion = ['22.04', '20.04', '18.04', '23.10'][randomInt(0, 3)];
+  } else if (selectedPlatform === 'darwin') {
+    kernelVersion = `${randomInt(21, 24)}.${randomInt(0, 6)}.0`;
+    platformVersion = `${randomInt(12, 15)}.${randomInt(0, 6)}`;
+  } else if (selectedPlatform === 'windows') {
+    kernelVersion = '10.0.19045';
+    platformVersion = '10.0.19045';
+    platformFamily = 'windows';
+  }
+  
+  return {
+    hostname: hostnames[randomInt(0, hostnames.length - 1)],
+    os: selectedPlatform,
+    architecture: selectedArch,
+    cpu_count: randomInt(4, 32),
+    cpu_model: cpuModels[randomInt(0, cpuModels.length - 1)],
+    total_memory: randomInt(8, 128) * 1024 * 1024 * 1024, // 8GB to 128GB in bytes
+    go_version: `go1.${randomInt(19, 23)}.${randomInt(0, 10)}`,
+    kernel_version: kernelVersion,
+    platform: selectedPlatform,
+    platform_family: platformFamily,
+    platform_version: platformVersion
+  };
+}
+
 function generateMainReport(runId, timestamp, network, elClient, clClient) {
   const duration = generateRealisticDuration(elClient, network);
   const startTime = timestamp;
@@ -321,7 +377,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient) {
         entrypoint: clClient === 'lighthouse' ? ['lighthouse'] : [`/opt/${clClient}/bin/${clClient}`],
         cmd: generateConsensusCmd(clClient, network),
         version: CLIENT_VERSIONS[clClient]
-      }
+      },
+      system_info: generateSystemInfo()
     },
     progress: progressEntries
   };

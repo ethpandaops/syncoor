@@ -20,6 +20,7 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/recovery"
 	"github.com/ethpandaops/syncoor/pkg/report"
 	"github.com/ethpandaops/syncoor/pkg/reporting"
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 )
 
 // Service defines the interface for the sync test service
@@ -208,6 +209,19 @@ func (s *service) Start(ctx context.Context) error {
 
 	s.network = network
 
+	// Collect system information
+	sysInfoService := sysinfo.NewService(s.log)
+	systemInfo, err := sysInfoService.GetSystemInfo(ctx)
+	if err != nil {
+		s.log.WithError(err).Warn("Failed to collect system information")
+		// Continue anyway - system info is optional
+	} else {
+		// Set system info in report service
+		if err := s.reportService.SetSystemInfo(ctx, systemInfo); err != nil {
+			s.log.WithError(err).Warn("Failed to set system info in report")
+		}
+	}
+
 	// Report test start if reporting client is configured
 	if s.reportingClient != nil {
 		runID := fmt.Sprintf("sync-test-%d-%s_%s_%s", time.Now().UnixNano(), s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
@@ -227,6 +241,7 @@ func (s *service) Start(ctx context.Context) error {
 				ExtraArgs: s.cfg.CLExtraArgs,
 			},
 			EnclaveName: s.cfg.EnclaveName,
+			SystemInfo:  systemInfo,
 		}
 
 		if err := s.reportingClient.ReportTestStart(ctx, startReq); err != nil {
