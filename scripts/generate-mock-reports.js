@@ -311,15 +311,42 @@ function generateSystemInfo() {
     platformFamily = 'windows';
   }
   
+  const cpuModel = cpuModels[randomInt(0, cpuModels.length - 1)];
+  const cpuCores = randomInt(4, 32);
+  const cpuThreads = cpuCores * (Math.random() > 0.5 ? 2 : 1); // Some CPUs have hyperthreading
+  
   return {
     hostname: hostnames[randomInt(0, hostnames.length - 1)],
     os: selectedPlatform,
     architecture: selectedArch,
-    cpu_count: randomInt(4, 32),
-    cpu_model: cpuModels[randomInt(0, cpuModels.length - 1)],
-    total_memory: randomInt(8, 128) * 1024 * 1024 * 1024, // 8GB to 128GB in bytes
     go_version: `go1.${randomInt(19, 23)}.${randomInt(0, 10)}`,
+    
+    // Enhanced OS information
+    os_name: selectedPlatform === 'linux' ? 'Ubuntu' : selectedPlatform === 'darwin' ? 'macOS' : 'Windows',
+    os_vendor: selectedPlatform === 'linux' ? 'Canonical' : selectedPlatform === 'darwin' ? 'Apple' : 'Microsoft',
+    os_version: platformVersion,
     kernel_version: kernelVersion,
+    
+    // CPU information
+    cpu_count: cpuCores,
+    cpu_model: cpuModel,
+    cpu_vendor: cpuModel.includes('Intel') ? 'Intel' : cpuModel.includes('AMD') ? 'AMD' : cpuModel.includes('Apple') ? 'Apple' : 'Unknown',
+    cpu_speed: randomInt(2000, 4000), // MHz
+    cpu_cache: randomInt(8192, 32768), // KB
+    cpu_cores: cpuCores,
+    cpu_threads: cpuThreads,
+    
+    // Memory information
+    total_memory: randomInt(8, 128) * 1024 * 1024 * 1024, // 8GB to 128GB in bytes
+    memory_type: ['DDR4', 'DDR5', 'LPDDR4', 'LPDDR5'][randomInt(0, 3)],
+    memory_speed: randomInt(2400, 6400), // MT/s
+    
+    // Hardware information  
+    machine_id: `${randomInt(10000000, 99999999)}-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}-${randomInt(1000, 9999)}-${randomInt(100000000000, 999999999999)}`,
+    hypervisor: Math.random() > 0.7 ? ['KVM', 'VMware', 'Xen', 'VirtualBox'][randomInt(0, 3)] : '',
+    timezone: ['UTC', 'America/New_York', 'Europe/London', 'Asia/Tokyo'][randomInt(0, 3)],
+    
+    // Legacy fields for backward compatibility
     platform: selectedPlatform,
     platform_family: platformFamily,
     platform_version: platformVersion
@@ -436,6 +463,7 @@ function generateMockReports() {
               image: CLIENT_IMAGES[clClient],
               version: CLIENT_VERSIONS[clClient]
             },
+            system_info: report.main.system_info,
             sync_info: {
               start: report.main.sync_status.start,
               end: report.main.sync_status.end,

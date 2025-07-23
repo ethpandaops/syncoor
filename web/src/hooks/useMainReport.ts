@@ -9,15 +9,41 @@ interface UseMainReportParams {
  * System information structure
  */
 export interface SystemInfo {
+  // Basic system information
   hostname: string;
-  os: string;
-  architecture: string;
-  cpu_count: number;
-  cpu_model?: string;
-  total_memory: number;
   go_version: string;
+  
+  // Enhanced OS information
+  os_name?: string;
+  os_vendor?: string;
+  os_version?: string;
+  os_release?: string;
+  os_architecture?: string;
   kernel_version?: string;
-  platform: string;
+  kernel_release?: string;
+  
+  // CPU information
+  cpu_vendor?: string;
+  cpu_model?: string;
+  cpu_speed?: number;   // MHz
+  cpu_cache?: number;   // KB
+  cpu_cores?: number;   // Physical cores
+  cpu_threads?: number; // Logical cores
+  
+  // Memory information
+  total_memory: number; // Bytes
+  memory_type?: string;
+  memory_speed?: number; // MT/s
+  
+  // Hardware information
+  hypervisor?: string;
+  timezone?: string;
+  product_name?: string;
+  product_vendor?: string;
+  board_name?: string;
+  board_vendor?: string;
+  
+  // Legacy fields for backward compatibility
   platform_family?: string;
   platform_version?: string;
 }

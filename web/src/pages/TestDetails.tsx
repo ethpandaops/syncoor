@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -12,8 +12,23 @@ import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart }
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showExecutionDetails, setShowExecutionDetails] = useState(false);
   const [showConsensusDetails, setShowConsensusDetails] = useState(false);
+  const [showSystemInfo, setShowSystemInfo] = useState(() => {
+    return searchParams.get('systemInfo') === 'true';
+  });
+
+  // Update URL when system info state changes
+  useEffect(() => {
+    const newParams = new URLSearchParams(searchParams);
+    if (showSystemInfo) {
+      newParams.set('systemInfo', 'true');
+    } else {
+      newParams.delete('systemInfo');
+    }
+    setSearchParams(newParams, { replace: true });
+  }, [showSystemInfo, searchParams, setSearchParams]);
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: reports, isLoading: reportsLoading } = useReports({
     directories: config?.directories || [],
@@ -288,60 +303,243 @@ export default function TestDetails() {
       {mainReport?.system_info && (
         <Card>
           <CardHeader>
-            <CardTitle>System Information</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle>System Information</CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSystemInfo(!showSystemInfo)}
+                className="flex items-center gap-2 h-8 px-2 text-sm font-medium"
+              >
+                <ChevronIcon className={`h-4 w-4 transition-transform ${showSystemInfo ? 'rotate-90' : ''}`} />
+                {showSystemInfo ? 'Hide' : 'Show'} Details
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Hostname</span>
-                  <div className="text-sm font-medium mt-1">{mainReport.system_info.hostname}</div>
-                </div>
+            {!showSystemInfo && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-2">
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Operating System</span>
                   <div className="text-sm mt-1">
-                    {mainReport.system_info.platform_family || mainReport.system_info.os}
-                    {mainReport.system_info.platform_version && (
-                      <span className="text-muted-foreground"> {mainReport.system_info.platform_version}</span>
-                    )}
+                    {[
+                      mainReport.system_info.os_name,
+                      mainReport.system_info.os_vendor,
+                      mainReport.system_info.os_version || mainReport.system_info.platform_version
+                    ].filter(Boolean).join(' ') || 'Unknown'}
                   </div>
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground">Architecture</span>
-                  <div className="text-sm mt-1">{mainReport.system_info.architecture}</div>
-                </div>
-              </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">CPU Count</span>
-                  <div className="text-sm mt-1">{mainReport.system_info.cpu_count} cores</div>
-                </div>
-                {mainReport.system_info.cpu_model && (
-                  <div>
-                    <span className="text-sm font-medium text-muted-foreground">CPU Model</span>
-                    <div className="text-sm font-mono mt-1 break-all">{mainReport.system_info.cpu_model}</div>
+                  <span className="text-sm font-medium text-muted-foreground">CPU</span>
+                  <div className="text-sm mt-1">
+                    {(() => {
+                      const parts = [];
+                      
+                      // Add cores/threads info
+                      if (mainReport.system_info.cpu_cores && mainReport.system_info.cpu_cores > 0) {
+                        if (mainReport.system_info.cpu_threads && mainReport.system_info.cpu_threads > 0) {
+                          parts.push(`${mainReport.system_info.cpu_cores}/${mainReport.system_info.cpu_threads} cores`);
+                        } else {
+                          parts.push(`${mainReport.system_info.cpu_cores} cores`);
+                        }
+                      } else if (mainReport.system_info.cpu_threads && mainReport.system_info.cpu_threads > 0) {
+                        parts.push(`${mainReport.system_info.cpu_threads} threads`);
+                      }
+                      
+                      // Add speed info
+                      if (mainReport.system_info.cpu_speed && mainReport.system_info.cpu_speed > 0) {
+                        parts.push(`${mainReport.system_info.cpu_speed} MHz`);
+                      }
+                      
+                      return parts.length > 0 ? parts.join(', ') : 'N/A';
+                    })()}
                   </div>
-                )}
+                </div>
                 <div>
-                  <span className="text-sm font-medium text-muted-foreground">Total Memory</span>
+                  <span className="text-sm font-medium text-muted-foreground">Memory</span>
                   <div className="text-sm mt-1">{formatBytes(mainReport.system_info.total_memory)}</div>
                 </div>
               </div>
-              
-              <div className="space-y-3">
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Go Version</span>
-                  <div className="text-sm font-mono mt-1">{mainReport.system_info.go_version}</div>
-                </div>
-                {mainReport.system_info.kernel_version && (
+            )}
+            {showSystemInfo && (
+            <div className="space-y-6">
+              {/* Basic System Info */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Basic Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
-                    <span className="text-sm font-medium text-muted-foreground">Kernel Version</span>
-                    <div className="text-sm font-mono mt-1">{mainReport.system_info.kernel_version}</div>
+                    <span className="text-sm font-medium text-muted-foreground">Hostname</span>
+                    <div className="text-sm font-medium mt-1">{mainReport.system_info.hostname}</div>
                   </div>
-                )}
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Go Version</span>
+                    <div className="text-sm font-mono mt-1">{mainReport.system_info.go_version}</div>
+                  </div>
+                </div>
               </div>
+
+              {/* Operating System Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Operating System</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {mainReport.system_info.os_name && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">OS Name</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.os_name}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.os_vendor && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">OS Vendor</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.os_vendor}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.os_version && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">OS Version</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.os_version}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.os_release && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">OS Release</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.os_release}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.os_architecture && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Architecture</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.os_architecture}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.kernel_version && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Kernel Version</span>
+                      <div className="text-sm font-mono mt-1">{mainReport.system_info.kernel_version}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.kernel_release && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Kernel Release</span>
+                      <div className="text-sm font-mono mt-1">{mainReport.system_info.kernel_release}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CPU Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">CPU Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {mainReport.system_info.cpu_vendor && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">CPU Vendor</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.cpu_vendor}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.cpu_model && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">CPU Model</span>
+                      <div className="text-sm font-mono mt-1 break-all">{mainReport.system_info.cpu_model}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.cpu_speed && mainReport.system_info.cpu_speed > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">CPU Speed</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.cpu_speed} MHz</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.cpu_cache && mainReport.system_info.cpu_cache > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">CPU Cache</span>
+                      <div className="text-sm mt-1">{formatBytes(mainReport.system_info.cpu_cache * 1024)}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.cpu_cores && mainReport.system_info.cpu_cores > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Physical Cores</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.cpu_cores}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.cpu_threads && mainReport.system_info.cpu_threads > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Logical Cores</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.cpu_threads}</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Memory Information */}
+              <div>
+                <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Memory Information</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Total Memory</span>
+                    <div className="text-sm mt-1">{formatBytes(mainReport.system_info.total_memory)}</div>
+                  </div>
+                  {mainReport.system_info.memory_type && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Memory Type</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.memory_type}</div>
+                    </div>
+                  )}
+                  {mainReport.system_info.memory_speed && mainReport.system_info.memory_speed > 0 && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Memory Speed</span>
+                      <div className="text-sm mt-1">{mainReport.system_info.memory_speed} MT/s</div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Hardware Information */}
+              {(mainReport.system_info.hypervisor || mainReport.system_info.timezone || mainReport.system_info.product_name || mainReport.system_info.product_vendor || mainReport.system_info.board_name || mainReport.system_info.board_vendor) && (
+                <div>
+                  <h4 className="text-sm font-semibold text-muted-foreground mb-3 uppercase tracking-wide">Hardware Information</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {mainReport.system_info.hypervisor && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Hypervisor</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.hypervisor}</div>
+                      </div>
+                    )}
+                    {mainReport.system_info.timezone && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Timezone</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.timezone}</div>
+                      </div>
+                    )}
+                    {mainReport.system_info.product_name && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Product Name</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.product_name}</div>
+                      </div>
+                    )}
+                    {mainReport.system_info.product_vendor && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Product Vendor</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.product_vendor}</div>
+                      </div>
+                    )}
+                    {mainReport.system_info.board_name && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Board Name</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.board_name}</div>
+                      </div>
+                    )}
+                    {mainReport.system_info.board_vendor && (
+                      <div>
+                        <span className="text-sm font-medium text-muted-foreground">Board Vendor</span>
+                        <div className="text-sm mt-1">{mainReport.system_info.board_vendor}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
             </div>
+            )}
           </CardContent>
         </Card>
       )}
