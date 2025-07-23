@@ -7,7 +7,7 @@ import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { useProgressData } from '../hooks/useProgressData';
 import { useMainReport } from '../hooks/useMainReport';
-import { formatDuration, formatTimestamp } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes } from '../lib/utils';
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 
 export default function TestDetails() {
@@ -283,6 +283,68 @@ export default function TestDetails() {
           </CardContent>
         </Card>
       </div>
+
+      {/* System Information */}
+      {mainReport?.system_info && (
+        <Card>
+          <CardHeader>
+            <CardTitle>System Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Hostname</span>
+                  <div className="text-sm font-medium mt-1">{mainReport.system_info.hostname}</div>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Operating System</span>
+                  <div className="text-sm mt-1">
+                    {mainReport.system_info.platform_family || mainReport.system_info.os}
+                    {mainReport.system_info.platform_version && (
+                      <span className="text-muted-foreground"> {mainReport.system_info.platform_version}</span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Architecture</span>
+                  <div className="text-sm mt-1">{mainReport.system_info.architecture}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">CPU Count</span>
+                  <div className="text-sm mt-1">{mainReport.system_info.cpu_count} cores</div>
+                </div>
+                {mainReport.system_info.cpu_model && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">CPU Model</span>
+                    <div className="text-sm font-mono mt-1 break-all">{mainReport.system_info.cpu_model}</div>
+                  </div>
+                )}
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Total Memory</span>
+                  <div className="text-sm mt-1">{formatBytes(mainReport.system_info.total_memory)}</div>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <div>
+                  <span className="text-sm font-medium text-muted-foreground">Go Version</span>
+                  <div className="text-sm font-mono mt-1">{mainReport.system_info.go_version}</div>
+                </div>
+                {mainReport.system_info.kernel_version && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Kernel Version</span>
+                    <div className="text-sm font-mono mt-1">{mainReport.system_info.kernel_version}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Test Metadata */}
       <Card>

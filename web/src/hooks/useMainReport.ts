@@ -6,6 +6,23 @@ interface UseMainReportParams {
 }
 
 /**
+ * System information structure
+ */
+export interface SystemInfo {
+  hostname: string;
+  os: string;
+  architecture: string;
+  cpu_count: number;
+  cpu_model?: string;
+  total_memory: number;
+  go_version: string;
+  kernel_version?: string;
+  platform: string;
+  platform_family?: string;
+  platform_version?: string;
+}
+
+/**
  * Main report structure with additional client details
  */
 export interface MainReport {
@@ -35,6 +52,7 @@ export interface MainReport {
     entrypoint?: string[];
     cmd?: string[];
   };
+  system_info?: SystemInfo;
   sync_info: {
     start: string;
     end: string;
