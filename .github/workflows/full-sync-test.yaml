@@ -42,9 +42,15 @@ env:
 jobs:
   sync:
     timeout-minutes: 1440 # 24 hours
+    # Self-hosted runner sizes:
+    # - ccx13: 2 cores, 8GB, 80GB disk
+    # - ccx23: 4 cores, 16GB, 160GB disk
+    # - ccx33: 8 cores, 32GB, 240GB disk
+    # - ccx43: 16 cores, 64GB, 360GB disk
     runs-on: >-
       ${{
-        inputs.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
+        matrix.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
+        matrix.network == 'hoodi' && 'self-hosted-ghr-size-ccx23-x64' ||
         'ubuntu-latest'
       }}
     #concurrency:
