@@ -44,7 +44,8 @@ jobs:
     timeout-minutes: 1440 # 24 hours
     runs-on: >-
       ${{
-        inputs.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
+        matrix.network == 'fusaka-devnet-2' && 'self-hosted-ghr-size-ccx33-x64' ||
+        matrix.network == 'hoodi' && 'self-hosted-ghr-size-ccx33-x64' ||
         'ubuntu-latest'
       }}
     #concurrency:
