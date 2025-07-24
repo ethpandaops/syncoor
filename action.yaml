@@ -215,6 +215,7 @@ runs:
     - name: Get Job ID from GH API
       if: ${{ inputs.run-tests == 'true' }}
       id: get-job-id
+      shell: bash
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       run: |
