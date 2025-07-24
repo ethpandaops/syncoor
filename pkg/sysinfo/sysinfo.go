@@ -197,27 +197,52 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 		s.readMemoryFromProcMeminfo(info)
 	}
 
-	// Get OS information from /etc/os-release
+	// Get OS information
+	s.readLinuxOSInfo(info)
+
+	// Get kernel information
+	s.readLinuxKernelInfo(info)
+}
+
+// readLinuxOSInfo reads OS information from various sources
+func (s *service) readLinuxOSInfo(info *SystemInfo) {
+	// Try /etc/os-release first
 	if info.OSName == "" || info.OSVersion == "" {
-		if data, err := os.ReadFile("/etc/os-release"); err == nil {
-			lines := strings.Split(string(data), "\n")
-			for _, line := range lines {
-				if strings.HasPrefix(line, "NAME=") {
-					info.OSName = strings.Trim(strings.TrimPrefix(line, "NAME="), "\"")
-					info.PlatformFamily = info.OSName
-				} else if strings.HasPrefix(line, "VERSION=") {
-					info.OSVersion = strings.Trim(strings.TrimPrefix(line, "VERSION="), "\"")
-					info.PlatformVersion = info.OSVersion
-				} else if strings.HasPrefix(line, "PRETTY_NAME=") && info.OSName == "" {
-					// Fallback to PRETTY_NAME if NAME is not available
-					info.OSName = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
-					info.PlatformFamily = info.OSName
-				}
-			}
-		}
+		s.readOSInfoFromEtcRelease(info)
 	}
 
-	// Fallback to lsb_release command if /etc/os-release doesn't work
+	// Fallback to lsb_release if needed
+	if info.OSName == "" || info.OSVersion == "" {
+		s.readOSInfoFromLsbRelease(info)
+	}
+}
+
+// readOSInfoFromEtcRelease reads OS information from /etc/os-release
+func (s *service) readOSInfoFromEtcRelease(info *SystemInfo) {
+	data, err := os.ReadFile("/etc/os-release")
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		switch {
+		case strings.HasPrefix(line, "NAME="):
+			info.OSName = strings.Trim(strings.TrimPrefix(line, "NAME="), "\"")
+			info.PlatformFamily = info.OSName
+		case strings.HasPrefix(line, "VERSION="):
+			info.OSVersion = strings.Trim(strings.TrimPrefix(line, "VERSION="), "\"")
+			info.PlatformVersion = info.OSVersion
+		case strings.HasPrefix(line, "PRETTY_NAME=") && info.OSName == "":
+			// Fallback to PRETTY_NAME if NAME is not available
+			info.OSName = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+			info.PlatformFamily = info.OSName
+		}
+	}
+}
+
+// readOSInfoFromLsbRelease reads OS information using lsb_release command
+func (s *service) readOSInfoFromLsbRelease(info *SystemInfo) {
 	if info.OSName == "" {
 		if output, err := exec.Command("lsb_release", "-d", "-s").Output(); err == nil {
 			info.OSName = strings.Trim(strings.TrimSpace(string(output)), "\"")
@@ -230,7 +255,10 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 			info.PlatformVersion = info.OSVersion
 		}
 	}
+}
 
+// readLinuxKernelInfo reads kernel information using uname
+func (s *service) readLinuxKernelInfo(info *SystemInfo) {
 	// Get kernel version
 	if info.KernelVersion == "" {
 		if output, err := exec.Command("uname", "-r").Output(); err == nil {
