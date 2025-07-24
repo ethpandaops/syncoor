@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,6 +24,7 @@ type Service interface {
 	SetSlotNumber(ctx context.Context, slotNumber uint64) error
 	SetLabels(ctx context.Context, labels map[string]string) error
 	SetNetwork(ctx context.Context, network string) error
+	SetSystemInfo(ctx context.Context, info *sysinfo.SystemInfo) error
 	SaveReportToFiles(ctx context.Context, baseFilename string, reportDir string) error
 	Stop(ctx context.Context) error
 
@@ -40,13 +42,14 @@ type Service interface {
 }
 
 type Result struct {
-	RunID               string            `json:"run_id"`
-	Timestamp           int64             `json:"timestamp"`
-	Network             string            `json:"network"`
-	Labels              map[string]string `json:"labels,omitempty"`
-	SyncStatus          SyncStatus        `json:"sync_status"`
-	ExecutionClientInfo ClientInfo        `json:"execution_client_info"`
-	ConsensusClientInfo ClientInfo        `json:"consensus_client_info"`
+	RunID               string              `json:"run_id"`
+	Timestamp           int64               `json:"timestamp"`
+	Network             string              `json:"network"`
+	Labels              map[string]string   `json:"labels,omitempty"`
+	SyncStatus          SyncStatus          `json:"sync_status"`
+	ExecutionClientInfo ClientInfo          `json:"execution_client_info"`
+	ConsensusClientInfo ClientInfo          `json:"consensus_client_info"`
+	SystemInfo          *sysinfo.SystemInfo `json:"system_info,omitempty"`
 }
 
 type ClientInfo struct {
@@ -134,6 +137,12 @@ func (s *service) SetLabels(ctx context.Context, labels map[string]string) error
 func (s *service) SetNetwork(ctx context.Context, network string) error {
 	s.log.WithField("network", network).Debug("Setting network")
 	s.result.Network = network
+	return nil
+}
+
+func (s *service) SetSystemInfo(ctx context.Context, info *sysinfo.SystemInfo) error {
+	s.log.WithField("system_info", info).Debug("Setting system info")
+	s.result.SystemInfo = info
 	return nil
 }
 
@@ -607,6 +616,7 @@ func (s *service) GetCurrentReport(ctx context.Context) (*Result, error) {
 		},
 		ExecutionClientInfo: s.result.ExecutionClientInfo,
 		ConsensusClientInfo: s.result.ConsensusClientInfo,
+		SystemInfo:          s.result.SystemInfo,
 	}
 
 	// Copy labels

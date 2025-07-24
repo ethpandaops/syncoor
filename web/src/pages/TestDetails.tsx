@@ -9,6 +9,7 @@ import { useProgressData } from '../hooks/useProgressData';
 import { useMainReport } from '../hooks/useMainReport';
 import { formatDuration, formatTimestamp } from '../lib/utils';
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
+import { SystemInformation } from '../components/SystemInformation';
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
@@ -283,6 +284,11 @@ export default function TestDetails() {
           </CardContent>
         </Card>
       </div>
+
+      {/* System Information */}
+      {mainReport?.system_info && (
+        <SystemInformation systemInfo={mainReport.system_info} />
+      )}
 
       {/* Test Metadata */}
       <Card>

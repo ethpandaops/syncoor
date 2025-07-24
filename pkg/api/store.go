@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 )
 
 type Store struct {
@@ -33,6 +34,7 @@ type TestData struct {
 	ELClient    reporting.ClientConfig
 	CLClient    reporting.ClientConfig
 	EnclaveName string
+	SystemInfo  *sysinfo.SystemInfo
 
 	CurrentMetrics *reporting.ProgressMetrics
 	History        []ProgressPoint
@@ -79,6 +81,7 @@ func (s *Store) CreateTest(req reporting.TestStartRequest) error {
 		ELClient:    req.ELClient,
 		CLClient:    req.CLClient,
 		EnclaveName: req.EnclaveName,
+		SystemInfo:  req.SystemInfo,
 		History:     make([]ProgressPoint, 0),
 	}
 
@@ -169,6 +172,7 @@ func (s *Store) ListTests(activeOnly bool) []TestSummary {
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
 			CurrentMetrics: test.CurrentMetrics,
+			SystemInfo:     test.SystemInfo,
 		}
 
 		tests = append(tests, summary)
@@ -198,6 +202,7 @@ func (s *Store) GetTestDetail(runID string) (*TestDetail, error) {
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
 			CurrentMetrics: test.CurrentMetrics,
+			SystemInfo:     test.SystemInfo,
 		},
 		ProgressHistory: make([]ProgressPoint, len(test.History)),
 		ELClientConfig:  test.ELClient,

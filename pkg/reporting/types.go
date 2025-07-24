@@ -1,14 +1,17 @@
 package reporting
 
+import "github.com/ethpandaops/syncoor/pkg/sysinfo"
+
 // Protocol messages
 type TestStartRequest struct {
-	RunID       string            `json:"run_id"`
-	Timestamp   int64             `json:"timestamp"`
-	Network     string            `json:"network"`
-	Labels      map[string]string `json:"labels,omitempty"`
-	ELClient    ClientConfig      `json:"el_client"`
-	CLClient    ClientConfig      `json:"cl_client"`
-	EnclaveName string            `json:"enclave_name"`
+	RunID       string              `json:"run_id"`
+	Timestamp   int64               `json:"timestamp"`
+	Network     string              `json:"network"`
+	Labels      map[string]string   `json:"labels,omitempty"`
+	ELClient    ClientConfig        `json:"el_client"`
+	CLClient    ClientConfig        `json:"cl_client"`
+	EnclaveName string              `json:"enclave_name"`
+	SystemInfo  *sysinfo.SystemInfo `json:"system_info,omitempty"`
 }
 
 type ClientConfig struct {

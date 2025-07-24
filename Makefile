@@ -7,7 +7,13 @@ CMD_PATH=./cmd/syncoor
 
 # Go configuration
 GO_VERSION=1.23
-LDFLAGS=-w -s
+
+# Version detection from git
+# Try to get version from git describe (tags) or fallback to commit hash
+GIT_VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "unknown")
+# If VERSION is not provided, use git version
+VERSION?=$(GIT_VERSION)
+LDFLAGS=-w -s -X main.Version=$(VERSION)
 
 # Default target
 all: clean deps test lint build
@@ -69,8 +75,8 @@ DOCKER_TAG=latest
 
 # Build Docker image
 docker-build:
-	@echo "Building Docker image $(DOCKER_IMAGE):$(DOCKER_TAG)..."
-	@docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
+	@echo "Building Docker image $(DOCKER_IMAGE):$(DOCKER_TAG) with version $(VERSION)..."
+	@docker build --build-arg VERSION=$(VERSION) -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 # Run Docker container for sync tests with mounted Docker socket and reports volume
 # Usage:

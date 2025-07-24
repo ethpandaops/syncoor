@@ -3,40 +3,22 @@ run:
   go: '1.23'
 
 linters:
-  enable:
-    - errcheck
-    - gofmt
-    - goimports
-    - govet
-    - ineffassign
-    - misspell
-    - staticcheck
-    - unused
-    - gosimple
-    - goconst
-    - gocyclo
-    - dupl
-    - lll
-    - unconvert
-    - unparam
-    - nakedret
-    - prealloc
-    - gocritic
-    - gochecknoinits
-    - gochecknoglobals
-    - godox
-    - funlen
-    - wsl
+  enable-all: true
+  disable:
     - gci
     - godot
+    - wsl
     - testpackage
-    - nestif
-    - copyloopvar
-    - exhaustive
-    - sqlclosecheck
-    - rowserrcheck
-    - noctx
-    - contextcheck
+    - varnamelen
+    - tagliatelle
+    - nlreturn
+    - mnd
+    - exhaustruct
+    - exportloopref
+    - revive
+    - forbidigo
+    - depguard
+    - ireturn
 
 linters-settings:
   lll:
@@ -47,12 +29,7 @@ linters-settings:
     lines: 80
     statements: 40
   nestif:
-    min-complexity: 4
-  gci:
-    sections:
-      - standard
-      - default
-      - prefix(github.com/ethpandaops/syncoor)
+    min-complexity: 40
 
 issues:
   exclude-use-default: false
