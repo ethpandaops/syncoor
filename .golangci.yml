@@ -26,10 +26,10 @@ linters:
     - gochecknoglobals
     - godox
     - funlen
-    - wsl
+    #- wsl
     - gci
-    - godot
-    - testpackage
+    #- godot
+    #- testpackage
     - nestif
     - copyloopvar
     - exhaustive

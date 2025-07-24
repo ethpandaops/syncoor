@@ -29,7 +29,6 @@ func TestGetSystemInfo(t *testing.T) {
 
 	// Enhanced system info checks (when available)
 	if runtime.GOOS == "linux" {
-		// zcalusic/sysinfo works best on Linux
 		assert.NotEmpty(t, info.OSName, "OS name should be available on Linux")
 		assert.NotEmpty(t, info.CPUModel, "CPU model should be available on Linux")
 		assert.Greater(t, info.TotalMemory, uint64(0), "Total memory should be greater than 0")

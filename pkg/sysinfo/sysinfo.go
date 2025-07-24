@@ -3,7 +3,6 @@ package sysinfo
 import (
 	"bufio"
 	"context"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -140,8 +139,8 @@ func (s *service) GetSystemInfo(ctx context.Context) (*SystemInfo, error) {
 	if info.OSArchitecture == "" {
 		info.OSArchitecture = runtime.GOARCH
 	}
-
 	s.log.WithField("system_info", info).Debug("System information collected")
+
 	return info, nil
 }
 
@@ -200,7 +199,11 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 	// Get CPU model from /proc/cpuinfo
 	if info.CPUModel == "" {
 		if file, err := os.Open("/proc/cpuinfo"); err == nil {
-			defer file.Close()
+			defer func() {
+				if closeErr := file.Close(); closeErr != nil {
+					s.log.WithError(closeErr).Warn("Failed to close /proc/cpuinfo")
+				}
+			}()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				line := scanner.Text()
@@ -218,7 +221,11 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 	// Get memory size from /proc/meminfo
 	if info.TotalMemory == 0 {
 		if file, err := os.Open("/proc/meminfo"); err == nil {
-			defer file.Close()
+			defer func() {
+				if closeErr := file.Close(); closeErr != nil {
+					s.log.WithError(closeErr).Warn("Failed to close /proc/meminfo")
+				}
+			}()
 			scanner := bufio.NewScanner(file)
 			for scanner.Scan() {
 				line := scanner.Text()
@@ -237,7 +244,7 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 
 	// Get OS information from /etc/os-release
 	if info.OSName == "" || info.OSVersion == "" {
-		if data, err := ioutil.ReadFile("/etc/os-release"); err == nil {
+		if data, err := os.ReadFile("/etc/os-release"); err == nil {
 			lines := strings.Split(string(data), "\n")
 			for _, line := range lines {
 				if strings.HasPrefix(line, "NAME=") {
