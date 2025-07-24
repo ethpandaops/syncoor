@@ -257,7 +257,18 @@ runs:
           DOCKER_CMD="$DOCKER_CMD --cl-extra-args=\"${{ inputs.cl-extra-args }}\""
         fi
 
-        # Add labels if provided
+        # Add GitHub Actions context labels for traceability
+        DOCKER_CMD="$DOCKER_CMD --label=github.run_id=${{ github.run_id }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.run_number=${{ github.run_number }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.job=${{ github.job }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.repository=${{ github.repository }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.workflow=\"${{ github.workflow }}\""
+        DOCKER_CMD="$DOCKER_CMD --label=github.sha=${{ github.sha }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.actor=${{ github.actor }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.event_name=${{ github.event_name }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.ref=${{ github.ref }}"
+
+        # Add user-provided labels if provided
         if [ -n "${{ inputs.labels }}" ]; then
           IFS=',' read -ra LABEL_ARRAY <<< "${{ inputs.labels }}"
           for label in "${LABEL_ARRAY[@]}"; do

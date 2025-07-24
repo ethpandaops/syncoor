@@ -354,6 +354,31 @@ function generateSystemInfo() {
   };
 }
 
+function generateGitHubLabels() {
+  // Generate mock GitHub Actions context labels for traceability
+  const workflows = ['Sync Test', 'CI/CD', 'Nightly Tests', 'Performance Test', 'Integration Test'];
+  const actors = ['alice-dev', 'bob-tester', 'charlie-ops', 'diana-ci', 'evan-qa'];
+  const eventNames = ['push', 'pull_request', 'schedule', 'workflow_dispatch'];
+  const refs = ['refs/heads/main', 'refs/heads/develop', 'refs/heads/feature/sync-improvements', 'refs/pull/123/merge'];
+  
+  const runId = randomInt(1000000000, 9999999999).toString();
+  const runNumber = randomInt(1, 5000).toString();
+  const jobId = randomInt(10000000000, 99999999999).toString(); // 11-digit job ID
+  const sha = Math.random().toString(36).substring(2, 42); // 40 char SHA
+  
+  return {
+    'github.run_id': runId,
+    'github.run_number': runNumber,
+    'github.job': jobId,
+    'github.repository': 'ethpandaops/syncoor',
+    'github.workflow': workflows[randomInt(0, workflows.length - 1)],
+    'github.sha': sha,
+    'github.actor': actors[randomInt(0, actors.length - 1)],
+    'github.event_name': eventNames[randomInt(0, eventNames.length - 1)],
+    'github.ref': refs[randomInt(0, refs.length - 1)]
+  };
+}
+
 function generateMainReport(runId, timestamp, network, elClient, clClient) {
   const duration = generateRealisticDuration(elClient, network);
   const startTime = timestamp;
@@ -406,7 +431,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient) {
         cmd: generateConsensusCmd(clClient, network),
         version: CLIENT_VERSIONS[clClient]
       },
-      system_info: generateSystemInfo()
+      system_info: generateSystemInfo(),
+      labels: generateGitHubLabels()
     },
     progress: progressEntries
   };

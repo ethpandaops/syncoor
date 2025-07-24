@@ -80,6 +80,7 @@ export interface MainReport {
     cmd?: string[];
   };
   system_info?: SystemInfo;
+  labels?: Record<string, string>;
   sync_info: {
     start: string;
     end: string;

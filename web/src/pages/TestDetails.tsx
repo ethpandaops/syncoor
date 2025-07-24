@@ -10,6 +10,7 @@ import { useMainReport } from '../hooks/useMainReport';
 import { formatDuration, formatTimestamp } from '../lib/utils';
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 import { SystemInformation } from '../components/SystemInformation';
+import { GithubActionsInfo } from '../components/GithubActionsInfo';
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
@@ -288,6 +289,11 @@ export default function TestDetails() {
       {/* System Information */}
       {mainReport?.system_info && (
         <SystemInformation systemInfo={mainReport.system_info} />
+      )}
+
+      {/* GitHub Actions Information */}
+      {mainReport?.labels && (
+        <GithubActionsInfo labels={mainReport.labels} />
       )}
 
       {/* Test Metadata */}
