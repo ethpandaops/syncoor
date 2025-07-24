@@ -60,7 +60,7 @@ func NewStore(log logrus.FieldLogger) *Store {
 }
 
 func (s *Store) Start() {
-	s.cleanupTick = time.NewTicker(time.Hour)
+	s.cleanupTick = time.NewTicker(20 * time.Minute)
 	go s.cleanupLoop()
 }
 
