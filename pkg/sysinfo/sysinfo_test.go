@@ -13,6 +13,8 @@ import (
 )
 
 func TestGetSystemInfo(t *testing.T) {
+	t.Parallel()
+
 	log := logrus.New()
 	log.SetLevel(logrus.DebugLevel)
 
@@ -31,7 +33,7 @@ func TestGetSystemInfo(t *testing.T) {
 	if runtime.GOOS == "linux" {
 		assert.NotEmpty(t, info.OSName, "OS name should be available on Linux")
 		assert.NotEmpty(t, info.CPUModel, "CPU model should be available on Linux")
-		assert.Greater(t, info.TotalMemory, uint64(0), "Total memory should be greater than 0")
+		assert.Positive(t, info.TotalMemory, "Total memory should be greater than 0")
 	}
 
 	// Log all the info

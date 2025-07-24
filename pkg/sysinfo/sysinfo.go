@@ -1,3 +1,6 @@
+// Package sysinfo provides system information collection services.
+// It gathers comprehensive system details including OS, CPU, memory, and hardware information
+// using the zcalusic/sysinfo library with platform-specific fallbacks for enhanced compatibility.
 package sysinfo
 
 import (
