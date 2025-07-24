@@ -83,7 +83,7 @@ func NewSyncCommand() *cobra.Command {
 			config.Labels = parsedLabels
 
 			// Create new sync test service
-			syncTestService := synctest.NewService(logger, config)
+			syncTestService := synctest.NewService(logger, config, Version)
 
 			// Enable recovery if requested
 			if enableRecovery {

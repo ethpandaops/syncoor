@@ -58,6 +58,9 @@ type service struct {
 	// Completion state
 	testCompleted bool
 
+	// Version information
+	syncoorVersion string
+
 	cancel context.CancelFunc
 }
 
@@ -68,6 +71,7 @@ var _ Service = (*service)(nil)
 func NewService(
 	log logrus.FieldLogger,
 	cfg Config,
+	version string,
 ) Service {
 	svc := &service{
 		log:            log.WithField("package", "synctest"),
@@ -75,6 +79,9 @@ func NewService(
 		kurtosisClient: kurtosis.NewClient(log),
 		reportService:  report.NewService(log),
 	}
+
+	// Store version for sysinfo
+	svc.syncoorVersion = version
 
 	// Initialize reporting client if configured
 	if cfg.ServerURL != "" {
@@ -211,6 +218,7 @@ func (s *service) Start(ctx context.Context) error {
 
 	// Collect system information
 	sysInfoService := sysinfo.NewService(s.log)
+	sysInfoService.SetSyncoorVersion(s.syncoorVersion)
 	systemInfo, err := sysInfoService.GetSystemInfo(ctx)
 	if err != nil {
 		s.log.WithError(err).Warn("Failed to collect system information")

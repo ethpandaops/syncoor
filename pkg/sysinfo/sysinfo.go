@@ -14,12 +14,14 @@ import (
 
 type Service interface {
 	GetSystemInfo(ctx context.Context) (*SystemInfo, error)
+	SetSyncoorVersion(version string)
 }
 
 type SystemInfo struct {
 	// Basic system information
-	Hostname  string `json:"hostname"`
-	GoVersion string `json:"go_version"`
+	Hostname       string `json:"hostname"`
+	GoVersion      string `json:"go_version"`
+	SyncoorVersion string `json:"syncoor_version,omitempty"`
 
 	// Enhanced system information from zcalusic/sysinfo
 	OSName         string `json:"os_name,omitempty"`
@@ -57,13 +59,18 @@ type SystemInfo struct {
 }
 
 type service struct {
-	log logrus.FieldLogger
+	log            logrus.FieldLogger
+	syncoorVersion string
 }
 
 func NewService(log logrus.FieldLogger) Service {
 	return &service{
 		log: log.WithField("package", "sysinfo"),
 	}
+}
+
+func (s *service) SetSyncoorVersion(version string) {
+	s.syncoorVersion = version
 }
 
 func (s *service) GetSystemInfo(ctx context.Context) (*SystemInfo, error) {
@@ -74,8 +81,9 @@ func (s *service) GetSystemInfo(ctx context.Context) (*SystemInfo, error) {
 
 	info := &SystemInfo{
 		// Basic information
-		Hostname:  si.Node.Hostname,
-		GoVersion: runtime.Version(),
+		Hostname:       si.Node.Hostname,
+		GoVersion:      runtime.Version(),
+		SyncoorVersion: s.syncoorVersion,
 
 		// Enhanced OS information
 		OSName:         si.OS.Name,

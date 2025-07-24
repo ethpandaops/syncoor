@@ -320,6 +320,7 @@ function generateSystemInfo() {
     os: selectedPlatform,
     architecture: selectedArch,
     go_version: `go1.${randomInt(19, 23)}.${randomInt(0, 10)}`,
+    syncoor_version: `v${randomInt(1, 2)}.${randomInt(0, 9)}.${randomInt(0, 20)}`,
     
     // Enhanced OS information
     os_name: selectedPlatform === 'linux' ? 'Ubuntu' : selectedPlatform === 'darwin' ? 'macOS' : 'Windows',

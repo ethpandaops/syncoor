@@ -12,6 +12,7 @@ export interface SystemInfo {
   // Basic system information
   hostname: string;
   go_version: string;
+  syncoor_version?: string;
   
   // Enhanced OS information
   os_name?: string;

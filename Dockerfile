@@ -5,7 +5,9 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o syncoor ./cmd/syncoor
+# Use make build for consistent build process
+ARG VERSION
+RUN make build
 
 FROM alpine:latest
 RUN apk add --no-cache ca-certificates bash docker-cli curl && \
@@ -14,6 +16,6 @@ RUN apk add --no-cache ca-certificates bash docker-cli curl && \
     echo "00000000000000000000000000001337" > /etc/machine-id && \
     /usr/local/bin/kurtosis analytics disable
 WORKDIR /app
-COPY --from=builder /app/syncoor /usr/local/bin/syncoor
+COPY --from=builder /app/bin/syncoor /usr/local/bin/syncoor
 ENTRYPOINT ["syncoor"]
 CMD ["--help"]

@@ -318,7 +318,7 @@ export default function TestDetails() {
           </CardHeader>
           <CardContent>
             {!showSystemInfo && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 py-2">
                 <div>
                   <span className="text-sm font-medium text-muted-foreground">Operating System</span>
                   <div className="text-sm mt-1">
@@ -359,6 +359,12 @@ export default function TestDetails() {
                   <span className="text-sm font-medium text-muted-foreground">Memory</span>
                   <div className="text-sm mt-1">{formatBytes(mainReport.system_info.total_memory)}</div>
                 </div>
+                {mainReport.system_info.syncoor_version && (
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Syncoor Version</span>
+                    <div className="text-sm font-mono mt-1">{mainReport.system_info.syncoor_version}</div>
+                  </div>
+                )}
               </div>
             )}
             {showSystemInfo && (
@@ -375,6 +381,12 @@ export default function TestDetails() {
                     <span className="text-sm font-medium text-muted-foreground">Go Version</span>
                     <div className="text-sm font-mono mt-1">{mainReport.system_info.go_version}</div>
                   </div>
+                  {mainReport.system_info.syncoor_version && (
+                    <div>
+                      <span className="text-sm font-medium text-muted-foreground">Syncoor Version</span>
+                      <div className="text-sm font-mono mt-1">{mainReport.system_info.syncoor_version}</div>
+                    </div>
+                  )}
                 </div>
               </div>
 

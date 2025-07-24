@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/sirupsen/logrus"
@@ -10,6 +11,9 @@ import (
 var (
 	// Global flags
 	logLevel string
+
+	// Version information (set during build)
+	Version = "unknown"
 )
 
 var rootCmd = &cobra.Command{
@@ -33,6 +37,17 @@ func init() {
 	rootCmd.AddCommand(NewSyncCommand())
 	rootCmd.AddCommand(NewServerCommand())
 	rootCmd.AddCommand(NewReportIndexCommand())
+	rootCmd.AddCommand(newVersionCommand())
+}
+
+func newVersionCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Show version information",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("%s-%s\n", rootCmd.Use, Version)
+		},
+	}
 }
 
 func main() {
