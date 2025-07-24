@@ -31,7 +31,7 @@ type Server struct {
 }
 
 func NewServer(log logrus.FieldLogger, addr string, authToken string) *Server {
-	store := NewStore()
+	store := NewStore(log)
 
 	s := &Server{
 		log:         log,
@@ -174,8 +174,8 @@ func (s *Server) createMockTest(runID, network, elType, clType, status string) {
 		"status":  status,
 	}).Info("Creating mock test")
 
-	// Create the test start request using proper types
-	testStartReq := reporting.TestStartRequest{
+	// Create the test keep alive request
+	testKeepAliveReq := reporting.TestKeepaliveRequest{
 		RunID:     runID,
 		Timestamp: time.Now().Unix(),
 		Network:   network,
@@ -189,10 +189,11 @@ func (s *Server) createMockTest(runID, network, elType, clType, status string) {
 			Image: clType + ":latest",
 		},
 		EnclaveName: "mock-enclave",
+		SystemInfo:  nil,
 	}
 
 	// Create the test in the store
-	if err := s.store.CreateTest(testStartReq); err != nil {
+	if err := s.store.CreateTest(testKeepAliveReq); err != nil {
 		s.log.WithFields(map[string]interface{}{
 			"run_id": runID,
 			"error":  err.Error(),
@@ -268,7 +269,7 @@ func (s *Server) createMockTest(runID, network, elType, clType, status string) {
 // Setup methods
 func (s *Server) setupRoutes() {
 	// Client endpoints (require auth)
-	s.router.HandleFunc("/api/v1/tests/start", s.corsMiddleware(s.authMiddleware(s.handleTestStart)))
+	s.router.HandleFunc("/api/v1/tests/keepalive", s.corsMiddleware(s.authMiddleware(s.handleTestKeepalive)))
 	s.router.HandleFunc("/api/v1/tests/", s.corsMiddleware(s.authMiddleware(s.handleTestOperations)))
 
 	// Public endpoints (no auth)

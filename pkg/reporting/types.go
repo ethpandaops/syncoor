@@ -2,8 +2,8 @@ package reporting
 
 import "github.com/ethpandaops/syncoor/pkg/sysinfo"
 
-// Protocol messages
-type TestStartRequest struct {
+// TestKeepaliveRequest represents a keepalive request to maintain test connection
+type TestKeepaliveRequest struct {
 	RunID       string              `json:"run_id"`
 	Timestamp   int64               `json:"timestamp"`
 	Network     string              `json:"network"`
