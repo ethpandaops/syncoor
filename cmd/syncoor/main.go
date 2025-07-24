@@ -13,7 +13,7 @@ var (
 	logLevel string
 
 	// Version information (set during build)
-	Version = "unknown"
+	Version = "unknown" //nolint: gochecknoglobals
 )
 
 var rootCmd = &cobra.Command{

@@ -146,12 +146,10 @@ func (s *service) GetSystemInfo(ctx context.Context) (*SystemInfo, error) {
 
 // applyPlatformFallbacks adds platform-specific information when zcalusic/sysinfo doesn't provide it
 func (s *service) applyPlatformFallbacks(info *SystemInfo) {
-	// For macOS (Darwin), add specific information
-	if runtime.GOOS == "darwin" {
+	switch runtime.GOOS {
+	case "darwin":
 		s.applyDarwinFallbacks(info)
-	}
-	// For Linux, add specific information
-	if runtime.GOOS == "linux" {
+	case "linux":
 		s.applyLinuxFallbacks(info)
 	}
 }
@@ -176,14 +174,7 @@ func (s *service) applyDarwinFallbacks(info *SystemInfo) {
 
 	// Get macOS version
 	if info.OSVersion == "" || info.OSName == "" {
-		if output, err := exec.Command("sw_vers", "-productVersion").Output(); err == nil {
-			info.OSVersion = strings.TrimSpace(string(output))
-			info.PlatformVersion = info.OSVersion
-		}
-		if output, err := exec.Command("sw_vers", "-productName").Output(); err == nil {
-			info.OSName = strings.TrimSpace(string(output))
-			info.PlatformFamily = info.OSName
-		}
+		s.readMacOSVersionInfo(info)
 	}
 
 	// Get kernel version
@@ -198,48 +189,12 @@ func (s *service) applyDarwinFallbacks(info *SystemInfo) {
 func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 	// Get CPU model from /proc/cpuinfo
 	if info.CPUModel == "" {
-		if file, err := os.Open("/proc/cpuinfo"); err == nil {
-			defer func() {
-				if closeErr := file.Close(); closeErr != nil {
-					s.log.WithError(closeErr).Warn("Failed to close /proc/cpuinfo")
-				}
-			}()
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.HasPrefix(line, "model name") {
-					parts := strings.SplitN(line, ":", 2)
-					if len(parts) == 2 {
-						info.CPUModel = strings.TrimSpace(parts[1])
-						break
-					}
-				}
-			}
-		}
+		s.readCPUModelFromProc(info)
 	}
 
 	// Get memory size from /proc/meminfo
 	if info.TotalMemory == 0 {
-		if file, err := os.Open("/proc/meminfo"); err == nil {
-			defer func() {
-				if closeErr := file.Close(); closeErr != nil {
-					s.log.WithError(closeErr).Warn("Failed to close /proc/meminfo")
-				}
-			}()
-			scanner := bufio.NewScanner(file)
-			for scanner.Scan() {
-				line := scanner.Text()
-				if strings.HasPrefix(line, "MemTotal:") {
-					fields := strings.Fields(line)
-					if len(fields) >= 2 {
-						if memKB, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
-							info.TotalMemory = memKB * 1024 // Convert KB to bytes
-							break
-						}
-					}
-				}
-			}
-		}
+		s.readMemoryFromProcMeminfo(info)
 	}
 
 	// Get OS information from /etc/os-release
@@ -288,6 +243,81 @@ func (s *service) applyLinuxFallbacks(info *SystemInfo) {
 		if output, err := exec.Command("uname", "-v").Output(); err == nil {
 			info.KernelRelease = strings.TrimSpace(string(output))
 		}
+	}
+}
+
+// readMemoryFromProcMeminfo reads total memory from /proc/meminfo
+func (s *service) readMemoryFromProcMeminfo(info *SystemInfo) {
+	file, err := os.Open("/proc/meminfo")
+	if err != nil {
+		return
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			s.log.WithError(closeErr).Warn("Failed to close /proc/meminfo")
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "MemTotal:") {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		memKB, err := strconv.ParseUint(fields[1], 10, 64)
+		if err != nil {
+			continue
+		}
+
+		info.TotalMemory = memKB * 1024 // Convert KB to bytes
+		break
+	}
+}
+
+// readCPUModelFromProc reads CPU model from /proc/cpuinfo
+func (s *service) readCPUModelFromProc(info *SystemInfo) {
+	file, err := os.Open("/proc/cpuinfo")
+	if err != nil {
+		return
+	}
+	defer func() {
+		if closeErr := file.Close(); closeErr != nil {
+			s.log.WithError(closeErr).Warn("Failed to close /proc/cpuinfo")
+		}
+	}()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "model name") {
+			continue
+		}
+
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+
+		info.CPUModel = strings.TrimSpace(parts[1])
+		break
+	}
+}
+
+// readMacOSVersionInfo reads macOS version and product information
+func (s *service) readMacOSVersionInfo(info *SystemInfo) {
+	if output, err := exec.Command("sw_vers", "-productVersion").Output(); err == nil {
+		info.OSVersion = strings.TrimSpace(string(output))
+		info.PlatformVersion = info.OSVersion
+	}
+	if output, err := exec.Command("sw_vers", "-productName").Output(); err == nil {
+		info.OSName = strings.TrimSpace(string(output))
+		info.PlatformFamily = info.OSName
 	}
 }
 
