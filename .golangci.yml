@@ -27,7 +27,7 @@ linters:
     - godox
     - funlen
     #- wsl
-    - gci
+    #- gci
     #- godot
     #- testpackage
     - nestif
