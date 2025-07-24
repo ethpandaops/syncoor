@@ -204,6 +204,11 @@ func (s *service) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to set network in report: %w", err)
 	}
 
+	// Set labels in report
+	if err := s.reportService.SetLabels(ctx, s.cfg.Labels); err != nil {
+		return fmt.Errorf("failed to set labels in report: %w", err)
+	}
+
 	// Restore recovered report state if available
 	if s.recoveredReport != nil {
 		s.log.WithField("progress_entries", len(s.recoveredReport.SyncStatus.SyncProgress)).Info("Restoring progress from recovered report")
