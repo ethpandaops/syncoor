@@ -9,6 +9,7 @@ interface GitHubInfo {
   runId?: string;
   runNumber?: string;
   job?: string;
+  jobId?: string;
   repository?: string;
   workflow?: string;
   sha?: string;
@@ -23,6 +24,7 @@ export function GithubActionsInfo({ labels }: GithubActionsInfoProps) {
     runId: labels['github.run_id'],
     runNumber: labels['github.run_number'],
     job: labels['github.job'],
+    jobId: labels['github.job_id'],
     repository: labels['github.repository'],
     workflow: labels['github.workflow'],
     sha: labels['github.sha'],
@@ -48,8 +50,8 @@ export function GithubActionsInfo({ labels }: GithubActionsInfoProps) {
 
   // Helper function to get GitHub job URL
   const getGitHubJobUrl = () => {
-    if (githubInfo.repository && githubInfo.runId && githubInfo.job) {
-      return `https://github.com/${githubInfo.repository}/actions/runs/${githubInfo.runId}/job/${githubInfo.job}`;
+    if (githubInfo.repository && githubInfo.runId && githubInfo.jobId) {
+      return `https://github.com/${githubInfo.repository}/actions/runs/${githubInfo.runId}/job/${githubInfo.jobId}`;
     }
     return null;
   };
@@ -122,12 +124,12 @@ export function GithubActionsInfo({ labels }: GithubActionsInfoProps) {
                       href={githubJobUrl} 
                       target="_blank" 
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-mono"
+                      className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       {githubInfo.job}
                     </a>
                   ) : (
-                    <span className="font-mono">{githubInfo.job}</span>
+                    githubInfo.job
                   )}
                 </div>
               </div>

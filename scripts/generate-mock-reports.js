@@ -360,16 +360,19 @@ function generateGitHubLabels() {
   const actors = ['alice-dev', 'bob-tester', 'charlie-ops', 'diana-ci', 'evan-qa'];
   const eventNames = ['push', 'pull_request', 'schedule', 'workflow_dispatch'];
   const refs = ['refs/heads/main', 'refs/heads/develop', 'refs/heads/feature/sync-improvements', 'refs/pull/123/merge'];
+  const jobNames = ['sync', 'build', 'test', 'deploy', 'lint', 'integration-test'];
   
   const runId = randomInt(1000000000, 9999999999).toString();
   const runNumber = randomInt(1, 5000).toString();
+  const jobName = jobNames[randomInt(0, jobNames.length - 1)];
   const jobId = randomInt(10000000000, 99999999999).toString(); // 11-digit job ID
   const sha = Math.random().toString(36).substring(2, 42); // 40 char SHA
   
   return {
     'github.run_id': runId,
     'github.run_number': runNumber,
-    'github.job': jobId,
+    'github.job': jobName,
+    'github.job_id': jobId,
     'github.repository': 'ethpandaops/syncoor',
     'github.workflow': workflows[randomInt(0, workflows.length - 1)],
     'github.sha': sha,
