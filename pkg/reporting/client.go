@@ -23,6 +23,10 @@ type Client struct {
 	updateQueue chan ProgressUpdateRequest
 	stopCh      chan struct{}
 	runID       string
+
+	// Keepalive tracking
+	keepaliveReq    *TestKeepaliveRequest
+	keepaliveTicker *time.Ticker
 }
 
 func NewClient(serverURL, authToken string, log logrus.FieldLogger) *Client {
@@ -38,16 +42,35 @@ func NewClient(serverURL, authToken string, log logrus.FieldLogger) *Client {
 
 func (c *Client) Start(ctx context.Context) {
 	go c.processUpdateQueue(ctx)
+
+	// Start keepalive ticker if we have a keepalive request stored
+	if c.keepaliveReq != nil {
+		c.keepaliveTicker = time.NewTicker(3 * time.Minute)
+		go c.processKeepalive(ctx)
+	}
 }
 
 func (c *Client) Stop() {
+	if c.keepaliveTicker != nil {
+		c.keepaliveTicker.Stop()
+	}
 	close(c.stopCh)
 }
 
 // Main reporting methods
-func (c *Client) ReportTestStart(ctx context.Context, req TestStartRequest) error {
+func (c *Client) ReportTestKeepAlive(ctx context.Context, req TestKeepaliveRequest) error {
 	c.runID = req.RunID
-	return c.sendRequest(ctx, "POST", "/api/v1/tests/start", req)
+
+	// Store keepalive request for periodic updates
+	c.keepaliveReq = &req
+
+	// Start keepalive ticker now that we have a request
+	if c.keepaliveTicker == nil {
+		c.keepaliveTicker = time.NewTicker(3 * time.Minute)
+		go c.processKeepalive(ctx)
+	}
+
+	return c.sendRequest(ctx, "POST", "/api/v1/tests/keepalive", c.keepaliveReq)
 }
 
 func (c *Client) ReportProgress(metrics ProgressMetrics) {
@@ -131,6 +154,25 @@ func (c *Client) processUpdateQueue(ctx context.Context) {
 
 func (c *Client) sendProgressUpdate(ctx context.Context, runID string, update ProgressUpdateRequest) error {
 	return c.sendRequest(ctx, "POST", fmt.Sprintf("/api/v1/tests/%s/progress", runID), update)
+}
+
+func (c *Client) processKeepalive(ctx context.Context) {
+	for {
+		select {
+		case <-c.keepaliveTicker.C:
+			if c.keepaliveReq != nil {
+				// Update timestamp for current keepalive
+				c.keepaliveReq.Timestamp = time.Now().Unix()
+				if err := c.sendRequest(ctx, "POST", "/api/v1/tests/keepalive", *c.keepaliveReq); err != nil {
+					c.log.WithError(err).Warn("Failed to send keepalive")
+				}
+			}
+		case <-c.stopCh:
+			return
+		case <-ctx.Done():
+			return
+		}
+	}
 }
 
 // sanitizeMetrics ensures no NaN or Inf values are sent to the server

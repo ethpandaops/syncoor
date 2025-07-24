@@ -1,15 +1,24 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
 	"github.com/ethpandaops/syncoor/pkg/sysinfo"
+	"github.com/sirupsen/logrus"
+)
+
+var (
+	ErrTestAlreadyExists = errors.New("test already exists")
+	ErrTestNotFound      = errors.New("test not found")
+	ErrTestComplete      = errors.New("test is already complete")
 )
 
 type Store struct {
+	log   logrus.FieldLogger
 	mu    sync.RWMutex
 	tests map[string]*TestData
 
@@ -40,8 +49,9 @@ type TestData struct {
 	History        []ProgressPoint
 }
 
-func NewStore() *Store {
+func NewStore(log logrus.FieldLogger) *Store {
 	return &Store{
+		log:        log,
 		tests:      make(map[string]*TestData),
 		maxAge:     24 * time.Hour,
 		maxHistory: 1000,
@@ -62,12 +72,12 @@ func (s *Store) Stop() {
 }
 
 // Write operations
-func (s *Store) CreateTest(req reporting.TestStartRequest) error {
+func (s *Store) CreateTest(req reporting.TestKeepaliveRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if _, exists := s.tests[req.RunID]; exists {
-		return fmt.Errorf("test with run_id %s already exists", req.RunID)
+		return fmt.Errorf("%w: %s", ErrTestAlreadyExists, req.RunID)
 	}
 
 	s.tests[req.RunID] = &TestData{
@@ -94,11 +104,11 @@ func (s *Store) UpdateProgress(runID string, metrics reporting.ProgressMetrics) 
 
 	test, exists := s.tests[runID]
 	if !exists {
-		return fmt.Errorf("test with run_id %s not found", runID)
+		return fmt.Errorf("%w: %s", ErrTestNotFound, runID)
 	}
 
 	if test.IsComplete {
-		return fmt.Errorf("test with run_id %s is already complete", runID)
+		return fmt.Errorf("%w: %s", ErrTestComplete, runID)
 	}
 
 	now := time.Now()
@@ -117,13 +127,32 @@ func (s *Store) UpdateProgress(runID string, metrics reporting.ProgressMetrics) 
 	return nil
 }
 
+func (s *Store) UpdateTestKeepalive(req reporting.TestKeepaliveRequest) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	test, exists := s.tests[req.RunID]
+	if !exists {
+		return fmt.Errorf("%w: %s", ErrTestNotFound, req.RunID)
+	}
+
+	if test.IsComplete {
+		return fmt.Errorf("%w: %s", ErrTestComplete, req.RunID)
+	}
+
+	// Update last keepalive timestamp
+	test.LastUpdate = time.Unix(req.Timestamp, 0)
+
+	return nil
+}
+
 func (s *Store) CompleteTest(runID string, req reporting.TestCompleteRequest) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	test, exists := s.tests[runID]
 	if !exists {
-		return fmt.Errorf("test with run_id %s not found", runID)
+		return fmt.Errorf("%w: %s", ErrTestNotFound, runID)
 	}
 
 	endTime := time.Unix(req.Timestamp, 0)
@@ -143,7 +172,7 @@ func (s *Store) GetTest(runID string) (*TestData, error) {
 
 	test, exists := s.tests[runID]
 	if !exists {
-		return nil, fmt.Errorf("test with run_id %s not found", runID)
+		return nil, fmt.Errorf("%w: %s", ErrTestNotFound, runID)
 	}
 
 	// Return a copy to avoid concurrent access issues
@@ -187,7 +216,7 @@ func (s *Store) GetTestDetail(runID string) (*TestDetail, error) {
 
 	test, exists := s.tests[runID]
 	if !exists {
-		return nil, fmt.Errorf("test with run_id %s not found", runID)
+		return nil, fmt.Errorf("%w: %s", ErrTestNotFound, runID)
 	}
 
 	detail := &TestDetail{
@@ -218,15 +247,66 @@ func (s *Store) GetTestDetail(runID string) (*TestDetail, error) {
 	return detail, nil
 }
 
+// MarkOrphanedTests marks tests as orphaned if no keepalive for a given interval
+func (s *Store) MarkOrphanedTests() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var orphanedTests []string
+	orphanThreshold := time.Now().Add(-10 * time.Minute)
+
+	for runID, test := range s.tests {
+		if test.IsRunning && !test.IsComplete && test.LastUpdate.Before(orphanThreshold) {
+			test.IsRunning = false
+			test.Error = "Test marked as orphaned - no keepalive received for 10 minutes"
+			orphanedTests = append(orphanedTests, runID)
+		}
+	}
+
+	return orphanedTests
+}
+
+func (s *Store) CleanupOrphanedTests() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var cleanedTests []string
+	cleanupThreshold := time.Now().Add(-20 * time.Minute)
+
+	for runID, test := range s.tests {
+		if !test.IsRunning && test.LastUpdate.Before(cleanupThreshold) {
+			delete(s.tests, runID)
+			cleanedTests = append(cleanedTests, runID)
+		}
+	}
+
+	return cleanedTests
+}
+
 // Maintenance
 func (s *Store) cleanupLoop() {
 	for {
 		select {
 		case <-s.cleanupTick.C:
 			s.cleanup()
+			s.performOrphanMaintenance()
 		case <-s.stopCh:
 			return
 		}
+	}
+}
+
+func (s *Store) performOrphanMaintenance() {
+	// Mark tests as orphaned if no keepalive for 10 minutes
+	orphanedTests := s.MarkOrphanedTests()
+	if len(orphanedTests) > 0 {
+		s.log.WithField("run_id", orphanedTests).Info("Marked tests as orphaned")
+	}
+
+	// Clean up orphaned tests after 20 minutes
+	cleanedTests := s.CleanupOrphanedTests()
+	if len(cleanedTests) > 0 {
+		s.log.WithField("run_id", cleanedTests).Info("Cleaned up orphaned tests")
 	}
 }
 

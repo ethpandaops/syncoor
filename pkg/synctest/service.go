@@ -238,7 +238,7 @@ func (s *service) Start(ctx context.Context) error {
 	// Report test start if reporting client is configured
 	if s.reportingClient != nil {
 		runID := fmt.Sprintf("sync-test-%d-%s_%s_%s", time.Now().UnixNano(), s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
-		startReq := reporting.TestStartRequest{
+		startReq := reporting.TestKeepaliveRequest{
 			RunID:     runID,
 			Timestamp: time.Now().Unix(),
 			Network:   s.cfg.Network,
@@ -257,7 +257,7 @@ func (s *service) Start(ctx context.Context) error {
 			SystemInfo:  systemInfo,
 		}
 
-		if err := s.reportingClient.ReportTestStart(ctx, startReq); err != nil {
+		if err := s.reportingClient.ReportTestKeepAlive(ctx, startReq); err != nil {
 			s.log.WithError(err).Warn("Failed to report test start")
 			// Continue anyway - reporting is optional
 		}
