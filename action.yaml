@@ -208,6 +208,16 @@ runs:
         fi
         echo "image=$(echo ${IMAGE})" >> $GITHUB_OUTPUT
 
+    - name: Get Job ID from GH API
+      if: ${{ inputs.run-tests == 'true' }}
+      id: get-job-id
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        jobs=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id}}/attempts/${{ github.run_attempt }}/jobs)
+        job_id=$(echo $jobs | jq -r '.jobs[] | select(.runner_name=="${{ runner.name }}") | .id')
+        echo "job_id=$job_id" >> $GITHUB_OUTPUT
+
     - name: Run Syncoor test
       if: ${{ inputs.run-tests == 'true' }}
       id: run-test
@@ -261,6 +271,7 @@ runs:
         DOCKER_CMD="$DOCKER_CMD --label=github.run_id=${{ github.run_id }}"
         DOCKER_CMD="$DOCKER_CMD --label=github.run_number=${{ github.run_number }}"
         DOCKER_CMD="$DOCKER_CMD --label=github.job=${{ github.job }}"
+        DOCKER_CMD="$DOCKER_CMD --label=github.job_id=${{ steps.get-job-id.outputs.job_id }}"
         DOCKER_CMD="$DOCKER_CMD --label=github.repository=${{ github.repository }}"
         DOCKER_CMD="$DOCKER_CMD --label=github.workflow=\"${{ github.workflow }}\""
         DOCKER_CMD="$DOCKER_CMD --label=github.sha=${{ github.sha }}"
