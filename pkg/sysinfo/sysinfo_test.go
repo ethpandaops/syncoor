@@ -2,10 +2,11 @@ package sysinfo
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"runtime"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,26 +35,11 @@ func TestGetSystemInfo(t *testing.T) {
 		assert.Greater(t, info.TotalMemory, uint64(0), "Total memory should be greater than 0")
 	}
 
-	// CPU information should be available
-	if info.CPUModel != "" {
-		t.Logf("CPU Model: %s", info.CPUModel)
-	}
-	if info.CPUVendor != "" {
-		t.Logf("CPU Vendor: %s", info.CPUVendor)
-	}
-	if info.CPUCores > 0 {
-		t.Logf("CPU Cores: %d", info.CPUCores)
+	// Log all the info
+	data, err := json.MarshalIndent(&info, "", "  ")
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	// Hardware information
-	if info.ProductName != "" {
-		t.Logf("Product: %s", info.ProductName)
-	}
-	if info.Hypervisor != "" {
-		t.Logf("Hypervisor: %s", info.Hypervisor)
-	}
-
-	// Log the collected info for debugging
-	t.Logf("System Info: %+v", info)
-	spew.Dump(info)
+	fmt.Println(string(data))
 }

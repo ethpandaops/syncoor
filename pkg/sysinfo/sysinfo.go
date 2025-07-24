@@ -1,7 +1,9 @@
 package sysinfo
 
 import (
+	"bufio"
 	"context"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -149,6 +151,10 @@ func (s *service) applyPlatformFallbacks(info *SystemInfo) {
 	if runtime.GOOS == "darwin" {
 		s.applyDarwinFallbacks(info)
 	}
+	// For Linux, add specific information
+	if runtime.GOOS == "linux" {
+		s.applyLinuxFallbacks(info)
+	}
 }
 
 // applyDarwinFallbacks adds macOS-specific information
@@ -185,6 +191,95 @@ func (s *service) applyDarwinFallbacks(info *SystemInfo) {
 	if info.KernelVersion == "" {
 		if output, err := exec.Command("uname", "-r").Output(); err == nil {
 			info.KernelVersion = strings.TrimSpace(string(output))
+		}
+	}
+}
+
+// applyLinuxFallbacks adds Linux-specific information
+func (s *service) applyLinuxFallbacks(info *SystemInfo) {
+	// Get CPU model from /proc/cpuinfo
+	if info.CPUModel == "" {
+		if file, err := os.Open("/proc/cpuinfo"); err == nil {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.HasPrefix(line, "model name") {
+					parts := strings.SplitN(line, ":", 2)
+					if len(parts) == 2 {
+						info.CPUModel = strings.TrimSpace(parts[1])
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// Get memory size from /proc/meminfo
+	if info.TotalMemory == 0 {
+		if file, err := os.Open("/proc/meminfo"); err == nil {
+			defer file.Close()
+			scanner := bufio.NewScanner(file)
+			for scanner.Scan() {
+				line := scanner.Text()
+				if strings.HasPrefix(line, "MemTotal:") {
+					fields := strings.Fields(line)
+					if len(fields) >= 2 {
+						if memKB, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
+							info.TotalMemory = memKB * 1024 // Convert KB to bytes
+							break
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Get OS information from /etc/os-release
+	if info.OSName == "" || info.OSVersion == "" {
+		if data, err := ioutil.ReadFile("/etc/os-release"); err == nil {
+			lines := strings.Split(string(data), "\n")
+			for _, line := range lines {
+				if strings.HasPrefix(line, "NAME=") {
+					info.OSName = strings.Trim(strings.TrimPrefix(line, "NAME="), "\"")
+					info.PlatformFamily = info.OSName
+				} else if strings.HasPrefix(line, "VERSION=") {
+					info.OSVersion = strings.Trim(strings.TrimPrefix(line, "VERSION="), "\"")
+					info.PlatformVersion = info.OSVersion
+				} else if strings.HasPrefix(line, "PRETTY_NAME=") && info.OSName == "" {
+					// Fallback to PRETTY_NAME if NAME is not available
+					info.OSName = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+					info.PlatformFamily = info.OSName
+				}
+			}
+		}
+	}
+
+	// Fallback to lsb_release command if /etc/os-release doesn't work
+	if info.OSName == "" {
+		if output, err := exec.Command("lsb_release", "-d", "-s").Output(); err == nil {
+			info.OSName = strings.Trim(strings.TrimSpace(string(output)), "\"")
+			info.PlatformFamily = info.OSName
+		}
+	}
+	if info.OSVersion == "" {
+		if output, err := exec.Command("lsb_release", "-r", "-s").Output(); err == nil {
+			info.OSVersion = strings.TrimSpace(string(output))
+			info.PlatformVersion = info.OSVersion
+		}
+	}
+
+	// Get kernel version
+	if info.KernelVersion == "" {
+		if output, err := exec.Command("uname", "-r").Output(); err == nil {
+			info.KernelVersion = strings.TrimSpace(string(output))
+		}
+	}
+
+	// Get kernel release (full version string)
+	if info.KernelRelease == "" {
+		if output, err := exec.Command("uname", "-v").Output(); err == nil {
+			info.KernelRelease = strings.TrimSpace(string(output))
 		}
 	}
 }
