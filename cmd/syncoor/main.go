@@ -38,6 +38,7 @@ func init() {
 	rootCmd.AddCommand(NewServerCommand())
 	rootCmd.AddCommand(NewReportIndexCommand())
 	rootCmd.AddCommand(newVersionCommand())
+	rootCmd.AddCommand(NewSysinfoCommand())
 }
 
 func newVersionCommand() *cobra.Command {
