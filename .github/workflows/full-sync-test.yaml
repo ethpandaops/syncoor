@@ -119,6 +119,7 @@ jobs:
     - name: Run Syncoor Test
       uses: ./
       with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
         #git-ref: main
         network: ${{ matrix.network }}
         el-client: ${{ matrix.el-client }}

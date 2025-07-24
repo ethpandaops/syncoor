@@ -3,6 +3,10 @@ description: 'Run Ethereum client synchronization tests using syncoor'
 author: 'ethpandaops'
 
 inputs:
+  github-token:
+    description: 'GitHub token for API access' # You can just provide ${{ secrets.GITHUB_TOKEN }}
+    required: true
+
   image:
     description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:latest). Ignored if git-ref is provided.'
     required: false
@@ -212,7 +216,7 @@ runs:
       if: ${{ inputs.run-tests == 'true' }}
       id: get-job-id
       env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GH_TOKEN: ${{ inputs.github-token }}
       run: |
         jobs=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.run_id}}/attempts/${{ github.run_attempt }}/jobs)
         job_id=$(echo $jobs | jq -r '.jobs[] | select(.runner_name=="${{ runner.name }}") | .id')
