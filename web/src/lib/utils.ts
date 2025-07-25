@@ -358,7 +358,7 @@ export function calculateMovingAverage<T extends Record<string, any>>(
 /**
  * Calculates stats for a group of test reports
  * @param reports - Array of IndexEntry reports
- * @returns Object with last runtime, average duration, and most recent disk usage
+ * @returns Object with last runtime, trend duration (last moving average), and most recent disk usage
  */
 export function calculateClientGroupStats(reports: any[]) {
   if (!reports || reports.length === 0) {
@@ -375,13 +375,33 @@ export function calculateClientGroupStats(reports: any[]) {
   // Last runtime (most recent test timestamp)
   const lastRuntime = Number(sortedReports[0].timestamp);
   
-  // Average duration
+  // Calculate trend duration (last moving average value)
+  let avgDuration = null;
   const validDurations = reports
     .map(r => r.sync_info.duration)
     .filter(d => typeof d === 'number' && d > 0);
-  const avgDuration = validDurations.length > 0
-    ? validDurations.reduce((sum, d) => sum + d, 0) / validDurations.length
-    : null;
+  
+  if (validDurations.length > 0) {
+    if (validDurations.length >= 3) {
+      // Sort by timestamp for proper trend calculation
+      const sortedByTime = [...reports]
+        .filter(r => typeof r.sync_info.duration === 'number' && r.sync_info.duration > 0)
+        .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
+        .map(r => ({
+          timestamp: Number(r.timestamp),
+          duration: r.sync_info.duration
+        }));
+      
+      // Calculate moving average and get the last value
+      const withMovingAvg = calculateMovingAverage(sortedByTime, 'duration', 3);
+      if (withMovingAvg.length > 0) {
+        avgDuration = withMovingAvg[withMovingAvg.length - 1].movingAverage;
+      }
+    } else {
+      // Fallback to simple average if not enough data points
+      avgDuration = validDurations.reduce((sum, d) => sum + d, 0) / validDurations.length;
+    }
+  }
   
   // Most recent disk usage (from most recent test with disk data)
   const mostRecentWithDisk = sortedReports.find(r => r.sync_info.last_entry?.de);
