@@ -168,6 +168,9 @@ outputs:
   report-path:
     description: 'Path to the generated report'
     value: ${{ steps.run-test.outputs.report-path }}
+  main-report-file:
+    description: 'Path to the main report JSON file'
+    value: ${{ steps.run-test.outputs.main-report-file }}
 
 runs:
   using: 'composite'
@@ -317,8 +320,12 @@ runs:
         echo "Running: $DOCKER_CMD"
         eval $DOCKER_CMD
 
-        # Set output
+        # Find the generated main.json file
+        MAIN_JSON_FILE=$(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1)
+
+        # Set outputs
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
+        echo "main-report-file=$MAIN_JSON_FILE" >> $GITHUB_OUTPUT
 
     - name: Upload results to S3
       if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
@@ -362,6 +369,14 @@ runs:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
         path: ${{ inputs.report-dir }}
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
+
+    - name: Create GitHub Actions summary
+      uses: Ma11hewThomas/github-markdown-builder99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
+      if: steps.run-test.outputs.main-report-file != ''
+      with:
+        template-file-path: '.action.summary.md.hbs'
+        json-file-path: ${{ steps.run-test.outputs.main-report-file }}
+        summary: true
 
     - name: Get kurtosis enclave dump
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'

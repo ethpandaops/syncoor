@@ -1,0 +1,66 @@
+# Sync Test Report: {{data.network}}-{{data.execution_client_info.type}}-{{data.consensus_client_info.type}}
+
+## Test Overview
+- **Network**: {{data.network}}
+- **Test ID**: {{data.run_id}}
+- **Timestamp**: {{data.timestamp}}
+- **Duration**: {{data.sync_status.start}} → {{data.sync_status.end}}
+
+## Client Configuration
+
+### Execution Client ({{data.execution_client_info.type}})
+- **Name**: {{data.execution_client_info.name}}
+- **Type**: {{data.execution_client_info.type}}
+- **Image**: {{data.execution_client_info.image}}
+- **Version**: {{data.execution_client_info.version}}
+
+### Consensus Client ({{data.consensus_client_info.type}})
+- **Name**: {{data.consensus_client_info.name}}
+- **Type**: {{data.consensus_client_info.type}}
+- **Image**: {{data.consensus_client_info.image}}
+- **Version**: {{data.consensus_client_info.version}}
+
+## Sync Performance
+
+### Final State
+- **Block Height**: {{data.sync_status.block}}
+- **Slot**: {{data.sync_status.slot}}
+- **Peers (Execution)**: {{data.sync_status.last_entry.pe}}
+- **Peers (Consensus)**: {{data.sync_status.last_entry.pc}}
+
+## System Information
+
+### Hardware
+- **Hostname**: {{data.system_info.hostname}}
+- **OS**: {{data.system_info.os_name}} {{data.system_info.os_version}} ({{data.system_info.architecture}})
+- **Platform**: {{data.system_info.platform_family}}
+
+### CPU
+- **Model**: {{data.system_info.cpu_model}}
+- **Vendor**: {{data.system_info.cpu_vendor}}
+- **Cores**: {{data.system_info.cpu_cores}}
+- **Threads**: {{data.system_info.cpu_threads}}
+- **Speed**: {{data.system_info.cpu_speed}} MHz
+- **Cache**: {{data.system_info.cpu_cache}} KB
+
+### Memory
+- **Total Memory**: {{data.system_info.total_memory}} bytes
+- **Type**: {{data.system_info.memory_type}}
+- **Speed**: {{data.system_info.memory_speed}} MHz
+
+### Environment
+- **Go Version**: {{data.system_info.go_version}}
+- **Syncoor Version**: {{data.system_info.syncoor_version}}
+- **Timezone**: {{data.system_info.timezone}}
+- **Machine ID**: {{data.system_info.machine_id}}
+
+## CI/CD Information
+- **Repository**: {{data.labels.github.repository}}
+- **Workflow**: {{data.labels.github.workflow}}
+- **Run ID**: {{data.labels.github.run_id}}
+- **Run Number**: {{data.labels.github.run_number}}
+- **Job**: {{data.labels.github.job}}
+- **SHA**: {{data.labels.github.sha}}
+- **Actor**: {{data.labels.github.actor}}
+- **Event**: {{data.labels.github.event_name}}
+- **Ref**: {{data.labels.github.ref}}
