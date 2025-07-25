@@ -184,7 +184,7 @@ func (s *Store) ListTests(activeOnly bool) []TestSummary {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	var tests []TestSummary
+	tests := make([]TestSummary, 0)
 	for _, test := range s.tests {
 		if activeOnly && !test.IsRunning {
 			continue
