@@ -385,7 +385,7 @@ runs:
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
-    - name: Download summaryhbs template if not present
+    - name: Download Github Actions summary template if not present
       if: steps.run-test.outputs.main-report-file != ''
       shell: bash
       run: |
