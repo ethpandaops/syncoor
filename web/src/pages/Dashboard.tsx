@@ -4,7 +4,7 @@ import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats, getUniqueConsensusClients } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import SyncoorTests from '../components/SyncoorTests';
@@ -52,6 +52,9 @@ export default function Dashboard() {
     return {};
   });
 
+  // State for CL client filters per EL client group (directory -> network -> elClient -> clClient)
+  const [activeCLClients, setActiveCLClients] = useState<Record<string, Record<string, Record<string, string>>>>({});
+
   // Update URL when directory changes
   const handleDirectoryChange = (directory: string) => {
     setActiveDirectory(directory);
@@ -63,6 +66,47 @@ export default function Dashboard() {
   const handleNetworkChange = (directory: string, network: string) => {
     setActiveNetworks(prev => ({ ...prev, [directory]: network }));
     setSearchParams({ directory, network });
+  };
+
+  // Handle CL client filter changes
+  const handleCLClientChange = (directory: string, network: string, elClient: string, clClient: string) => {
+    setActiveCLClients(prev => ({
+      ...prev,
+      [directory]: {
+        ...prev[directory],
+        [network]: {
+          ...prev[directory]?.[network],
+          [elClient]: clClient
+        }
+      }
+    }));
+    
+    // Update URL with CL client filter info (basic implementation)
+    const params = new URLSearchParams(searchParams);
+    params.set('directory', directory);
+    params.set('network', network);
+    if (clClient !== 'All') {
+      params.set(`cl_${elClient}`, clClient);
+    } else {
+      params.delete(`cl_${elClient}`);
+    }
+    setSearchParams(params);
+  };
+
+  // Get active CL client for a specific EL client group
+  const getActiveCLClient = (directory: string, network: string, elClient: string, availableClients: string[]): string => {
+    // Check URL first
+    const urlCLClient = searchParams.get(`cl_${elClient}`);
+    if (urlCLClient && availableClients.includes(urlCLClient)) {
+      return urlCLClient;
+    }
+    
+    // Check state
+    const stored = activeCLClients[directory]?.[network]?.[elClient];
+    if (stored && availableClients.includes(stored)) {
+      return stored;
+    }
+    return 'All'; // Default to showing all CL clients
   };
 
   // Set defaults when data loads
@@ -173,7 +217,17 @@ export default function Dashboard() {
                           <div className="grid gap-4">
                             {Object.entries(clientGroups)
                               .sort(([a], [b]) => a.localeCompare(b))
-                              .map(([clientType, clientReports]) => (
+                              .map(([clientType, clientReports]) => {
+                                // Get unique CL clients for this EL client group
+                                const availableCLClients = getUniqueConsensusClients(clientReports);
+                                const activeCLClient = getActiveCLClient(directory, network, clientType, availableCLClients);
+                                
+                                // Filter reports by active CL client
+                                const filteredClientReports = activeCLClient === 'All' 
+                                  ? clientReports 
+                                  : clientReports.filter(r => r.consensus_client_info.type === activeCLClient);
+
+                                return (
                           <Card key={`${directory}-${network}-${clientType}`} className="p-4">
                             <div className="space-y-4">
                               <div className="flex items-center justify-between">
@@ -190,13 +244,33 @@ export default function Dashboard() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <Badge variant="secondary">{network}</Badge>
-                                  <Badge variant="outline">{clientReports.length} tests</Badge>
+                                  <Badge variant="outline">{filteredClientReports.length} tests</Badge>
                                 </div>
                               </div>
 
+                              {/* CL Client Filter */}
+                              {availableCLClients.length > 1 && (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm text-muted-foreground">CL Clients:</span>
+                                  <Tabs
+                                    value={activeCLClient}
+                                    onValueChange={(clClient) => handleCLClientChange(directory, network, clientType, clClient)}
+                                  >
+                                    <TabsList className="h-8">
+                                      <TabsTrigger value="All" className="text-xs px-2 py-1">All</TabsTrigger>
+                                      {availableCLClients.map(clClient => (
+                                        <TabsTrigger key={clClient} value={clClient} className="text-xs px-2 py-1 capitalize">
+                                          {clClient}
+                                        </TabsTrigger>
+                                      ))}
+                                    </TabsList>
+                                  </Tabs>
+                                </div>
+                              )}
+
                               {/* Stats Cards */}
                               {(() => {
-                                const stats = calculateClientGroupStats(clientReports);
+                                const stats = calculateClientGroupStats(filteredClientReports);
                                 return (
                                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
                                     <Card className="p-3">
@@ -228,22 +302,22 @@ export default function Dashboard() {
                               })()}
 
                               {/* Charts for client group */}
-                              {clientReports.length > 1 && (
+                              {filteredClientReports.length > 1 && (
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                                   <div className="bg-muted/30 rounded-lg p-3">
                                     <ClientGroupDurationChart
-                                      data={clientReports}
+                                      data={filteredClientReports}
                                       height={300}
                                       color="#3b82f6"
-                                      title={`Duration Trends`}
+                                      title={`Duration Trends${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
                                     />
                                   </div>
                                   <div className="bg-muted/30 rounded-lg p-3">
                                     <ClientGroupDiskChart
-                                      data={clientReports}
+                                      data={filteredClientReports}
                                       height={300}
                                       color="#10b981"
-                                      title={`EL Disk Usage Trends`}
+                                      title={`EL Disk Usage Trends${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
                                     />
                                   </div>
                                 </div>
@@ -266,7 +340,7 @@ export default function Dashboard() {
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {clientReports.slice(0, 3).map((report) => (
+                                    {filteredClientReports.slice(0, 3).map((report) => (
                                       <tr 
                                         key={report.run_id} 
                                         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
@@ -321,11 +395,11 @@ export default function Dashboard() {
                                   </tbody>
                                 </table>
 
-                                {clientReports.length > 3 && (
-                                  <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&elClient=${encodeURIComponent(clientType)}`}>
+                                {filteredClientReports.length > 3 && (
+                                  <Link to={`/tests?directory=${encodeURIComponent(directory)}&network=${encodeURIComponent(network)}&elClient=${encodeURIComponent(clientType)}${activeCLClient !== 'All' ? `&clClient=${encodeURIComponent(activeCLClient)}` : ''}`}>
                                     <div className="mt-3 p-3 rounded-lg border-dashed border-2 hover:bg-muted/50 transition-colors cursor-pointer text-center">
                                       <span className="text-sm text-muted-foreground">
-                                        View {clientReports.length - 3} more {clientType} tests...
+                                        View {filteredClientReports.length - 3} more {clientType}{activeCLClient !== 'All' ? ` + ${activeCLClient}` : ''} tests...
                                       </span>
                                     </div>
                                   </Link>
@@ -333,7 +407,8 @@ export default function Dashboard() {
                               </div>
                             </div>
                           </Card>
-                        ))}
+                                );
+                              })}
                           </div>
                         </TabsContent>
                       );
