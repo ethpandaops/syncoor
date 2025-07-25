@@ -416,7 +416,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient) {
         block: finalBlock,
         slot: finalSlot,
         sync_progress_file: `${runId}-${network}_${elClient}_${clClient}.progress.json`,
-        last_entry: lastEntry
+        last_entry: lastEntry,
+        entries_count: numEntries
       },
       execution_client_info: {
         name: `el-1-${elClient}-${clClient}`,
