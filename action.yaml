@@ -169,7 +169,7 @@ outputs:
     description: 'Path to the generated report'
     value: ${{ steps.run-test.outputs.report-path }}
   main-report-file:
-    description: 'Path to the main report JSON file'
+    description: 'Name of the main report JSON file (without .json extension)'
     value: ${{ steps.run-test.outputs.main-report-file }}
 
 runs:
