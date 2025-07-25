@@ -16,6 +16,11 @@
       "name": "Local Syncoor",
       "url": "http://localhost:8080",
       "enabled": true
+    },
+    {
+      "name": "Docker Syncoor",
+      "url": "http://localhost:10001",
+      "enabled": true
     }
   ]
 }
