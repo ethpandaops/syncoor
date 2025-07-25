@@ -370,14 +370,6 @@ runs:
         path: ${{ inputs.report-dir }}
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
 
-    - name: Create GitHub Actions summary
-      uses: Ma11hewThomas/github-markdown-builder99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
-      if: steps.run-test.outputs.main-report-file != ''
-      with:
-        template-file-path: '.action.summary.md.hbs'
-        json-file-path: ${{ steps.run-test.outputs.main-report-file }}
-        summary: true
-
     - name: Get kurtosis enclave dump
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       id: enclave-dump
@@ -392,3 +384,11 @@ runs:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
+
+    - name: Create GitHub Actions summary
+      uses: Ma11hewThomas/github-markdown-builder99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
+      if: steps.run-test.outputs.main-report-file != ''
+      with:
+        template-file-path: '.action.summary.md.hbs'
+        json-file-path: ${{ steps.run-test.outputs.main-report-file }}
+        summary: true
