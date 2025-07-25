@@ -28,7 +28,6 @@ inputs:
     default: 'true'
 
   # Syncoor arguments
-
   check-interval:
     description: 'Interval in seconds between sync status checks'
     required: false
@@ -38,6 +37,11 @@ inputs:
     description: 'Timeout in minutes for network startup'
     required: false
     default: '60m'
+
+  client-logs:
+    description: 'Output EL and CL client logs to stdout'
+    required: false
+    default: 'false'
 
   el-client:
     description: 'Execution layer client type (geth, besu, nethermind, erigon, reth)'
@@ -88,6 +92,12 @@ inputs:
     description: 'Log level (panic, fatal, error, warn, info, debug, trace)'
     required: false
     default: 'info'
+
+  log-force-colors:
+    description: 'Force colored output in logs'
+    required: false
+    default: 'false'
+
 
   labels:
     description: 'Comma-separated labels in key=value format (e.g., "test=sync,env=ci")'
@@ -254,6 +264,8 @@ runs:
         DOCKER_CMD="$DOCKER_CMD --report-dir=${{ inputs.report-dir }}"
         DOCKER_CMD="$DOCKER_CMD --log-level=${{ inputs.log-level }}"
         DOCKER_CMD="$DOCKER_CMD --enclave=${{ inputs.enclave }}"
+        DOCKER_CMD="$DOCKER_CMD --log-force-colors=${{ inputs.log-force-colors }}"
+        DOCKER_CMD="$DOCKER_CMD --client-logs=${{ inputs.client-logs }}"
 
         # Add optional parameters if provided
         if [ -n "${{ inputs.el-image }}" ]; then

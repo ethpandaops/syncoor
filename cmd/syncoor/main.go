@@ -10,7 +10,8 @@ import (
 
 var (
 	// Global flags
-	logLevel string
+	logLevel       string //nolint: gochecknoglobals
+	logForceColors bool   //nolint: gochecknoglobals
 
 	// Version information (set during build)
 	Version = "unknown" //nolint: gochecknoglobals
@@ -25,6 +26,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	// Global flags
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
+	rootCmd.PersistentFlags().BoolVar(&logForceColors, "log-force-colors", false, "Force colored output in logs")
 
 	// Configure log level
 	level, err := logrus.ParseLevel(logLevel)
@@ -32,6 +34,17 @@ func init() {
 		level = logrus.InfoLevel
 	}
 	logrus.SetLevel(level)
+
+	formatter := &logrus.TextFormatter{
+		FullTimestamp: true,
+	}
+
+	// Configure log colors
+	if logForceColors {
+		formatter.ForceColors = true
+	}
+
+	logrus.SetFormatter(formatter)
 
 	// Add commands to root
 	rootCmd.AddCommand(NewSyncCommand())

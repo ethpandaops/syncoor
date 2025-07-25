@@ -34,6 +34,7 @@ func NewSyncCommand() *cobra.Command {
 		serverURL      string
 		serverAuth     string
 		enableRecovery bool
+		clientLogs     bool
 	)
 
 	cmd := &cobra.Command{
@@ -68,6 +69,7 @@ func NewSyncCommand() *cobra.Command {
 				ReportDir:     reportDir,
 				ServerURL:     serverURL,
 				ServerAuth:    serverAuth,
+				ClientLogs:    clientLogs,
 			}
 
 			// Parse labels
@@ -133,6 +135,7 @@ func NewSyncCommand() *cobra.Command {
 	cmd.Flags().StringVar(&serverURL, "server", "", "Centralized server URL (e.g., https://api.syncoor.example)")
 	cmd.Flags().StringVar(&serverAuth, "server-auth", "", "Bearer token for server authentication")
 	cmd.Flags().BoolVar(&enableRecovery, "enable-recovery", true, "Enable recovery from interrupted sync operations")
+	cmd.Flags().BoolVar(&clientLogs, "client-logs", false, "Output EL and CL client logs to stdout")
 
 	return cmd
 }
