@@ -28,6 +28,21 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "Log level (panic, fatal, error, warn, info, debug, trace)")
 	rootCmd.PersistentFlags().BoolVar(&logForceColors, "log-force-colors", false, "Force colored output in logs")
 
+	// Configure logger in PersistentPreRun to ensure flags are parsed
+	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		configureLogger()
+	}
+
+	// Add commands to root
+	rootCmd.AddCommand(NewSyncCommand())
+	rootCmd.AddCommand(NewServerCommand())
+	rootCmd.AddCommand(NewReportIndexCommand())
+	rootCmd.AddCommand(newVersionCommand())
+	rootCmd.AddCommand(NewSysinfoCommand())
+}
+
+// configureLogger sets up the logrus configuration based on parsed flags
+func configureLogger() {
 	// Configure log level
 	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
@@ -45,13 +60,6 @@ func init() {
 	}
 
 	logrus.SetFormatter(formatter)
-
-	// Add commands to root
-	rootCmd.AddCommand(NewSyncCommand())
-	rootCmd.AddCommand(NewServerCommand())
-	rootCmd.AddCommand(NewReportIndexCommand())
-	rootCmd.AddCommand(newVersionCommand())
-	rootCmd.AddCommand(NewSysinfoCommand())
 }
 
 func newVersionCommand() *cobra.Command {
