@@ -21,6 +21,7 @@ type Config struct {
 	Labels        map[string]string
 	ServerURL     string // e.g., "https://api.syncoor.example"
 	ServerAuth    string // Bearer token for authentication
+	ClientLogs    bool   // Enable EL and CL client log output
 }
 
 // Validate validates the configuration

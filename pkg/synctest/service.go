@@ -16,6 +16,7 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/consensus"
 	"github.com/ethpandaops/syncoor/pkg/execution"
 	"github.com/ethpandaops/syncoor/pkg/kurtosis"
+	kurtosislog "github.com/ethpandaops/syncoor/pkg/kurtosis-log"
 	metrics_exporter "github.com/ethpandaops/syncoor/pkg/metrics-exporter"
 	"github.com/ethpandaops/syncoor/pkg/recovery"
 	"github.com/ethpandaops/syncoor/pkg/report"
@@ -321,6 +322,13 @@ func (s *service) Start(ctx context.Context) error {
 		"metrics_url":    s.consensusClient.MetricsURL(),
 		"image":          clInspect.Image,
 	}).Info("Consensus client info")
+
+	// Start client log streaming if enabled
+	if s.cfg.ClientLogs {
+		if err := s.startClientLogStreaming(ctx); err != nil {
+			s.log.WithError(err).Warn("Failed to start client log streaming")
+		}
+	}
 
 	metricsExporterEndpoint, err := s.metricsExporterServiceEndpoint()
 	if err != nil {
@@ -653,6 +661,27 @@ func (s *service) getCurrentProgressEntries() []report.SyncProgressEntry {
 		return []report.SyncProgressEntry{}
 	}
 	return currentReport.SyncStatus.SyncProgress
+}
+
+// startClientLogStreaming starts streaming logs from EL and CL clients
+func (s *service) startClientLogStreaming(ctx context.Context) error {
+	// Create log streamer with default config
+	config := kurtosislog.DefaultConfig()
+	config.Logger = s.log
+
+	streamer := kurtosislog.NewStreamer(s.network.EnclaveName(), config)
+
+	// Stream consensus client logs
+	if err := streamer.StreamLogs(ctx, s.consensusClient.Name(), s.cfg.CLClient, s.consensusClient); err != nil {
+		return fmt.Errorf("failed to start consensus client log streaming: %w", err)
+	}
+
+	// Stream execution client logs
+	if err := streamer.StreamLogs(ctx, s.executionClient.Name(), s.cfg.ELClient, s.executionClient); err != nil {
+		return fmt.Errorf("failed to start execution client log streaming: %w", err)
+	}
+
+	return nil
 }
 
 // Interface compliance check
