@@ -385,10 +385,18 @@ runs:
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
+    - name: Download summaryhbs template if not present
+      if: steps.run-test.outputs.main-report-file != ''
+      shell: bash
+      run: |
+        if [ ! -f ./action.summary.md.hbs ]; then
+          curl -o ./action.summary.md.hbs https://raw.githubusercontent.com/ethpandaops/syncoor/main/action.summary.md.hbs
+        fi
+
     - name: Create GitHub Actions summary
       uses: Ma11hewThomas/github-markdown-builder@99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
       if: steps.run-test.outputs.main-report-file != ''
       with:
-        template-file-path: '.action.summary.md.hbs'
+        template-file-path: './action.summary.md.hbs'
         json-file-path: ${{ steps.run-test.outputs.main-report-file }}
         summary: true
