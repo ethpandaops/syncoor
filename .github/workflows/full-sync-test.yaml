@@ -41,7 +41,20 @@ env:
 
 jobs:
   sync:
-    timeout-minutes: 1440 # 24 hours
+    # Timeouts from h to minutes:
+    # - 6h -> 360m
+    # - 8h -> 480m
+    # - 12h -> 720m
+    # - 24h -> 1440m
+    # - 48h -> 2880m
+    # - 72h -> 4320m
+    timeout-minutes: >-
+      ${{
+        matrix.network == 'hoodi' && 1440 ||
+        matrix.network == 'sepolia' && 2880 ||
+        matrix.network == 'mainnet' && 4320 ||
+        720
+      }}
     # Self-hosted runner sizes:
     # - ccx13: 2 cores, 8GB, 80GB disk
     # - ccx23: 4 cores, 16GB, 160GB disk
@@ -121,6 +134,7 @@ jobs:
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         log-force-colors: true
+        client-logs: true
         network: ${{ matrix.network }}
         el-client: ${{ matrix.el-client }}
         cl-client: ${{ matrix.cl-client }}
