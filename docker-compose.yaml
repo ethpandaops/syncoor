@@ -54,14 +54,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: syncoor-index-generator
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-    - >-
-      while true; do
-        syncoor report-index --report-dir /app/reports --output /app/reports/index.json --log-level ${LOG_LEVEL:-info};
-        sleep 60;
-      done
+    container_name: syncoor-report-index-generator
+    command: [
+      "report-index",
+      "--watch",
+      "--report-dir", "/app/reports",
+      "--output", "/app/reports/index.json",
+      "--log-level", "${LOG_LEVEL:-info}"
+    ]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
     volumes:
