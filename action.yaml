@@ -168,6 +168,9 @@ outputs:
   report-path:
     description: 'Path to the generated report'
     value: ${{ steps.run-test.outputs.report-path }}
+  main-report-file:
+    description: 'Name of the main report JSON file (without .json extension)'
+    value: ${{ steps.run-test.outputs.main-report-file }}
 
 runs:
   using: 'composite'
@@ -317,8 +320,12 @@ runs:
         echo "Running: $DOCKER_CMD"
         eval $DOCKER_CMD
 
-        # Set output
+        # Find the generated main.json file
+        MAIN_JSON_FILE=$(basename $(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1) .json)
+
+        # Set outputs
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
+        echo "main-report-file=$MAIN_JSON_FILE" >> $GITHUB_OUTPUT
 
     - name: Upload results to S3
       if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
@@ -377,3 +384,35 @@ runs:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
+
+    - name: Generate report markdown for Github Actions summary
+      if: steps.run-test.outputs.main-report-file != ''
+      shell: bash
+      run: |
+        # Get image from determine-image step
+        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+
+        # Build docker run command
+        DOCKER_CMD="docker run --platform linux/amd64 --rm"
+
+        # Mount report file
+        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/${{ inputs.report-dir }}:/app/${{ inputs.report-dir }}"
+
+        # Add the image
+        DOCKER_CMD="$DOCKER_CMD $IMAGE"
+
+        # Use 'report-to-md' command
+        DOCKER_CMD="$DOCKER_CMD report-to-md"
+        DOCKER_CMD="$DOCKER_CMD --input /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.json"
+        DOCKER_CMD="$DOCKER_CMD --output /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md"
+
+        # Execute the command
+        echo "Running: $DOCKER_CMD"
+        eval $DOCKER_CMD
+
+    - name: Create GitHub Actions summary
+      uses: Ma11hewThomas/github-markdown-builder@99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
+      if: steps.run-test.outputs.main-report-file != ''
+      with:
+        template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
+        summary: true
