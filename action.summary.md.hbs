@@ -6,55 +6,28 @@
 - **Timestamp**: `{{data.timestamp}}`
 - **Duration**: `{{data.sync_status.start}} → {{data.sync_status.end}}`
 
-## Client Configuration
-
-### Execution Client ({{data.execution_client_info.type}})
-- **Name**: `{{data.execution_client_info.name}}`
-- **Type**: `{{data.execution_client_info.type}}`
-- **Image**: `{{data.execution_client_info.image}}`
-- **Version**: `{{data.execution_client_info.version}}`
-
-### Consensus Client ({{data.consensus_client_info.type}})
-- **Name**: `{{data.consensus_client_info.name}}`
-- **Type**: `{{data.consensus_client_info.type}}`
-- **Image**: `{{data.consensus_client_info.image}}`
-- **Version**: `{{data.consensus_client_info.version}}`
-
-## Sync Status
-
 ### Final State
 - **Block Height**: `{{data.sync_status.block}}`
 - **Slot**: `{{data.sync_status.slot}}`
 - **Peers (Execution)**: `{{data.sync_status.last_entry.pe}}`
 - **Peers (Consensus)**: `{{data.sync_status.last_entry.pc}}`
 
+
+## Client Configuration
+
+| Property | Execution Client ({{data.execution_client_info.type}}) | Consensus Client ({{data.consensus_client_info.type}}) |
+|----------|-------------------------------------------------------|-------------------------------------------------------|
+| **Name** | `{{data.execution_client_info.name}}` | `{{data.consensus_client_info.name}}` |
+| **Type** | `{{data.execution_client_info.type}}` | `{{data.consensus_client_info.type}}` |
+| **Image** | `{{data.execution_client_info.image}}` | `{{data.consensus_client_info.image}}` |
+| **Version** | `{{data.execution_client_info.version}}` | `{{data.consensus_client_info.version}}` |
+
+
 ## System Information
 
-### Hardware
-- **Hostname**: `{{data.system_info.hostname}}`
-- **OS**: `{{data.system_info.os_name}} {{data.system_info.os_version}} ({{data.system_info.architecture}})`
-- **Platform**: `{{data.system_info.platform_family}}`
-- **Hypervisor**: `{{data.system_info.hypervisor}}`
-- **Product Name**: `{{data.system_info.product_name}}`
-- **Product Vendor**: `{{data.system_info.product_vendor}}`
-
-### CPU
-- **Model**: {{data.system_info.cpu_model}}
-- **Vendor**: {{data.system_info.cpu_vendor}}
-- **Cores**: `{{data.system_info.cpu_cores}}`
-- **Threads**: `{{data.system_info.cpu_threads}}`
-- **Speed**: `{{data.system_info.cpu_speed}} MHz`
-- **Cache**: {{data.system_info.cpu_cache}} KB
-
-### Memory
-- **Total Memory**: `{{data.system_info.total_memory}}` bytes
-- **Type**: `{{data.system_info.memory_type}}`
-- **Speed**: `{{data.system_info.memory_speed}} MHz`
-
-### Environment
-- **Go Version**: `{{data.system_info.go_version}}`
-- **Syncoor Version**: `{{data.system_info.syncoor_version}}`
-- **Timezone**: `{{data.system_info.timezone}}`
+| Hardware | CPU | Memory | Environment |
+|----------|-----|--------|-------------|
+| • **Hostname**: `{{data.system_info.hostname}}`<br>• **OS**: `{{data.system_info.os_name}} {{data.system_info.os_version}} ({{data.system_info.architecture}})`<br>• **Platform**: `{{data.system_info.platform_family}}`<br>• **Hypervisor**: `{{data.system_info.hypervisor}}`<br>• **Product Name**: `{{data.system_info.product_name}}`<br>• **Product Vendor**: `{{data.system_info.product_vendor}}` | • **Model**: {{data.system_info.cpu_model}}<br>• **Vendor**: {{data.system_info.cpu_vendor}}<br>• **Cores**: `{{data.system_info.cpu_cores}}`<br>• **Threads**: `{{data.system_info.cpu_threads}}`<br>• **Speed**: `{{data.system_info.cpu_speed}} MHz`<br>• **Cache**: {{data.system_info.cpu_cache}} KB | • **Total Memory**: `{{data.system_info.total_memory}}` bytes<br>• **Type**: `{{data.system_info.memory_type}}`<br>• **Speed**: `{{data.system_info.memory_speed}} MHz` | • **Go Version**: `{{data.system_info.go_version}}`<br>• **Syncoor Version**: `{{data.system_info.syncoor_version}}`<br>• **Timezone**: `{{data.system_info.timezone}}` |
 
 ## CI/CD Information
 - **Repository**: `{{data.labels["github.repository"]}}`
