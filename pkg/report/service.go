@@ -433,7 +433,14 @@ func (s *indexService) processMainFile(mainFilePath, reportDir string) (*IndexEn
 
 // countProgressEntries counts the number of entries in a progress file
 func (s *indexService) countProgressEntries(progressFilePath string) int {
-	data, err := os.ReadFile(progressFilePath)
+	// Validate file path to prevent directory traversal
+	cleanPath := filepath.Clean(progressFilePath)
+	if strings.Contains(cleanPath, "..") {
+		s.log.WithField("file", progressFilePath).Warn("Invalid progress file path")
+		return 0
+	}
+
+	data, err := os.ReadFile(cleanPath) // #nosec G304 - path is validated above
 	if err != nil {
 		s.log.WithField("file", progressFilePath).WithError(err).Debug("Failed to read progress file")
 		return 0
