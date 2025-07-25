@@ -62,6 +62,16 @@ export interface MainReport {
     block: number;
     slot: number;
     sync_progress_file: string;
+    entries_count: number;
+    last_entry?: {
+      t: number;
+      b: number;
+      s: number;
+      de: number;
+      dc: number;
+      pe: number;
+      pc: number;
+    };
   };
   execution_client_info: {
     name: string;
@@ -81,14 +91,6 @@ export interface MainReport {
   };
   system_info?: SystemInfo;
   labels?: Record<string, string>;
-  sync_info: {
-    start: string;
-    end: string;
-    duration: number;
-    block: number;
-    slot: number;
-    entries_count: number;
-  };
   metadata?: {
     config?: Record<string, any>;
     environment?: Record<string, string>;
