@@ -415,5 +415,4 @@ runs:
       if: steps.run-test.outputs.main-report-file != ''
       with:
         template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
-        json-file-path: ${{ steps.run-test.outputs.main-report-file }}
         summary: true
