@@ -321,7 +321,7 @@ runs:
         eval $DOCKER_CMD
 
         # Find the generated main.json file
-        MAIN_JSON_FILE=$(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1)
+        MAIN_JSON_FILE=$(basename $(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1) .json)
 
         # Set outputs
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
@@ -385,18 +385,35 @@ runs:
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
-    - name: Download Github Actions summary template if not present
+    - name: Generate report markdown for Github Actions summary
       if: steps.run-test.outputs.main-report-file != ''
       shell: bash
       run: |
-        if [ ! -f ./action.summary.md.hbs ]; then
-          curl -o ./action.summary.md.hbs https://raw.githubusercontent.com/ethpandaops/syncoor/main/action.summary.md.hbs
-        fi
+        # Get image from determine-image step
+        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+
+        # Build docker run command
+        DOCKER_CMD="docker run --platform linux/amd64 --rm"
+
+        # Mount report file
+        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/${{ inputs.report-dir }}:/app/${{ inputs.report-dir }}"
+
+        # Add the image
+        DOCKER_CMD="$DOCKER_CMD $IMAGE"
+
+        # Use 'report-to-md' command
+        DOCKER_CMD="$DOCKER_CMD report-to-md"
+        DOCKER_CMD="$DOCKER_CMD --input /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.json"
+        DOCKER_CMD="$DOCKER_CMD --output /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md"
+
+        # Execute the command
+        echo "Running: $DOCKER_CMD"
+        eval $DOCKER_CMD
 
     - name: Create GitHub Actions summary
       uses: Ma11hewThomas/github-markdown-builder@99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
       if: steps.run-test.outputs.main-report-file != ''
       with:
-        template-file-path: './action.summary.md.hbs'
+        template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
         json-file-path: ${{ steps.run-test.outputs.main-report-file }}
         summary: true

@@ -23,7 +23,9 @@ bin/
 
 # Reports directory (generated at runtime)
 reports/*.json
+reports/*.md
 reports/mock/*.json
+reports/mock/*.md
 
 # IDE files
 .vscode/

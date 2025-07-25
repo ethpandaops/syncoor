@@ -37,6 +37,7 @@ func init() {
 	rootCmd.AddCommand(NewSyncCommand())
 	rootCmd.AddCommand(NewServerCommand())
 	rootCmd.AddCommand(NewReportIndexCommand())
+	rootCmd.AddCommand(NewReportToMdCommand())
 	rootCmd.AddCommand(newVersionCommand())
 	rootCmd.AddCommand(NewSysinfoCommand())
 }
