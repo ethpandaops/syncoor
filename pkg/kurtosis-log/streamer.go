@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ethpandaops/ethereum-package-go/pkg/client"
@@ -204,12 +205,8 @@ func (s *Streamer) handleLogStreamWithErrorReporting(
 				return
 			}
 
-			// Log with structured fields
-			s.config.Logger.WithFields(logrus.Fields{
-				"client":    clientName,
-				"type":      clientType,
-				"component": "log-streamer",
-			}).Info(log)
+			// Log with enhanced client log formatting for better visibility
+			s.logClientMessage(clientType, log)
 
 		case <-ctx.Done():
 			s.log.WithFields(logrus.Fields{
@@ -219,4 +216,27 @@ func (s *Streamer) handleLogStreamWithErrorReporting(
 			return
 		}
 	}
+}
+
+// logClientMessage formats and logs client messages in a way that's easily distinguishable from app logs
+func (s *Streamer) logClientMessage(clientType, message string) {
+	// Determine emoji based on client type
+	var emoji string
+	switch strings.ToLower(clientType) {
+	case "geth", "nethermind", "besu", "erigon", "reth", "nimbusel":
+		emoji = "🔵" // Execution layer clients
+	case "lighthouse", "prysm", "teku", "nimbus", "lodestar", "grandine":
+		emoji = "🟣" // Consensus layer clients
+	default:
+		emoji = "🟡" // Unknown/fallback
+	}
+
+	// Create a distinctive prefix for client logs with visual indicators
+	clientPrefix := fmt.Sprintf("%s [CLIENT:%-10s]", emoji, clientType)
+
+	// Add visual separators and formatting to make client logs stand out
+	formattedMessage := "│ " + strings.TrimSpace(message)
+
+	// Use structured logging with enhanced fields for filtering and identification
+	s.config.Logger.Infof("%s %s", clientPrefix, formattedMessage)
 }
