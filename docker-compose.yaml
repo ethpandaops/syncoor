@@ -7,7 +7,13 @@ services:
     container_name: syncoor-server
     ports:
       - "${SYNCOOR_SERVER_PORT:-10001}:8080"
-    command: ["server", "--listen", ":8080", "--auth-token", "${SYNCOOR_AUTH_TOKEN:-}", "--log-level", "${LOG_LEVEL:-info}"]
+    command: [
+      "server",
+      "--listen", ":8080",
+      "--auth-token", "${SYNCOOR_AUTH_TOKEN:-}",
+      "--log-level", "${LOG_LEVEL:-info}",
+      "--mock"
+    ]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SYNCOOR_AUTH_TOKEN=${SYNCOOR_AUTH_TOKEN:-}
@@ -26,7 +32,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: syncoor-client
+    container_name: syncoor-run
     depends_on:
       - syncoor-server
     command: [
@@ -37,7 +43,8 @@ services:
       "--server", "http://host.docker.internal:${SYNCOOR_SERVER_PORT:-10001}",
       "--server-auth", "${SYNCOOR_AUTH_TOKEN:-}",
       "--log-level", "${LOG_LEVEL:-info}",
-      "--report-dir", "/app/reports"
+      "--report-dir", "/app/reports",
+      "--label", "environment=local"
     ]
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}

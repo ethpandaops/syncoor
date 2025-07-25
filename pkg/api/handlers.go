@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -33,14 +34,27 @@ func (s *Server) handleTestKeepalive(w http.ResponseWriter, r *http.Request) {
 		"labels":  req.Labels,
 	}).Debug("Test keepalive received")
 
-	// Update existing test keepalive timestamp
+	// Try to update existing test keepalive timestamp
 	if err := s.store.UpdateTestKeepalive(req); err != nil {
-		s.log.WithFields(map[string]interface{}{
-			"run_id": req.RunID,
-			"error":  err.Error(),
-		}).Error("Failed to update test keepalive")
-		s.writeError(w, err, http.StatusNotFound)
-		return
+		// If test not found, try to create it
+		if errors.Is(err, ErrTestNotFound) {
+			s.log.WithField("run_id", req.RunID).Info("Test not found, creating new test")
+			if createErr := s.store.CreateTest(req); createErr != nil {
+				s.log.WithFields(map[string]interface{}{
+					"run_id": req.RunID,
+					"error":  createErr.Error(),
+				}).Error("Failed to create test")
+				s.writeError(w, createErr, http.StatusInternalServerError)
+				return
+			}
+		} else {
+			s.log.WithFields(map[string]interface{}{
+				"run_id": req.RunID,
+				"error":  err.Error(),
+			}).Error("Failed to update test keepalive")
+			s.writeError(w, err, http.StatusInternalServerError)
+			return
+		}
 	}
 
 	s.writeJSON(w, http.StatusOK, Response{Data: map[string]string{"status": "acknowledged"}})
