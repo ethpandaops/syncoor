@@ -69,6 +69,7 @@ type SyncStatus struct {
 	SyncProgress     []SyncProgressEntry `json:"sync_progress,omitempty"`
 	SyncProgressFile string              `json:"sync_progress_file,omitempty"`
 	LastEntry        *SyncProgressEntry  `json:"last_entry,omitempty"`
+	EntriesCount     int                 `json:"entries_count"`
 }
 
 // SyncProgressEntry represents the progress data at a specific timestamp
@@ -149,6 +150,7 @@ func (s *service) SetSystemInfo(ctx context.Context, info *sysinfo.SystemInfo) e
 func (s *service) AddSyncProgressEntry(ctx context.Context, entry SyncProgressEntry) error {
 	s.log.WithField("entry", entry).Debug("Adding sync progress entry")
 	s.result.SyncStatus.SyncProgress = append(s.result.SyncStatus.SyncProgress, entry)
+	s.result.SyncStatus.EntriesCount = len(s.result.SyncStatus.SyncProgress)
 	return nil
 }
 
@@ -390,12 +392,8 @@ func (s *indexService) processMainFile(mainFilePath, reportDir string) (*IndexEn
 		duration = result.SyncStatus.End - result.SyncStatus.Start
 	}
 
-	// Count progress entries
-	entriesCount := 0
-	if result.SyncStatus.SyncProgressFile != "" {
-		progressFilePath := filepath.Join(reportDir, result.SyncStatus.SyncProgressFile)
-		entriesCount = s.countProgressEntries(progressFilePath)
-	}
+	// Use the entries count from SyncStatus
+	entriesCount := result.SyncStatus.EntriesCount
 
 	// Create index entry
 	entry := &IndexEntry{
@@ -429,30 +427,6 @@ func (s *indexService) processMainFile(mainFilePath, reportDir string) (*IndexEn
 	}
 
 	return entry, nil
-}
-
-// countProgressEntries counts the number of entries in a progress file
-func (s *indexService) countProgressEntries(progressFilePath string) int {
-	// Validate file path to prevent directory traversal
-	cleanPath := filepath.Clean(progressFilePath)
-	if strings.Contains(cleanPath, "..") {
-		s.log.WithField("file", progressFilePath).Warn("Invalid progress file path")
-		return 0
-	}
-
-	data, err := os.ReadFile(cleanPath) // #nosec G304 - path is validated above
-	if err != nil {
-		s.log.WithField("file", progressFilePath).WithError(err).Debug("Failed to read progress file")
-		return 0
-	}
-
-	var entries []SyncProgressEntry
-	if err := json.Unmarshal(data, &entries); err != nil {
-		s.log.WithField("file", progressFilePath).WithError(err).Debug("Failed to unmarshal progress file")
-		return 0
-	}
-
-	return len(entries)
 }
 
 // SaveTempReport saves a temporary report to disk for recovery purposes

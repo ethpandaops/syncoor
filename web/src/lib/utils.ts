@@ -321,6 +321,16 @@ export function getUniqueExecutionClients<T extends { execution_client_info: { t
 }
 
 /**
+ * Gets unique consensus client types from reports
+ * @param reports - Array of reports
+ * @returns Array of unique consensus client types
+ */
+export function getUniqueConsensusClients<T extends { consensus_client_info: { type: string } }>(reports: T[]): string[] {
+  const clientTypes = new Set(reports.map(report => report.consensus_client_info.type));
+  return Array.from(clientTypes).sort();
+}
+
+/**
  * Calculates a simple moving average for chart data
  * @param data - Array of data points with numeric values
  * @param valueKey - Key to extract numeric value from each data point

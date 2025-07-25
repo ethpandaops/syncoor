@@ -147,7 +147,7 @@ export default function TestDetails() {
         <Card className="p-4">
           <div className="flex flex-col space-y-1">
             <span className="text-sm font-medium text-muted-foreground">Progress Entries</span>
-            <span className="text-2xl font-bold">{testReport.sync_info.entries_count}</span>
+            <span className="text-2xl font-bold">{mainReport?.sync_status?.entries_count || testReport.sync_info.entries_count}</span>
             <span className="text-xs text-muted-foreground">Data points</span>
           </div>
         </Card>
