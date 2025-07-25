@@ -209,7 +209,7 @@ export default function Dashboard() {
                                     </Card>
                                     <Card className="p-3">
                                       <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground">Avg Duration</p>
+                                        <p className="text-xs text-muted-foreground">Recent Trend Duration</p>
                                         <p className="text-sm font-medium">
                                           {stats.avgDuration ? formatDuration(stats.avgDuration) : 'No data'}
                                         </p>
