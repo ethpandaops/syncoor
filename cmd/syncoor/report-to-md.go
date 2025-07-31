@@ -157,6 +157,9 @@ func generateMarkdownSummary(report *MainReport, inputFile string) string {
 		addLabelsInfo(&md, report.Labels)
 	}
 
+	// YAML Configuration
+	addYAMLConfigInfo(&md, report)
+
 	// Files
 	addFilesInfo(&md, report, inputFile)
 
@@ -358,6 +361,22 @@ func addTimelineInfo(md *strings.Builder, report *MainReport) {
 	fmt.Fprintf(md, "| **End Time** | %s |\n", time.Unix(report.SyncStatus.End, 0).Format("2006-01-02 15:04:05 UTC"))
 	fmt.Fprintf(md, "| **Total Duration** | %s |\n", formatDuration(duration))
 	md.WriteString("\n")
+}
+
+func addYAMLConfigInfo(md *strings.Builder, report *MainReport) {
+	md.WriteString("## ⚙️ YAML Configuration\n\n")
+	md.WriteString("```yaml\n")
+	fmt.Fprintf(md, "participants:\n")
+	fmt.Fprintf(md, "  - el_type: %s\n", strings.ToLower(report.ExecutionClientInfo.Type))
+	fmt.Fprintf(md, "    el_image: %s\n", report.ExecutionClientInfo.Image)
+	fmt.Fprintf(md, "    cl_type: %s\n", strings.ToLower(report.ConsensusClientInfo.Type))
+	fmt.Fprintf(md, "    cl_image: %s\n", report.ConsensusClientInfo.Image)
+	fmt.Fprintf(md, "    validator_count: 0\n")
+	fmt.Fprintf(md, "network_params:\n")
+	fmt.Fprintf(md, "  network: \"%s\"\n", report.Network)
+	fmt.Fprintf(md, "persistent: true\n")
+	fmt.Fprintf(md, "ethereum_metrics_exporter_enabled: true\n")
+	md.WriteString("```\n\n")
 }
 
 func addFilesInfo(md *strings.Builder, report *MainReport, inputFile string) {
