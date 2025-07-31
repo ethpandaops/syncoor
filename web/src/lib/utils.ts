@@ -1,5 +1,6 @@
 import { ClientInfo, ProgressEntry } from '../types/report';
 import { clsx, type ClassValue } from 'clsx';
+import React from 'react';
 
 /**
  * Utility function to merge class names with clsx
@@ -422,4 +423,96 @@ export function calculateClientGroupStats(reports: any[]) {
     avgDuration,
     mostRecentDiskUsage
   };
+}
+
+/**
+ * Get badge variant and display text for sync status
+ * @param status - The sync status
+ * @returns Object with variant and display text
+ */
+export function getStatusBadgeInfo(status?: string): { 
+  variant: 'default' | 'secondary' | 'destructive' | 'success' | 'outline';
+  text: string;
+} {
+  if (!status) {
+    return { variant: 'success', text: 'Success' };
+  }
+
+  switch (status.toLowerCase()) {
+    case 'success':
+      return { variant: 'success', text: 'Success' };
+    case 'timeout':
+      return { variant: 'destructive', text: 'Timeout' };
+    case 'cancelled':
+      return { variant: 'secondary', text: 'Cancelled' };
+    case 'error':
+      return { variant: 'destructive', text: 'Error' };
+    default:
+      return { variant: 'outline', text: status };
+  }
+}
+
+/**
+ * Get status icon for sync status
+ * @param status - The sync status
+ * @returns Icon component as JSX element
+ */
+export function getStatusIcon(status?: string): React.ReactElement | null {
+  if (!status) {
+    // Default to success icon when status is unknown
+    status = 'success';
+  }
+
+  switch (status.toLowerCase()) {
+    case 'success':
+      return React.createElement('svg', {
+        className: "w-4 h-4",
+        fill: "none",
+        viewBox: "0 0 24 24",
+        stroke: "currentColor"
+      }, React.createElement('path', {
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeWidth: 2,
+        d: "M5 13l4 4L19 7"
+      }));
+    case 'timeout':
+      return React.createElement('svg', {
+        className: "w-4 h-4",
+        fill: "none",
+        viewBox: "0 0 24 24",
+        stroke: "currentColor"
+      }, React.createElement('path', {
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeWidth: 2,
+        d: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      }));
+    case 'cancelled':
+      return React.createElement('svg', {
+        className: "w-4 h-4",
+        fill: "none",
+        viewBox: "0 0 24 24",
+        stroke: "currentColor"
+      }, React.createElement('path', {
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeWidth: 2,
+        d: "M6 18L18 6M6 6l12 12"
+      }));
+    case 'error':
+      return React.createElement('svg', {
+        className: "w-4 h-4",
+        fill: "none",
+        viewBox: "0 0 24 24",
+        stroke: "currentColor"
+      }, React.createElement('path', {
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        strokeWidth: 2,
+        d: "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+      }));
+    default:
+      return null;
+  }
 }

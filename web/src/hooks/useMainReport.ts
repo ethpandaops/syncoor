@@ -59,6 +59,8 @@ export interface MainReport {
   sync_status: {
     start: number;
     end: number;
+    status?: string;
+    status_message?: string;
     block: number;
     slot: number;
     sync_progress_file: string;

@@ -7,7 +7,7 @@ import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { useProgressData } from '../hooks/useProgressData';
 import { useMainReport } from '../hooks/useMainReport';
-import { formatDuration, formatTimestamp } from '../lib/utils';
+import { formatDuration, formatTimestamp, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 import { SystemInformation } from '../components/SystemInformation';
 import { GithubActionsInfo } from '../components/GithubActionsInfo';
@@ -87,7 +87,7 @@ export default function TestDetails() {
             <h1 className="text-3xl font-bold">Test Details</h1>
             <Badge variant="outline">{testReport.network}</Badge>
           </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="flex items-center gap-3 text-muted-foreground">
             <div className="flex items-center gap-1">
               <img 
                 src={`img/clients/${testReport.execution_client_info.type}.jpg`} 
@@ -111,6 +111,14 @@ export default function TestDetails() {
               />
               <span>{testReport.consensus_client_info.name}</span>
             </div>
+            <span>•</span>
+            <Badge 
+              variant={getStatusBadgeInfo(mainReport?.sync_status?.status || testReport.sync_info.status).variant}
+              className="flex items-center gap-1"
+            >
+              {getStatusIcon(mainReport?.sync_status?.status || testReport.sync_info.status)}
+              {getStatusBadgeInfo(mainReport?.sync_status?.status || testReport.sync_info.status).text}
+            </Badge>
           </div>
         </div>
         <Link to="/tests">
@@ -326,6 +334,14 @@ export default function TestDetails() {
                 <span className="text-sm font-medium text-muted-foreground">End Time</span>
                 <span className="text-sm">{formatTimestamp(Number(testReport.sync_info.end))}</span>
               </div>
+              {(mainReport?.sync_status?.status_message || testReport.sync_info.status_message) && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-sm font-medium text-muted-foreground">Status Message</span>
+                  <span className="text-sm break-words">
+                    {mainReport?.sync_status?.status_message || testReport.sync_info.status_message}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
