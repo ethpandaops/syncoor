@@ -202,6 +202,7 @@ func (s *Store) ListTests(activeOnly bool) []TestSummary {
 			CLClient:       test.CLClient.Type,
 			CurrentMetrics: test.CurrentMetrics,
 			SystemInfo:     test.SystemInfo,
+			Error:          test.Error,
 		}
 
 		tests = append(tests, summary)

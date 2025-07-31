@@ -39,6 +39,12 @@ func (s *Server) generateMockData() {
 		{"mock-test-013", "holesky", "nethermind", "lighthouse", "completed"},
 		{"mock-test-014", "mainnet", "reth", "prysm", "completed"},
 		{"mock-test-015", "sepolia", "erigon", "teku", "completed"},
+
+		// Some timeout tests for variety
+		{"mock-test-016", "mainnet", "geth", "nimbus", "timeout"},
+		{"mock-test-017", "sepolia", "besu", "lighthouse", "timeout"},
+		{"mock-test-018", "holesky", "nethermind", "prysm", "timeout"},
+		{"mock-test-019", "mainnet", "reth", "teku", "timeout"},
 	}
 
 	for _, test := range mockTests {
@@ -72,6 +78,8 @@ func (s *Server) createMockTest(runID, network, elType, clType, status string) {
 		s.addRunningTestData(runID, elType, clType)
 	case "completed":
 		s.addCompletedTestData(runID, elType, clType)
+	case "timeout":
+		s.addTimeoutTestData(runID, elType, clType)
 	}
 }
 
@@ -138,23 +146,22 @@ func (s *Server) addRunningTestData(runID, elType, clType string) {
 	}
 }
 
-// addCompletedTestData adds mock progress history and completes the test
-func (s *Server) addCompletedTestData(runID, elType, clType string) {
-	// Add some progress history for completed tests
-	for i := range 3 {
+// generateMockProgressHistory generates mock progress entries with configurable parameters
+func (s *Server) generateMockProgressHistory(runID, elType, clType string, config mockProgressConfig) {
+	for i := range config.entries {
 		var iOffset uint64
 		if i >= 0 {
 			iOffset = uint64(i)
 		}
 		mockMetrics := reporting.ProgressMetrics{
-			Block:           19500000 + iOffset*1000,
-			Slot:            62400000 + iOffset*1000,
-			ExecDiskUsage:   (400 + iOffset*10) * 1024 * 1024 * 1024,
-			ConsDiskUsage:   (100 + iOffset*5) * 1024 * 1024 * 1024,
-			ExecPeers:       25 + iOffset,
-			ConsPeers:       50 + iOffset,
-			ExecSyncPercent: float64(60 + i*15),
-			ConsSyncPercent: float64(70 + i*10),
+			Block:           config.baseBlock + iOffset*config.blockStep,
+			Slot:            config.baseSlot + iOffset*config.slotStep,
+			ExecDiskUsage:   (config.baseDiskExec + iOffset*config.diskStepExec) * 1024 * 1024 * 1024,
+			ConsDiskUsage:   (config.baseDiskCons + iOffset*config.diskStepCons) * 1024 * 1024 * 1024,
+			ExecPeers:       config.basePeersExec + iOffset,
+			ConsPeers:       config.basePeersCons + iOffset,
+			ExecSyncPercent: float64(config.baseSyncExec + i*config.syncStepExec),
+			ConsSyncPercent: float64(config.baseSyncCons + i*config.syncStepCons),
 			ExecVersion:     elType + "/v1.0.0",
 			ConsVersion:     clType + "/v2.1.0",
 		}
@@ -163,12 +170,55 @@ func (s *Server) addCompletedTestData(runID, elType, clType string) {
 			s.log.WithFields(map[string]interface{}{
 				"run_id": runID,
 				"error":  err.Error(),
-			}).Error("Failed to add mock progress")
+			}).Error("Failed to add mock " + config.logContext + " progress")
 		}
 
 		// Sleep briefly to create realistic timestamps
 		time.Sleep(time.Millisecond * 10)
 	}
+}
+
+type mockProgressConfig struct {
+	entries       int
+	baseBlock     uint64
+	baseSlot      uint64
+	blockStep     uint64
+	slotStep      uint64
+	baseDiskExec  uint64
+	baseDiskCons  uint64
+	diskStepExec  uint64
+	diskStepCons  uint64
+	basePeersExec uint64
+	basePeersCons uint64
+	baseSyncExec  int
+	baseSyncCons  int
+	syncStepExec  int
+	syncStepCons  int
+	logContext    string
+}
+
+// addCompletedTestData adds mock progress history and completes the test
+func (s *Server) addCompletedTestData(runID, elType, clType string) {
+	// Add progress history for completed tests
+	config := mockProgressConfig{
+		entries:       3,
+		baseBlock:     19500000,
+		baseSlot:      62400000,
+		blockStep:     1000,
+		slotStep:      1000,
+		baseDiskExec:  400,
+		baseDiskCons:  100,
+		diskStepExec:  10,
+		diskStepCons:  5,
+		basePeersExec: 25,
+		basePeersCons: 50,
+		baseSyncExec:  60,
+		baseSyncCons:  70,
+		syncStepExec:  15,
+		syncStepCons:  10,
+		logContext:    "completed",
+	}
+	s.generateMockProgressHistory(runID, elType, clType, config)
 
 	// Complete the test
 	completeReq := reporting.TestCompleteRequest{
@@ -183,6 +233,46 @@ func (s *Server) addCompletedTestData(runID, elType, clType string) {
 			"run_id": runID,
 			"error":  err.Error(),
 		}).Error("Failed to complete mock test")
+	}
+}
+
+// addTimeoutTestData adds mock progress history and marks the test as timed out
+func (s *Server) addTimeoutTestData(runID, elType, clType string) {
+	// Add progress history for timeout tests (partial sync progress)
+	config := mockProgressConfig{
+		entries:       2,
+		baseBlock:     19400000,
+		baseSlot:      62300000,
+		blockStep:     500,
+		slotStep:      500,
+		baseDiskExec:  300,
+		baseDiskCons:  80,
+		diskStepExec:  20,
+		diskStepCons:  10,
+		basePeersExec: 15,
+		basePeersCons: 30,
+		baseSyncExec:  30,
+		baseSyncCons:  40,
+		syncStepExec:  20,
+		syncStepCons:  15,
+		logContext:    "timeout",
+	}
+	s.generateMockProgressHistory(runID, elType, clType, config)
+
+	// Complete the test with timeout status
+	timeoutReq := reporting.TestCompleteRequest{
+		Timestamp:  time.Now().Unix(),
+		FinalBlock: 19401000,                                // Lower final block showing incomplete sync
+		FinalSlot:  62301000,                                // Lower final slot showing incomplete sync
+		Success:    false,                                   // Mark as failed due to timeout
+		Error:      "Sync operation timed out after 2h0m0s", // Mock timeout message
+	}
+
+	if err := s.store.CompleteTest(runID, timeoutReq); err != nil {
+		s.log.WithFields(map[string]interface{}{
+			"run_id": runID,
+			"error":  err.Error(),
+		}).Error("Failed to complete mock timeout test")
 	}
 }
 

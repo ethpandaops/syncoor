@@ -147,10 +147,7 @@ func (s *service) Start(ctx context.Context) error {
 			},
 			Persistent: true,
 		}),
-	}
-
-	if s.cfg.RunTimeout > 0 {
-		runOpts = append(runOpts, ethereum.WithTimeout(s.cfg.RunTimeout))
+		ethereum.WithTimeout(15 * time.Minute), // It shouldn't take more than 15 minutes to start the nodes
 	}
 
 	// Check for recovery opportunity if recovery service is enabled
