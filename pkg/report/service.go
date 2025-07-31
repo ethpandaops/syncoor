@@ -22,6 +22,7 @@ type Service interface {
 	SetExecutionClientInfo(ctx context.Context, info *ClientInfo) error
 	SetBlockNumber(ctx context.Context, blockNumber uint64) error
 	SetSlotNumber(ctx context.Context, slotNumber uint64) error
+	SetSyncStatus(ctx context.Context, status string, message string) error
 	SetLabels(ctx context.Context, labels map[string]string) error
 	SetNetwork(ctx context.Context, network string) error
 	SetSystemInfo(ctx context.Context, info *sysinfo.SystemInfo) error
@@ -64,6 +65,8 @@ type ClientInfo struct {
 type SyncStatus struct {
 	Start            int64               `json:"start"`
 	End              int64               `json:"end"`
+	Status           string              `json:"status"`                   // "success", "timeout", "cancelled", "error"
+	StatusMessage    string              `json:"status_message,omitempty"` // Detailed message about the status
 	Block            uint64              `json:"block"`
 	Slot             uint64              `json:"slot"`
 	SyncProgress     []SyncProgressEntry `json:"sync_progress,omitempty"`
@@ -126,6 +129,16 @@ func (s *service) SetBlockNumber(ctx context.Context, blockNumber uint64) error 
 func (s *service) SetSlotNumber(ctx context.Context, slotNumber uint64) error {
 	s.log.WithField("slotNumber", slotNumber).Debug("Setting slot number")
 	s.result.SyncStatus.Slot = slotNumber
+	return nil
+}
+
+func (s *service) SetSyncStatus(ctx context.Context, status string, message string) error {
+	s.log.WithFields(logrus.Fields{
+		"status":  status,
+		"message": message,
+	}).Debug("Setting sync status")
+	s.result.SyncStatus.Status = status
+	s.result.SyncStatus.StatusMessage = message
 	return nil
 }
 
@@ -276,13 +289,15 @@ type IndexClientInfo struct {
 
 // IndexSyncInfo represents sync information in the index
 type IndexSyncInfo struct {
-	Start        int64              `json:"start"`
-	End          int64              `json:"end"`
-	Duration     int64              `json:"duration"`
-	Block        uint64             `json:"block"`
-	Slot         uint64             `json:"slot"`
-	EntriesCount int                `json:"entries_count"`
-	LastEntry    *SyncProgressEntry `json:"last_entry,omitempty"`
+	Start         int64              `json:"start"`
+	End           int64              `json:"end"`
+	Duration      int64              `json:"duration"`
+	Status        string             `json:"status,omitempty"`
+	StatusMessage string             `json:"status_message,omitempty"`
+	Block         uint64             `json:"block"`
+	Slot          uint64             `json:"slot"`
+	EntriesCount  int                `json:"entries_count"`
+	LastEntry     *SyncProgressEntry `json:"last_entry,omitempty"`
 }
 
 // Index represents the complete index structure
@@ -414,13 +429,15 @@ func (s *indexService) processMainFile(mainFilePath, reportDir string) (*IndexEn
 			Version: result.ConsensusClientInfo.Version,
 		},
 		SyncInfo: IndexSyncInfo{
-			Start:        result.SyncStatus.Start,
-			End:          result.SyncStatus.End,
-			Duration:     duration,
-			Block:        result.SyncStatus.Block,
-			Slot:         result.SyncStatus.Slot,
-			EntriesCount: entriesCount,
-			LastEntry:    result.SyncStatus.LastEntry,
+			Start:         result.SyncStatus.Start,
+			End:           result.SyncStatus.End,
+			Duration:      duration,
+			Status:        result.SyncStatus.Status,
+			StatusMessage: result.SyncStatus.StatusMessage,
+			Block:         result.SyncStatus.Block,
+			Slot:          result.SyncStatus.Slot,
+			EntriesCount:  entriesCount,
+			LastEntry:     result.SyncStatus.LastEntry,
 		},
 		MainFile:     filepath.Base(mainFilePath),
 		ProgressFile: result.SyncStatus.SyncProgressFile,
@@ -589,11 +606,13 @@ func (s *service) GetCurrentReport(ctx context.Context) (*Result, error) {
 		Network:   s.result.Network,
 		Labels:    make(map[string]string),
 		SyncStatus: SyncStatus{
-			Start:        s.result.SyncStatus.Start,
-			End:          s.result.SyncStatus.End,
-			Block:        s.result.SyncStatus.Block,
-			Slot:         s.result.SyncStatus.Slot,
-			SyncProgress: make([]SyncProgressEntry, len(s.result.SyncStatus.SyncProgress)),
+			Start:         s.result.SyncStatus.Start,
+			End:           s.result.SyncStatus.End,
+			Status:        s.result.SyncStatus.Status,
+			StatusMessage: s.result.SyncStatus.StatusMessage,
+			Block:         s.result.SyncStatus.Block,
+			Slot:          s.result.SyncStatus.Slot,
+			SyncProgress:  make([]SyncProgressEntry, len(s.result.SyncStatus.SyncProgress)),
 		},
 		ExecutionClientInfo: s.result.ExecutionClientInfo,
 		ConsensusClientInfo: s.result.ConsensusClientInfo,

@@ -2,6 +2,7 @@ package synctest
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"strconv"
@@ -23,6 +24,9 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/reporting"
 	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 )
+
+// ErrSyncTimeout is returned when the sync operation times out
+var ErrSyncTimeout = errors.New("sync operation timed out")
 
 // Service defines the interface for the sync test service
 type Service interface {
@@ -205,6 +209,11 @@ func (s *service) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to set network in report: %w", err)
 	}
 
+	// Set initial status
+	if err := s.reportService.SetSyncStatus(ctx, "running", "Sync test in progress"); err != nil {
+		s.log.WithError(err).Warn("Failed to set initial status in report")
+	}
+
 	// Set labels in report
 	if err := s.reportService.SetLabels(ctx, s.cfg.Labels); err != nil {
 		return fmt.Errorf("failed to set labels in report: %w", err)
@@ -364,11 +373,71 @@ func (s *service) WaitForSync(ctx context.Context) error {
 		return fmt.Errorf("network not started, call Start() first")
 	}
 
+	// Create a timeout context if RunTimeout is configured
+	var timeoutCtx context.Context
+	var timeoutCancel context.CancelFunc
+
+	if s.cfg.RunTimeout > 0 {
+		s.log.WithField("timeout", s.cfg.RunTimeout).Info("Starting sync with timeout")
+		timeoutCtx, timeoutCancel = context.WithTimeout(ctx, s.cfg.RunTimeout)
+		defer timeoutCancel()
+	} else {
+		timeoutCtx = ctx
+	}
+
 	// Start sync checking loop
 	for {
 		select {
-		case <-ctx.Done():
-			return ctx.Err()
+		case <-timeoutCtx.Done():
+			// Check if it was a timeout or regular cancellation
+			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
+				s.log.WithField("timeout", s.cfg.RunTimeout).Warn("Sync operation timed out, generating report with timeout status")
+
+				// Mark test as completed to prevent further progress reports
+				s.testCompleted = true
+
+				// Set timeout status in report
+				timeoutMessage := fmt.Sprintf("Sync operation timed out after %v", s.cfg.RunTimeout)
+				if err := s.reportService.SetSyncStatus(ctx, "timeout", timeoutMessage); err != nil {
+					s.log.WithError(err).Warn("Failed to set timeout status in report")
+				}
+
+				// Report timeout to centralized server if configured
+				if s.reportingClient != nil {
+					completeReq := reporting.TestCompleteRequest{
+						Timestamp: time.Now().Unix(),
+						Success:   false,
+						Error:     "sync operation timed out",
+					}
+
+					if err := s.reportingClient.ReportTestComplete(ctx, completeReq); err != nil {
+						s.log.WithError(err).Warn("Failed to report test timeout")
+					}
+				}
+
+				// Stop report service and save report with timeout status
+				if err := s.reportService.Stop(ctx); err != nil {
+					s.log.WithError(err).Error("Failed to stop report service")
+				}
+
+				// Save report even though it timed out
+				baseName := fmt.Sprintf("%s_%s_%s", s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
+				if err := s.reportService.SaveReportToFiles(ctx, baseName, s.cfg.ReportDir); err != nil {
+					s.log.WithError(err).Error("Failed to save timeout report")
+				} else {
+					s.log.Info("Timeout report saved successfully")
+				}
+
+				// Clean up temporary reports
+				if s.recoveryService != nil {
+					if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
+						s.log.WithError(err).Warn("Failed to clean up temporary reports")
+					}
+				}
+
+				return fmt.Errorf("%w after %v", ErrSyncTimeout, s.cfg.RunTimeout)
+			}
+			return fmt.Errorf("context cancelled: %w", timeoutCtx.Err())
 		default:
 		}
 
@@ -534,6 +603,12 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 			// Mark test as completed to prevent further progress reports
 			s.testCompleted = true
+
+			// Set success status in report
+			successMessage := fmt.Sprintf("Sync completed successfully at block %d, slot %s", execSyncStatus.BlockNumber, consensusSyncStatus.HeadSlot)
+			if err := s.reportService.SetSyncStatus(ctx, "success", successMessage); err != nil {
+				s.log.WithError(err).Warn("Failed to set success status in report")
+			}
 
 			// Report completion to centralized server if configured
 			if s.reportingClient != nil {

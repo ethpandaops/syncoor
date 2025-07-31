@@ -382,21 +382,40 @@ function generateGitHubLabels() {
   };
 }
 
-function generateMainReport(runId, timestamp, network, elClient, clClient) {
+function generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout = false) {
   const duration = generateRealisticDuration(elClient, network);
   const startTime = timestamp;
-  const endTime = startTime + duration;
+  let endTime = startTime + duration;
+  let status = "success";
+  let statusMessage = `Sync completed successfully at block ${randomInt(800000, 900000)}, slot ${randomInt(950000, 1000000)}`;
+  
+  // For timeout tests, cut the duration short and set appropriate status
+  if (isTimeout) {
+    const timeoutDurations = ['30m0s', '45m0s', '1h0m0s', '1h30m0s', '2h0m0s'];
+    const timeoutDuration = timeoutDurations[randomInt(0, timeoutDurations.length - 1)];
+    
+    // Convert timeout string to seconds
+    const timeoutSeconds = timeoutDuration.includes('h') 
+      ? parseInt(timeoutDuration) * 3600 + (parseInt(timeoutDuration.split('h')[1]) || 0) * 60
+      : parseInt(timeoutDuration) * 60;
+    
+    // End time is when timeout occurred
+    endTime = startTime + timeoutSeconds;
+    status = "timeout";
+    statusMessage = `Sync operation timed out after ${timeoutDuration}`;
+  }
   
   // Generate realistic block/slot ranges
-  const finalBlock = randomInt(800000, 900000);
-  const finalSlot = randomInt(950000, 1000000);
+  const finalBlock = isTimeout ? randomInt(400000, 700000) : randomInt(800000, 900000);
+  const finalSlot = isTimeout ? randomInt(500000, 800000) : randomInt(950000, 1000000);
   
-  // Generate progress entries
-  const numEntries = randomInt(15, 80);
+  // Generate progress entries up to timeout or completion
+  const numEntries = isTimeout ? randomInt(10, 50) : randomInt(15, 80);
+  const actualDuration = endTime - startTime;
   const progressEntries = [];
   
   for (let i = 0; i < numEntries; i++) {
-    const entry = generateProgressEntry(startTime, 0, finalSlot - 100, i, numEntries, duration, network, elClient);
+    const entry = generateProgressEntry(startTime, 0, finalSlot - 100, i, numEntries, actualDuration, network, elClient);
     progressEntries.push(entry);
   }
   
@@ -413,6 +432,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient) {
       sync_status: {
         start: startTime,
         end: endTime,
+        status: status,
+        status_message: statusMessage,
         block: finalBlock,
         slot: finalSlot,
         sync_progress_file: `${runId}-${network}_${elClient}_${clClient}.progress.json`,
@@ -465,7 +486,9 @@ function generateMockReports() {
           const daysAgo = randomInt(0, 30);
           const timestamp = Math.floor((Date.now() - (daysAgo * 24 * 60 * 60 * 1000)) / 1000);
           
-          const report = generateMainReport(runId, timestamp, network, elClient, clClient);
+          // 10% chance of generating a timeout test  
+          const isTimeout = Math.random() < 0.1;
+          const report = generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout);
           
           // Write main.json file
           const mainFilename = `${runId}-${network}_${elClient}_${clClient}.main.json`;
@@ -499,6 +522,8 @@ function generateMockReports() {
               start: report.main.sync_status.start,
               end: report.main.sync_status.end,
               duration: report.main.sync_status.end - report.main.sync_status.start,
+              status: report.main.sync_status.status,
+              status_message: report.main.sync_status.status_message,
               block: report.main.sync_status.block,
               slot: report.main.sync_status.slot,
               entries_count: report.progress.length,

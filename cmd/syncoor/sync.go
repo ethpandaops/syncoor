@@ -121,7 +121,8 @@ func NewSyncCommand() *cobra.Command {
 
 	// Sync command flags
 	cmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
-	cmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute, "Timeout in minutes for network startup")
+	cmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute,
+		"Timeout for sync operation - will cancel sync and generate report marked as 'timeout' if exceeded")
 	cmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
 	cmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
 	cmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")
@@ -149,6 +150,15 @@ func setupSignalHandling(ctx context.Context, cancel context.CancelFunc, service
 		select {
 		case sig := <-sigChan:
 			logger.WithField("signal", sig).Info("Received signal, saving progress and shutting down")
+			// Set cancelled status before saving temp report
+			if reportService, ok := service.(interface {
+				SetSyncStatus(ctx context.Context, status string, message string) error
+			}); ok {
+				cancelMessage := fmt.Sprintf("Sync operation cancelled by %s signal", sig)
+				if err := reportService.SetSyncStatus(ctx, "cancelled", cancelMessage); err != nil {
+					logger.WithError(err).Warn("Failed to set cancelled status")
+				}
+			}
 			if err := service.SaveTempReport(ctx); err != nil {
 				logger.WithError(err).Error("Failed to save temp report")
 			}
