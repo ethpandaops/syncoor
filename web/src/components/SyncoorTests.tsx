@@ -16,6 +16,7 @@ interface EndpointData {
   tests: TestSummary[];
   health: HealthResponse | null;
   loading: boolean;
+  refreshing: boolean;
   error: string | null;
 }
 
@@ -50,6 +51,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
         tests: [],
         health: null,
         loading: true,
+        refreshing: false,
         error: null,
       }))
     );
@@ -60,7 +62,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     const fetchData = async () => {
       for (let i = 0; i < endpointData.length; i++) {
         const data = endpointData[i];
-        if (!data.loading) continue;
+        if (!data.loading && !data.refreshing) continue;
 
         try {
           const [testsResponse, healthResponse] = await Promise.allSettled([
@@ -76,7 +78,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
 
           setEndpointData(prev => prev.map((item, index) =>
             index === i
-              ? { ...item, tests, health, loading: false, error }
+              ? { ...item, tests, health, loading: false, refreshing: false, error }
               : item
           ));
         } catch (error) {
@@ -85,6 +87,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
               ? {
                   ...item,
                   loading: false,
+                  refreshing: false,
                   error: error instanceof Error ? error.message : 'Unknown error'
                 }
               : item
@@ -93,8 +96,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
       }
     };
 
-    // Trigger fetch if there are endpoints and any of them are loading
-    const hasLoadingEndpoints = endpointData.some(item => item.loading);
+    // Trigger fetch if there are endpoints and any of them are loading or refreshing
+    const hasLoadingEndpoints = endpointData.some(item => item.loading || item.refreshing);
     if (endpointData.length > 0 && hasLoadingEndpoints) {
       fetchData();
     }
@@ -103,10 +106,10 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   // Auto-refresh every 60 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      // Trigger refresh by resetting loading state for all endpoints
+      // Trigger refresh by setting refreshing state for all endpoints (keep existing data visible)
       setEndpointData(prev => prev.map(item => ({
         ...item,
-        loading: true,
+        refreshing: true,
         error: null
       })));
     }, 60000);
@@ -251,7 +254,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                     Live Running Tests - {data.endpoint.name}
                   </div>
                 </button>
-                {data.loading && <LoaderIcon className="h-4 w-4 animate-spin" />}
+                {(data.loading || data.refreshing) && <LoaderIcon className="h-4 w-4 animate-spin" />}
               </div>
               {data.health && (
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -273,7 +276,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                 <AlertCircleIcon className="h-4 w-4" />
                 <span>{data.error}</span>
               </div>
-            ) : data.loading ? (
+            ) : data.loading && data.tests.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <LoaderIcon className="h-6 w-6 animate-spin" />
                 <span className="ml-2">Loading tests...</span>
