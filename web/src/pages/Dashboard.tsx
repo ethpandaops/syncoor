@@ -4,7 +4,7 @@ import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats, getUniqueConsensusClients } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats, getUniqueConsensusClients, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import SyncoorTests from '../components/SyncoorTests';
@@ -271,8 +271,34 @@ export default function Dashboard() {
                               {/* Stats Cards */}
                               {(() => {
                                 const stats = calculateClientGroupStats(filteredClientReports);
+                                
+                                // Calculate status breakdown
+                                const statusCounts = filteredClientReports.reduce((acc, report) => {
+                                  const status = report.sync_info.status || 'success'; // Default to success
+                                  acc[status] = (acc[status] || 0) + 1;
+                                  return acc;
+                                }, {} as Record<string, number>);
+
+                                const successCount = statusCounts.success || 0;
+                                const totalTests = filteredClientReports.length;
+                                
                                 return (
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                                    <Card className="p-3">
+                                      <div className="space-y-1">
+                                        <p className="text-xs text-muted-foreground">Test Success Rate</p>
+                                        <div className="flex items-center gap-2">
+                                          <p className="text-sm font-medium">
+                                            {totalTests > 0 ? `${Math.round((successCount / totalTests) * 100)}%` : 'No data'}
+                                          </p>
+                                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                            <span className="text-green-600">{successCount}</span>
+                                            <span>/</span>
+                                            <span>{totalTests}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </Card>
                                     <Card className="p-3">
                                       <div className="space-y-1">
                                         <p className="text-xs text-muted-foreground">Last Runtime</p>
@@ -302,26 +328,34 @@ export default function Dashboard() {
                               })()}
 
                               {/* Charts for client group */}
-                              {filteredClientReports.length > 1 && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-                                  <div className="bg-muted/30 rounded-lg p-3">
-                                    <ClientGroupDurationChart
-                                      data={filteredClientReports}
-                                      height={300}
-                                      color="#3b82f6"
-                                      title={`Duration Trends${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
-                                    />
+                              {(() => {
+                                // Filter to only successful runs for graphs
+                                const successfulReports = filteredClientReports.filter(report => {
+                                  const status = report.sync_info.status || 'success'; // Default to success
+                                  return status === 'success';
+                                });
+
+                                return successfulReports.length > 1 && (
+                                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-muted/30 rounded-lg p-3">
+                                      <ClientGroupDurationChart
+                                        data={successfulReports}
+                                        height={300}
+                                        color="#3b82f6"
+                                        title={`Duration Trends - Successful Runs${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
+                                      />
+                                    </div>
+                                    <div className="bg-muted/30 rounded-lg p-3">
+                                      <ClientGroupDiskChart
+                                        data={successfulReports}
+                                        height={300}
+                                        color="#10b981"
+                                        title={`EL Disk Usage Trends - Successful Runs${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
+                                      />
+                                    </div>
                                   </div>
-                                  <div className="bg-muted/30 rounded-lg p-3">
-                                    <ClientGroupDiskChart
-                                      data={filteredClientReports}
-                                      height={300}
-                                      color="#10b981"
-                                      title={`EL Disk Usage Trends${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
-                                    />
-                                  </div>
-                                </div>
-                              )}
+                                );
+                              })()}
 
                               <div className="overflow-x-auto">
                                 <table className="w-full text-xs">
@@ -337,6 +371,7 @@ export default function Dashboard() {
                                       <th className="text-center py-2 px-2">EL Peers</th>
                                       <th className="text-center py-2 px-2">CL Peers</th>
                                       <th className="text-right py-2 px-2">Duration</th>
+                                      <th className="text-center py-2 px-2">Status</th>
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -390,6 +425,17 @@ export default function Dashboard() {
                                           {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
                                         </td>
                                         <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                                        <td className="py-2 px-2 text-center">
+                                          <div className="flex items-center justify-center">
+                                            <Badge 
+                                              variant={getStatusBadgeInfo(report.sync_info.status).variant}
+                                              className="flex items-center gap-1"
+                                            >
+                                              {getStatusIcon(report.sync_info.status)}
+                                              {getStatusBadgeInfo(report.sync_info.status).text}
+                                            </Badge>
+                                          </div>
+                                        </td>
                                       </tr>
                                     ))}
                                   </tbody>

@@ -30,6 +30,7 @@ type TestSummary struct {
 	CLClient       string                     `json:"cl_client"`
 	CurrentMetrics *reporting.ProgressMetrics `json:"current_metrics,omitempty"`
 	SystemInfo     *sysinfo.SystemInfo        `json:"system_info,omitempty"`
+	Error          string                     `json:"error,omitempty"`
 }
 
 type TestDetail struct {

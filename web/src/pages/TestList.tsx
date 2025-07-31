@@ -5,7 +5,7 @@ import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { formatDuration, formatTimestamp, formatBytes } from '../lib/utils';
+import { formatDuration, formatTimestamp, formatBytes, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
 export default function TestList() {
@@ -145,6 +145,10 @@ export default function TestList() {
         case 'cl_peers':
           aVal = a.sync_info.last_entry?.pc || 0;
           bVal = b.sync_info.last_entry?.pc || 0;
+          break;
+        case 'status':
+          aVal = a.sync_info.status || 'unknown';
+          bVal = b.sync_info.status || 'unknown';
           break;
         default:
           aVal = Number(a.timestamp);
@@ -466,6 +470,17 @@ export default function TestList() {
                         )}
                       </button>
                     </th>
+                    <th className="text-center py-3 px-3">
+                      <button 
+                        onClick={() => handleSort('status')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium mx-auto"
+                      >
+                        Status
+                        {sortBy === 'status' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
                     <th className="text-left py-3 px-3">
                       <button 
                         onClick={() => handleSort('network')}
@@ -530,6 +545,17 @@ export default function TestList() {
                         {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
                       </td>
                       <td className="py-3 px-3 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex items-center justify-center">
+                          <Badge 
+                            variant={getStatusBadgeInfo(report.sync_info.status).variant}
+                            className="flex items-center gap-1"
+                          >
+                            {getStatusIcon(report.sync_info.status)}
+                            {getStatusBadgeInfo(report.sync_info.status).text}
+                          </Badge>
+                        </div>
+                      </td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">{report.network}</Badge>

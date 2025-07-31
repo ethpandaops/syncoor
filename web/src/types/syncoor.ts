@@ -43,6 +43,7 @@ export interface TestSummary {
   el_client: string;
   cl_client: string;
   current_metrics?: ProgressMetrics;
+  error?: string;
 }
 
 /**

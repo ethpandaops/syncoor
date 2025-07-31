@@ -30,6 +30,10 @@ export interface SyncInfo {
   end: string;
   /** Total sync duration in seconds */
   duration: number;
+  /** Sync status: 'success', 'timeout', 'cancelled', 'error' */
+  status?: string;
+  /** Detailed status message */
+  status_message?: string;
   /** Target block number */
   block: number;
   /** Target slot number */
