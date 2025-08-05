@@ -57,6 +57,11 @@ func NewSyncCommand() *cobra.Command {
 				enclaveName = fmt.Sprintf("sync-test-%s-%s-%s", networkName, elClient, clClient)
 			}
 
+			// Set default checkpoint sync URL if not provided
+			if checkpointSyncURL == "" {
+				checkpointSyncURL = fmt.Sprintf("https://checkpoint-sync.%s.ethpandaops.io/", networkName)
+			}
+
 			// Create sync test config from command line flags
 			config := synctest.Config{
 				CheckInterval:         checkInterval,
@@ -89,6 +94,9 @@ func NewSyncCommand() *cobra.Command {
 				}
 			}
 			config.Labels = parsedLabels
+
+			// Set configuration defaults
+			config.SetDefaults()
 
 			// Create new sync test service
 			syncTestService := synctest.NewService(logger, config, Version)

@@ -27,6 +27,14 @@ type Config struct {
 	CheckpointSyncURL     string // Checkpoint sync URL
 }
 
+// SetDefaults sets default values for unspecified configuration fields
+func (c *Config) SetDefaults() {
+	// Set default checkpoint sync URL if not specified
+	if c.CheckpointSyncURL == "" && c.Network != "" {
+		c.CheckpointSyncURL = fmt.Sprintf("https://checkpoint-sync.%s.ethpandaops.io/", c.Network)
+	}
+}
+
 // Validate validates the configuration
 func (c *Config) Validate() error {
 	if c.CheckInterval <= 0 {
