@@ -3,7 +3,7 @@ module github.com/ethpandaops/syncoor
 go 1.23.5
 
 require (
-	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805104339-78b3385af3f6
+	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805123423-220b369a226a
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.10.3
 	github.com/prometheus/client_golang v1.23.0
@@ -28,20 +28,17 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/emicklei/dot v1.9.0 // indirect
-	github.com/fatih/color v1.18.0 // indirect
 	github.com/ferranbt/fastssz v0.1.4 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-yaml/yaml v2.1.0+incompatible // indirect
 	github.com/goccy/go-yaml v1.18.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/huandu/go-clone v1.7.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/kurtosis-tech/kurtosis-portal/api/golang v0.0.0-20231031173452-349f1ec9a443 // indirect
 	github.com/kurtosis-tech/kurtosis/contexts-config-store v0.0.0-20250730141304-dfbdd758ef21 // indirect
@@ -75,13 +72,10 @@ require (
 	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
-	golang.org/x/xerrors v0.0.0-20240903120638-7835f813f4da // indirect
-	google.golang.org/genproto v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250804133106-a7a43d27e69b // indirect
 	google.golang.org/grpc v1.74.2 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
-	gopkg.in/Knetic/govaluate.v3 v3.0.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
