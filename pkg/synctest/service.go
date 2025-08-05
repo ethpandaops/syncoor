@@ -117,6 +117,7 @@ func (s *service) Start(ctx context.Context) error {
 		ELType:         client.Type(s.cfg.ELClient),
 		CLType:         client.Type(s.cfg.CLClient),
 		ValidatorCount: 0,
+		Supernode:      s.cfg.EnableSupernodes,
 	}
 
 	// Set images if provided
@@ -143,7 +144,9 @@ func (s *service) Start(ctx context.Context) error {
 			EthereumMetricsExporterEnabled: boolPtr(true),
 			Participants:                   []config.ParticipantConfig{participantConfig},
 			NetworkParams: &config.NetworkParams{
-				Network: s.cfg.Network,
+				Network:               s.cfg.Network,
+				CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
+				CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
 			},
 			Persistent: true,
 		}),
