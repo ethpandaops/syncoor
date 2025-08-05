@@ -7,6 +7,11 @@ inputs:
     description: 'GitHub token for API access' # You can just provide ${{ secrets.GITHUB_TOKEN }}
     required: true
 
+  syncoor-image:
+    description: 'Docker image for syncoor (e.g., docker.ethquokkaops.io/dh/ethpandaops/syncoor:master). Ignored if git-ref is provided.'
+    required: false
+    default: 'docker.ethquokkaops.io/dh/ethpandaops/syncoor:master'
+
   image:
     description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:latest). Ignored if git-ref is provided.'
     required: false
@@ -236,6 +241,8 @@ runs:
       run: |
         if [ -n "${{ inputs.git-ref }}" ]; then
           IMAGE="syncoor:local"
+        elif [ -n "${{ inputs.syncoor-image }}" ]; then
+          IMAGE="${{ inputs.syncoor-image }}"
         else
           IMAGE="${{ inputs.image }}"
         fi
