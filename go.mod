@@ -3,7 +3,7 @@ module github.com/ethpandaops/syncoor
 go 1.23.5
 
 require (
-	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805123423-220b369a226a
+	github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805125405-57734d5de9e8
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.10.3
 	github.com/prometheus/client_golang v1.23.0

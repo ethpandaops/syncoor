@@ -144,11 +144,11 @@ func (s *service) Start(ctx context.Context) error {
 			EthereumMetricsExporterEnabled: boolPtr(true),
 			Participants:                   []config.ParticipantConfig{participantConfig},
 			NetworkParams: &config.NetworkParams{
-				Network:               s.cfg.Network,
-				CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
-				CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
+				Network: s.cfg.Network,
 			},
-			Persistent: true,
+			CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
+			CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
+			Persistent:            true,
 		}),
 		ethereum.WithTimeout(15 * time.Minute), // It shouldn't take more than 15 minutes to start the nodes
 	}

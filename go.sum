@@ -20,8 +20,8 @@ github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5/go.mod h1:qssHWj6
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
 github.com/emicklei/dot v1.9.0 h1:FyaJNctdMfaEIbTQ1FkKZ1UCZyJJSkyvkrXOVoNZPKU=
 github.com/emicklei/dot v1.9.0/go.mod h1:DeV7GvQtIw4h2u73RKBkkFdvVAz0D9fzeJrgPW6gy/s=
-github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805123423-220b369a226a h1:0IhaV9MfoQyaX6GcL3BBa0728CWYbHxZPwEE5+U3AEg=
-github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805123423-220b369a226a/go.mod h1:HpZGtMckBQ28KbIra2RlVnpgQtkhW6nQRA2mJleS4z0=
+github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805125405-57734d5de9e8 h1:5QLuypK6iY7ivest07nyMDo1M3WmBxborL1OdE2HuSE=
+github.com/ethpandaops/ethereum-package-go v0.5.1-0.20250805125405-57734d5de9e8/go.mod h1:gqNdarbLt6E5hZjV7WGjYoS3LZZ+IHi7n50PUJ9m2zk=
 github.com/ferranbt/fastssz v0.1.4 h1:OCDB+dYDEQDvAgtAGnTSidK1Pe2tW3nFV40XyMkTeDY=
 github.com/ferranbt/fastssz v0.1.4/go.mod h1:Ea3+oeoRGGLGm5shYAeDgu6PGUlcvQhE2fILyD9+tGg=
 github.com/frankban/quicktest v1.14.6 h1:7Xjx+VpznH+oBnejlPUj8oUpdxnVs4f8XU8WnHkI4W8=
