@@ -122,25 +122,33 @@ func (s *service) Start(ctx context.Context) error {
 
 	// Set images if provided
 	if s.cfg.ELImage != "" {
-		participantConfig.ELVersion = s.cfg.ELImage
+		participantConfig.ELImage = &s.cfg.ELImage
 	}
 	if s.cfg.CLImage != "" {
-		participantConfig.CLVersion = s.cfg.CLImage
+		participantConfig.CLImage = &s.cfg.CLImage
 	}
 
-	// Note: Extra args are no longer supported in the new ethereum-package-go API
+	// Set extra args if provided
+	if len(s.cfg.ELExtraArgs) > 0 {
+		participantConfig.ELExtraParams = s.cfg.ELExtraArgs
+	}
+	if len(s.cfg.CLExtraArgs) > 0 {
+		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
+	}
 
 	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
 		ethereum.WithEnclaveName(s.cfg.EnclaveName),
 		ethereum.WithConfig(&config.EthereumPackageConfig{
-			Participants: []config.ParticipantConfig{participantConfig},
+			EthereumMetricsExporterEnabled: boolPtr(true),
+			Participants:                   []config.ParticipantConfig{participantConfig},
 			NetworkParams: &config.NetworkParams{
 				Network:               s.cfg.Network,
 				CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
 				CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
 			},
+			Persistent: true,
 		}),
 		ethereum.WithTimeout(15 * time.Minute), // It shouldn't take more than 15 minutes to start the nodes
 	}
