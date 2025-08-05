@@ -7,21 +7,24 @@ import (
 
 // Config contains the configuration for the synctest service
 type Config struct {
-	CheckInterval time.Duration
-	RunTimeout    time.Duration
-	ELClient      string
-	CLClient      string
-	ELImage       string
-	CLImage       string
-	ELExtraArgs   []string
-	CLExtraArgs   []string
-	Network       string
-	EnclaveName   string
-	ReportDir     string
-	Labels        map[string]string
-	ServerURL     string // e.g., "https://api.syncoor.example"
-	ServerAuth    string // Bearer token for authentication
-	ClientLogs    bool   // Enable EL and CL client log output
+	CheckInterval        time.Duration
+	RunTimeout           time.Duration
+	ELClient             string
+	CLClient             string
+	ELImage              string
+	CLImage              string
+	ELExtraArgs          []string
+	CLExtraArgs          []string
+	Network              string
+	EnclaveName          string
+	ReportDir            string
+	Labels               map[string]string
+	ServerURL            string // e.g., "https://api.syncoor.example"
+	ServerAuth           string // Bearer token for authentication
+	ClientLogs           bool   // Enable EL and CL client log output
+	EnableSupernodes     bool   // Enable supernodes (should only be used with peerdas)
+	CheckpointSyncEnabled bool   // Enable checkpoint sync across the network
+	CheckpointSyncURL    string // Checkpoint sync URL
 }
 
 // Validate validates the configuration

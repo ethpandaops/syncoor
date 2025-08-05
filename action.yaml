@@ -114,6 +114,22 @@ inputs:
     required: false
     default: ''
 
+  # Ethereum network configuration
+  enable-supernodes:
+    description: 'Enable supernodes (should only be used with peerdas)'
+    required: false
+    default: 'false'
+
+  checkpoint-sync-enabled:
+    description: 'Enable checkpoint sync across the network'
+    required: false
+    default: 'true'
+
+  checkpoint-sync-url:
+    description: 'Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)'
+    required: false
+    default: ''
+
   # Github artifacts upload
   upload-artifacts:
     description: 'Whether to upload test reports as artifacts'
@@ -314,6 +330,19 @@ runs:
 
         if [ -n "${{ inputs.server-auth }}" ]; then
           DOCKER_CMD="$DOCKER_CMD --server-auth=\"${{ inputs.server-auth }}\""
+        fi
+
+        # Add Ethereum network configuration parameters
+        if [ "${{ inputs.enable-supernodes }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --enable-supernodes"
+        fi
+
+        if [ "${{ inputs.checkpoint-sync-enabled }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled"
+        fi
+
+        if [ -n "${{ inputs.checkpoint-sync-url }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-url=\"${{ inputs.checkpoint-sync-url }}\""
         fi
 
         # Execute the command
