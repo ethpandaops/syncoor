@@ -117,7 +117,7 @@ func (s *service) Start(ctx context.Context) error {
 		ELType:         client.Type(s.cfg.ELClient),
 		CLType:         client.Type(s.cfg.CLClient),
 		ValidatorCount: 0,
-		Supernode:      s.cfg.EnableSupernodes,
+		Supernode:      s.cfg.Supernodes,
 	}
 
 	// Set images if provided

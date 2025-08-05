@@ -22,7 +22,7 @@ type Config struct {
 	ServerURL             string // e.g., "https://api.syncoor.example"
 	ServerAuth            string // Bearer token for authentication
 	ClientLogs            bool   // Enable EL and CL client log output
-	EnableSupernodes      bool   // Enable supernodes (should only be used with peerdas)
+	Supernodes            bool   // Enable supernodes (should only be used with peerdas)
 	CheckpointSyncEnabled bool   // Enable checkpoint sync across the network
 	CheckpointSyncURL     string // Checkpoint sync URL
 }
