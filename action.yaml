@@ -115,8 +115,8 @@ inputs:
     default: ''
 
   # Ethereum network configuration
-  supernodes:
-    description: 'Enable supernodes (should only be used with peerdas)'
+  supernode:
+    description: 'Enable supernode (should only be used with peerdas)'
     required: false
     default: 'false'
 
@@ -333,8 +333,8 @@ runs:
         fi
 
         # Add Ethereum network configuration parameters
-        if [ "${{ inputs.supernodes }}" = "true" ]; then
-          DOCKER_CMD="$DOCKER_CMD --supernodes"
+        if [ "${{ inputs.supernode }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --supernode"
         fi
 
         if [ "${{ inputs.checkpoint-sync-enabled }}" = "true" ]; then

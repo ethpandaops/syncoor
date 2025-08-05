@@ -35,7 +35,7 @@ func NewSyncCommand() *cobra.Command {
 		serverAuth            string
 		enableRecovery        bool
 		clientLogs            bool
-		supernodes            bool
+		supernode             bool
 		checkpointSyncEnabled bool
 		checkpointSyncURL     string
 	)
@@ -73,7 +73,7 @@ func NewSyncCommand() *cobra.Command {
 				ServerURL:             serverURL,
 				ServerAuth:            serverAuth,
 				ClientLogs:            clientLogs,
-				Supernodes:            supernodes,
+				Supernode:             supernode,
 				CheckpointSyncEnabled: checkpointSyncEnabled,
 				CheckpointSyncURL:     checkpointSyncURL,
 			}
@@ -143,7 +143,7 @@ func NewSyncCommand() *cobra.Command {
 	cmd.Flags().StringVar(&serverAuth, "server-auth", "", "Bearer token for server authentication")
 	cmd.Flags().BoolVar(&enableRecovery, "enable-recovery", true, "Enable recovery from interrupted sync operations")
 	cmd.Flags().BoolVar(&clientLogs, "client-logs", false, "Output EL and CL client logs to stdout")
-	cmd.Flags().BoolVar(&supernodes, "supernodes", false, "Enable supernodes (should only be used with peerdas)")
+	cmd.Flags().BoolVar(&supernode, "supernode", false, "Enable supernode (should only be used with peerdas)")
 	cmd.Flags().BoolVar(&checkpointSyncEnabled, "checkpoint-sync-enabled", true, "Enable checkpoint sync across the network")
 	cmd.Flags().StringVar(&checkpointSyncURL, "checkpoint-sync-url", "", "Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)")
 
