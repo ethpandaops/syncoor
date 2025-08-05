@@ -19,22 +19,25 @@ import (
 func NewSyncCommand() *cobra.Command {
 	var (
 		// Sync command flags
-		checkInterval  time.Duration
-		runTimeout     time.Duration
-		elClient       string
-		clClient       string
-		elImage        string
-		clImage        string
-		elExtraArgs    []string
-		clExtraArgs    []string
-		networkName    string
-		enclaveName    string
-		reportDir      string
-		labels         []string
-		serverURL      string
-		serverAuth     string
-		enableRecovery bool
-		clientLogs     bool
+		checkInterval         time.Duration
+		runTimeout            time.Duration
+		elClient              string
+		clClient              string
+		elImage               string
+		clImage               string
+		elExtraArgs           []string
+		clExtraArgs           []string
+		networkName           string
+		enclaveName           string
+		reportDir             string
+		labels                []string
+		serverURL             string
+		serverAuth            string
+		enableRecovery        bool
+		clientLogs            bool
+		supernode             bool
+		checkpointSyncEnabled bool
+		checkpointSyncURL     string
 	)
 
 	cmd := &cobra.Command{
@@ -56,20 +59,23 @@ func NewSyncCommand() *cobra.Command {
 
 			// Create sync test config from command line flags
 			config := synctest.Config{
-				CheckInterval: checkInterval,
-				RunTimeout:    runTimeout,
-				ELClient:      elClient,
-				CLClient:      clClient,
-				ELImage:       elImage,
-				CLImage:       clImage,
-				ELExtraArgs:   elExtraArgs,
-				CLExtraArgs:   clExtraArgs,
-				Network:       networkName,
-				EnclaveName:   enclaveName,
-				ReportDir:     reportDir,
-				ServerURL:     serverURL,
-				ServerAuth:    serverAuth,
-				ClientLogs:    clientLogs,
+				CheckInterval:         checkInterval,
+				RunTimeout:            runTimeout,
+				ELClient:              elClient,
+				CLClient:              clClient,
+				ELImage:               elImage,
+				CLImage:               clImage,
+				ELExtraArgs:           elExtraArgs,
+				CLExtraArgs:           clExtraArgs,
+				Network:               networkName,
+				EnclaveName:           enclaveName,
+				ReportDir:             reportDir,
+				ServerURL:             serverURL,
+				ServerAuth:            serverAuth,
+				ClientLogs:            clientLogs,
+				Supernode:             supernode,
+				CheckpointSyncEnabled: checkpointSyncEnabled,
+				CheckpointSyncURL:     checkpointSyncURL,
 			}
 
 			// Parse labels
@@ -137,6 +143,12 @@ func NewSyncCommand() *cobra.Command {
 	cmd.Flags().StringVar(&serverAuth, "server-auth", "", "Bearer token for server authentication")
 	cmd.Flags().BoolVar(&enableRecovery, "enable-recovery", true, "Enable recovery from interrupted sync operations")
 	cmd.Flags().BoolVar(&clientLogs, "client-logs", false, "Output EL and CL client logs to stdout")
+	cmd.Flags().BoolVar(&supernode, "supernode", false, "Enable supernode (should only be used with peerdas)")
+	cmd.Flags().BoolVar(&checkpointSyncEnabled, "checkpoint-sync-enabled", true, "Enable checkpoint sync across the network")
+
+	// Handle the case where user explicitly wants to disable checkpoint sync
+	cmd.Flags().Lookup("checkpoint-sync-enabled").NoOptDefVal = "true"
+	cmd.Flags().StringVar(&checkpointSyncURL, "checkpoint-sync-url", "", "Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)")
 
 	return cmd
 }

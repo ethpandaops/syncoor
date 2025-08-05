@@ -117,6 +117,7 @@ func (s *service) Start(ctx context.Context) error {
 		ELType:         client.Type(s.cfg.ELClient),
 		CLType:         client.Type(s.cfg.CLClient),
 		ValidatorCount: 0,
+		Supernode:      s.cfg.Supernode,
 	}
 
 	// Set images if provided
@@ -135,6 +136,12 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
 	}
 
+	// Debug log checkpoint sync configuration
+	s.log.WithFields(logrus.Fields{
+		"checkpoint_sync_enabled": s.cfg.CheckpointSyncEnabled,
+		"checkpoint_sync_url":     s.cfg.CheckpointSyncURL,
+	}).Info("Checkpoint sync configuration")
+
 	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
@@ -145,7 +152,9 @@ func (s *service) Start(ctx context.Context) error {
 			NetworkParams: &config.NetworkParams{
 				Network: s.cfg.Network,
 			},
-			Persistent: true,
+			CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
+			CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
+			Persistent:            true,
 		}),
 		ethereum.WithTimeout(15 * time.Minute), // It shouldn't take more than 15 minutes to start the nodes
 	}

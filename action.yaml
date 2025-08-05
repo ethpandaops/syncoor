@@ -10,7 +10,7 @@ inputs:
   image:
     description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:latest). Ignored if git-ref is provided.'
     required: false
-    default: 'ghcr.io/ethpandaops/syncoor:master'
+    default: 'docker.ethquokkaops.io/dh/ethpandaops/syncoor:master'
 
   git-ref:
     description: 'Git branch or commit hash to build the image from. If provided, will clone and build instead of using pre-built image.'
@@ -111,6 +111,22 @@ inputs:
 
   server-auth:
     description: 'Bearer token for server authentication'
+    required: false
+    default: ''
+
+  # Ethereum network configuration
+  supernode:
+    description: 'Enable supernode (should only be used with peerdas)'
+    required: false
+    default: 'false'
+
+  checkpoint-sync-enabled:
+    description: 'Enable checkpoint sync across the network'
+    required: false
+    default: 'true'
+
+  checkpoint-sync-url:
+    description: 'Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)'
     required: false
     default: ''
 
@@ -314,6 +330,21 @@ runs:
 
         if [ -n "${{ inputs.server-auth }}" ]; then
           DOCKER_CMD="$DOCKER_CMD --server-auth=\"${{ inputs.server-auth }}\""
+        fi
+
+        # Add Ethereum network configuration parameters
+        if [ "${{ inputs.supernode }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --supernode"
+        fi
+
+        if [ "${{ inputs.checkpoint-sync-enabled }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled"
+        else
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled=false"
+        fi
+
+        if [ -n "${{ inputs.checkpoint-sync-url }}" ]; then
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-url=\"${{ inputs.checkpoint-sync-url }}\""
         fi
 
         # Execute the command
