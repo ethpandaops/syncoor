@@ -136,6 +136,12 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
 	}
 
+	// Debug log checkpoint sync configuration
+	s.log.WithFields(logrus.Fields{
+		"checkpoint_sync_enabled": s.cfg.CheckpointSyncEnabled,
+		"checkpoint_sync_url":     s.cfg.CheckpointSyncURL,
+	}).Info("Checkpoint sync configuration")
+
 	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
