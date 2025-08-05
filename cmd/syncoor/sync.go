@@ -145,6 +145,9 @@ func NewSyncCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&clientLogs, "client-logs", false, "Output EL and CL client logs to stdout")
 	cmd.Flags().BoolVar(&supernode, "supernode", false, "Enable supernode (should only be used with peerdas)")
 	cmd.Flags().BoolVar(&checkpointSyncEnabled, "checkpoint-sync-enabled", true, "Enable checkpoint sync across the network")
+	
+	// Handle the case where user explicitly wants to disable checkpoint sync
+	cmd.Flags().Lookup("checkpoint-sync-enabled").NoOptDefVal = "true"
 	cmd.Flags().StringVar(&checkpointSyncURL, "checkpoint-sync-url", "", "Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)")
 
 	return cmd

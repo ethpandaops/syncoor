@@ -340,7 +340,7 @@ runs:
         if [ "${{ inputs.checkpoint-sync-enabled }}" = "true" ]; then
           DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled"
         else
-          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled false"
+          DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-enabled=false"
         fi
 
         if [ -n "${{ inputs.checkpoint-sync-url }}" ]; then
