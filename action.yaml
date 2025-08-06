@@ -8,12 +8,12 @@ inputs:
     required: true
 
   image:
-    description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:latest). Ignored if git-ref is provided.'
+    description: 'Docker image for syncoor (e.g., docker.ethquokkaops.io/dh/ethpandaops/syncoor:master). If not provided, will build locally.'
     required: false
-    default: 'docker.ethquokkaops.io/dh/ethpandaops/syncoor:master'
+    default: ''
 
   git-ref:
-    description: 'Git branch or commit hash to build the image from. If provided, will clone and build instead of using pre-built image.'
+    description: 'Git branch or commit hash to build from. Only used when image is not provided. If neither image nor git-ref are provided, builds from current directory or master.'
     required: false
     default: ''
 
@@ -191,15 +191,30 @@ outputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout and build Syncoor
-      if: inputs.git-ref != ''
+    - name: Build Syncoor Docker image locally
+      if: inputs.image == ''
       shell: bash
       run: |
-        # Clone the repository
-        echo "Cloning repository from ${{ inputs.repository }} at ref ${{ inputs.git-ref }}"
-        git clone ${{ inputs.repository }} syncoor-build
-        cd syncoor-build
-        git checkout ${{ inputs.git-ref }}
+        # Determine source for building
+        if [ -n "${{ inputs.git-ref }}" ]; then
+          # Clone from specified git ref
+          echo "Cloning repository from ${{ inputs.repository }} at ref ${{ inputs.git-ref }}"
+          git clone ${{ inputs.repository }} syncoor-build
+          cd syncoor-build
+          git checkout ${{ inputs.git-ref }}
+        else
+          # Use current directory (action is likely being run with uses: ./ or from the repo)
+          echo "Building from current directory"
+          if [ -f "Dockerfile" ]; then
+            cp -r . syncoor-build
+            cd syncoor-build
+          else
+            # Fallback: clone from master if we're not in the repo
+            echo "Dockerfile not found in current directory, cloning from master"
+            git clone ${{ inputs.repository }} syncoor-build
+            cd syncoor-build
+          fi
+        fi
 
         # Build the Docker image
         echo "Building Docker image..."
@@ -234,12 +249,15 @@ runs:
       id: determine-image
       shell: bash
       run: |
-        if [ -n "${{ inputs.git-ref }}" ]; then
-          IMAGE="syncoor:local"
-        else
+        # Use provided image if specified, otherwise default to local build
+        if [ -n "${{ inputs.image }}" ]; then
           IMAGE="${{ inputs.image }}"
+          echo "Using provided Docker image: ${IMAGE}"
+        else
+          IMAGE="syncoor:local"
+          echo "No image specified, will build locally: ${IMAGE}"
         fi
-        echo "image=$(echo ${IMAGE})" >> $GITHUB_OUTPUT
+        echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
     - name: Get Job ID from GH API
       if: ${{ inputs.run-tests == 'true' }}
@@ -257,7 +275,26 @@ runs:
       id: run-test
       shell: bash
       run: |
-        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+        IMAGE="${{ steps.determine-image.outputs.image }}"
+        
+        # Validate that we have an image
+        if [ -z "$IMAGE" ]; then
+          echo "ERROR: Docker image not specified"
+          echo "Git ref: '${{ inputs.git-ref }}'"
+          echo "Input image: '${{ inputs.image }}'"
+          exit 1
+        fi
+        
+        echo "Running syncoor test with Docker image: ${IMAGE}"
+        
+        # Pull the image if it's not a local build
+        if [ "$IMAGE" != "syncoor:local" ]; then
+          echo "Pulling Docker image: ${IMAGE}"
+          docker pull "${IMAGE}" || {
+            echo "Failed to pull Docker image: ${IMAGE}"
+            exit 1
+          }
+        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm"
@@ -372,7 +409,17 @@ runs:
         rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.workspace }}/tmp_results
 
         # Get image from determine-image step
-        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+        IMAGE="${{ steps.determine-image.outputs.image }}"
+        echo "Using Docker image for report index generation: ${IMAGE}"
+        
+        # Pull the image if it's not a local build
+        if [ "$IMAGE" != "syncoor:local" ]; then
+          echo "Pulling Docker image: ${IMAGE}"
+          docker pull "${IMAGE}" || {
+            echo "Failed to pull Docker image: ${IMAGE}"
+            exit 1
+          }
+        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm"
@@ -421,7 +468,17 @@ runs:
       shell: bash
       run: |
         # Get image from determine-image step
-        IMAGE=$(echo ${{ steps.determine-image.outputs.image }})
+        IMAGE="${{ steps.determine-image.outputs.image }}"
+        echo "Using Docker image for markdown generation: ${IMAGE}"
+        
+        # Pull the image if it's not a local build
+        if [ "$IMAGE" != "syncoor:local" ]; then
+          echo "Pulling Docker image: ${IMAGE}"
+          docker pull "${IMAGE}" || {
+            echo "Failed to pull Docker image: ${IMAGE}"
+            exit 1
+          }
+        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm"
