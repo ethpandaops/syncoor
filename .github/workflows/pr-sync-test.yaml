@@ -1,0 +1,28 @@
+name: Check - PR Sync Test
+
+on:
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  pr-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - uses: ethpandaops/hive-github-action/helpers/self-hosted-runner-dependencies@v0.4.0
+      if: runner.environment != 'github-hosted'
+
+    - name: Run Syncoor Test
+      uses: ./
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        log-force-colors: true
+        client-logs: true
+        network: hoodi
+        el-client: geth
+        cl-client: prysm
+        check-interval: 30s
+        run-timeout: 60m
