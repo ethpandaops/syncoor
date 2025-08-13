@@ -1,8 +1,12 @@
-name: Check - PR Sync Test
+name: Check - CI Github Action
 
 on:
   pull_request:
     branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   pr-sync:
@@ -11,9 +15,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    - uses: ethpandaops/hive-github-action/helpers/self-hosted-runner-dependencies@v0.4.0
-      if: runner.environment != 'github-hosted'
 
     - name: Run Syncoor Test
       uses: ./
