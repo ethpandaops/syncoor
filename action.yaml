@@ -237,6 +237,38 @@ runs:
       run: |
         rclone touch s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/healthcheck.txt
 
+    - name: Install Kurtosis CLI if not present
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      run: |
+        if ! command -v kurtosis &> /dev/null; then
+          echo "Kurtosis CLI not found, installing..."
+
+          # Detect OS
+          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux - assume Ubuntu/Debian
+            echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+            sudo apt update
+            sudo apt install -y kurtosis-cli
+          elif [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            if command -v brew &> /dev/null; then
+              brew install kurtosis-tech/tap/kurtosis-cli
+            else
+              echo "Homebrew not found. Please install Kurtosis manually: https://docs.kurtosis.com/install"
+              exit 1
+            fi
+          else
+            echo "Unsupported OS. Please install Kurtosis manually: https://docs.kurtosis.com/install"
+            exit 1
+          fi
+
+          echo "Kurtosis CLI installed successfully"
+        else
+          echo "Kurtosis CLI already installed"
+          kurtosis version
+        fi
+
     - name: Make sure kurtosis engine is started
       if: ${{ inputs.run-tests == 'true' }}
       id: engine-start
@@ -244,6 +276,12 @@ runs:
       run: |
         kurtosis engine start
         kurtosis engine status
+
+    - name: Cleanup kurtosis enclaves and resources. We want a clean slate.
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      run: |
+        kurtosis clean -a
 
     - name: Determine which image to use
       id: determine-image
@@ -276,7 +314,7 @@ runs:
       shell: bash
       run: |
         IMAGE="${{ steps.determine-image.outputs.image }}"
-        
+
         # Validate that we have an image
         if [ -z "$IMAGE" ]; then
           echo "ERROR: Docker image not specified"
@@ -284,9 +322,9 @@ runs:
           echo "Input image: '${{ inputs.image }}'"
           exit 1
         fi
-        
+
         echo "Running syncoor test with Docker image: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
@@ -411,7 +449,7 @@ runs:
         # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
@@ -470,7 +508,7 @@ runs:
         # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for markdown generation: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
