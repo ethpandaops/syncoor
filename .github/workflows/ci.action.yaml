@@ -26,4 +26,4 @@ jobs:
         el-client: geth
         cl-client: prysm
         check-interval: 30s
-        run-timeout: 60m
+        run-timeout: 5m
