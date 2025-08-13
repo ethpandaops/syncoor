@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -15,6 +16,15 @@ var (
 
 	// Version information (set during build)
 	Version = "unknown" //nolint: gochecknoglobals
+)
+
+const (
+	// ExitCodeSuccess indicates successful completion
+	ExitCodeSuccess = 0
+	// ExitCodeError indicates a general error
+	ExitCodeError = 1
+	// ExitCodeTimeout indicates the operation timed out
+	ExitCodeTimeout = 124
 )
 
 var rootCmd = &cobra.Command{
@@ -75,6 +85,7 @@ func newVersionCommand() *cobra.Command {
 
 func main() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf("Failed to execute command: %v", err)
+		log.Printf("Failed to execute command: %v", err)
+		os.Exit(ExitCodeError)
 	}
 }

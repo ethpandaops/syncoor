@@ -34,7 +34,7 @@ inputs:
     default: '10s'
 
   run-timeout:
-    description: 'Timeout in minutes for network startup'
+    description: 'Timeout for sync operation - will cancel sync and generate report marked as "timeout" if exceeded (exits with code 124, treated as success in CI)'
     required: false
     default: '60m'
 
@@ -450,13 +450,34 @@ runs:
         # Execute the command
         echo "Running: $DOCKER_CMD"
         eval $DOCKER_CMD
+        DOCKER_EXIT_CODE=$?
 
-        # Find the generated main.json file
-        MAIN_JSON_FILE=$(basename $(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1) .json)
+        # Find the generated main.json file (may not exist if test was interrupted)
+        MAIN_JSON_FILE=""
+        if [ -d "${{ github.workspace }}/${{ inputs.report-dir }}" ]; then
+          MAIN_JSON_PATH=$(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1)
+          if [ -n "$MAIN_JSON_PATH" ]; then
+            MAIN_JSON_FILE=$(basename "$MAIN_JSON_PATH" .json)
+          fi
+        fi
 
-        # Set outputs
+        # Set outputs (always set report-path, main-report-file may be empty)
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
         echo "main-report-file=$MAIN_JSON_FILE" >> $GITHUB_OUTPUT
+
+        # Handle exit codes appropriately
+        if [ $DOCKER_EXIT_CODE -eq 0 ]; then
+          echo "✅ Syncoor test completed successfully"
+          exit 0
+        elif [ $DOCKER_EXIT_CODE -eq 124 ]; then
+          echo "⏰ Syncoor test timed out (exit code 124) - this is acceptable for CI"
+          echo "The test will be marked as successful since timeout is expected behavior"
+          exit 0
+        else
+          echo "❌ Syncoor test failed with exit code $DOCKER_EXIT_CODE"
+          echo "This indicates an actual error that should fail the CI job"
+          exit $DOCKER_EXIT_CODE
+        fi
 
     - name: Upload results to S3
       if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
@@ -527,7 +548,7 @@ runs:
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
     - name: Generate report markdown for Github Actions summary
-      if: steps.run-test.outputs.main-report-file != ''
+      if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       shell: bash
       run: |
         # Get image from determine-image step
@@ -563,7 +584,7 @@ runs:
 
     - name: Create GitHub Actions summary
       uses: Ma11hewThomas/github-markdown-builder@99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
-      if: steps.run-test.outputs.main-report-file != ''
+      if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       with:
         template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
         summary: true
