@@ -117,7 +117,7 @@ func convertReportToMarkdown(inputFile, outputFile string) error {
 	markdown := generateMarkdownSummary(&report, cleanInput)
 
 	// Write the markdown file
-	if err := os.WriteFile(outputFile, []byte(markdown), 0644); err != nil { //nolint: gosec
+	if err := os.WriteFile(outputFile, []byte(markdown), 0o644); err != nil { //nolint: gosec // Open read permissions are OK for the report
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
