@@ -86,7 +86,7 @@ inputs:
   report-dir:
     description: 'Directory to save reports'
     required: false
-    default: 'reports'
+    default: './reports'
 
   log-level:
     description: 'Log level (panic, fatal, error, warn, info, debug, trace)'
