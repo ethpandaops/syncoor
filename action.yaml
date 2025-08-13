@@ -449,8 +449,10 @@ runs:
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
+        set +e  # Disable exit on error so we can handle the exit code ourselves
         eval $DOCKER_CMD
         DOCKER_EXIT_CODE=$?
+        set -e  # Re-enable exit on error for the rest of the script
 
         # Find the generated main.json file (may not exist if test was interrupted)
         MAIN_JSON_FILE=""
