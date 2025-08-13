@@ -195,26 +195,17 @@ runs:
       if: inputs.image == ''
       shell: bash
       run: |
-        # Determine source for building
-        if [ -n "${{ inputs.git-ref }}" ]; then
-          # Clone from specified git ref
-          echo "Cloning repository from ${{ inputs.repository }} at ref ${{ inputs.git-ref }}"
-          git clone ${{ inputs.repository }} syncoor-build
-          cd syncoor-build
-          git checkout ${{ inputs.git-ref }}
-        else
-          # Use current directory (action is likely being run with uses: ./ or from the repo)
-          echo "Building from current directory"
-          if [ -f "Dockerfile" ]; then
-            cp -r . syncoor-build
-            cd syncoor-build
-          else
-            # Fallback: clone from master if we're not in the repo
-            echo "Dockerfile not found in current directory, cloning from master"
-            git clone ${{ inputs.repository }} syncoor-build
-            cd syncoor-build
-          fi
+        # Determine git ref to use
+        GIT_REF="${{ inputs.git-ref }}"
+        if [ -z "$GIT_REF" ]; then
+          GIT_REF="master"
         fi
+
+        # Clone from specified git ref (defaults to master)
+        echo "Cloning repository from ${{ inputs.repository }} at ref $GIT_REF"
+        git clone ${{ inputs.repository }} syncoor-build
+        cd syncoor-build
+        git checkout $GIT_REF
 
         # Build the Docker image
         echo "Building Docker image..."
