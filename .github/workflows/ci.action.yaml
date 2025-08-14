@@ -26,4 +26,4 @@ jobs:
         el-client: geth
         cl-client: prysm
         check-interval: 30s
-        run-timeout: 3m # We expect the run to timeout. It will still be marked as success in CI.
+        run-timeout: 1m # We expect the run to timeout. It will still be marked as success in CI.
