@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -43,7 +44,12 @@ func NewSyncCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "sync",
 		Short: "Run synchronization test",
-		Long:  "Run a synchronization test for Ethereum execution and consensus clients",
+		Long: `Run a synchronization test for Ethereum execution and consensus clients
+
+Exit codes:
+  0   - Success (sync completed successfully)
+  1   - General error
+  124 - Timeout (sync operation timed out)`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create cancellable context for signal handling
 			ctx, cancel := context.WithCancel(context.Background())
@@ -126,8 +132,13 @@ func NewSyncCommand() *cobra.Command {
 			if err := syncTestService.WaitForSync(ctx); err != nil {
 				if err == context.Canceled {
 					logger.Info("Context cancelled, shutting down...")
+					os.Exit(ExitCodeSuccess)
+				} else if errors.Is(err, synctest.ErrSyncTimeout) {
+					logger.Errorf("Sync operation timed out: %v", err)
+					os.Exit(ExitCodeTimeout)
 				} else {
-					logger.Fatalf("Sync check failed: %v", err)
+					logger.Errorf("Sync failed: %v", err)
+					os.Exit(ExitCodeError)
 				}
 			}
 		},
@@ -136,7 +147,7 @@ func NewSyncCommand() *cobra.Command {
 	// Sync command flags
 	cmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
 	cmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute,
-		"Timeout for sync operation - will cancel sync and generate report marked as 'timeout' if exceeded")
+		"Timeout for sync operation - will cancel sync and generate report marked as 'timeout' if exceeded (exits with code 124)")
 	cmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
 	cmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
 	cmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")

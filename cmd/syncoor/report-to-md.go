@@ -54,6 +54,8 @@ type MainReport struct {
 	SyncStatus struct {
 		Start            int64  `json:"start"`
 		End              int64  `json:"end"`
+		Status           string `json:"status"`
+		StatusMessage    string `json:"status_message,omitempty"`
 		Block            uint64 `json:"block"`
 		Slot             uint64 `json:"slot"`
 		SyncProgressFile string `json:"sync_progress_file"`
@@ -117,7 +119,7 @@ func convertReportToMarkdown(inputFile, outputFile string) error {
 	markdown := generateMarkdownSummary(&report, cleanInput)
 
 	// Write the markdown file
-	if err := os.WriteFile(outputFile, []byte(markdown), 0o600); err != nil {
+	if err := os.WriteFile(outputFile, []byte(markdown), 0o644); err != nil { //nolint: gosec // Open read permissions are OK for the report
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
 
@@ -134,6 +136,9 @@ func generateMarkdownSummary(report *MainReport, inputFile string) string {
 		strings.ToLower(report.Network),
 		strings.ToLower(report.ExecutionClientInfo.Type),
 		strings.ToLower(report.ConsensusClientInfo.Type)))
+
+	// Status Information (prominently at the top)
+	addStatusInfo(&md, report, titleCaser)
 
 	// Basic Information
 	addBasicInfo(&md, report, titleCaser)
@@ -166,6 +171,34 @@ func generateMarkdownSummary(report *MainReport, inputFile string) string {
 	return md.String()
 }
 
+func addStatusInfo(md *strings.Builder, report *MainReport, titleCaser cases.Caser) {
+	md.WriteString("## 🚦 Sync Status\n\n")
+	md.WriteString("| Field | Value |\n")
+	md.WriteString("|-------|-------|\n")
+
+	// Add sync status
+	if report.SyncStatus.Status != "" {
+		statusIcon := "✅"
+		if report.SyncStatus.Status == "timeout" {
+			statusIcon = "⏰"
+		} else if report.SyncStatus.Status != "success" {
+			statusIcon = "❌"
+		}
+		fmt.Fprintf(md, "| **Status** | %s %s |\n", statusIcon, titleCaser.String(report.SyncStatus.Status))
+	}
+
+	// Add status message if available
+	if report.SyncStatus.StatusMessage != "" {
+		fmt.Fprintf(md, "| **Message** | %s |\n", report.SyncStatus.StatusMessage)
+	}
+
+	// Calculate and add duration
+	duration := time.Duration(report.SyncStatus.End-report.SyncStatus.Start) * time.Second
+	fmt.Fprintf(md, "| **Duration** | %s |\n", formatDuration(duration))
+
+	md.WriteString("\n")
+}
+
 func addBasicInfo(md *strings.Builder, report *MainReport, titleCaser cases.Caser) {
 	md.WriteString("## 📋 Test Information\n\n")
 	md.WriteString("| Field | Value |\n")
@@ -173,10 +206,6 @@ func addBasicInfo(md *strings.Builder, report *MainReport, titleCaser cases.Case
 	md.WriteString("| **Run ID** | `" + report.RunID + "` |\n")
 	md.WriteString("| **Network** | " + titleCaser.String(report.Network) + " |\n")
 	md.WriteString("| **Test Date** | " + time.Unix(report.Timestamp, 0).Format("2006-01-02 15:04:05 UTC") + " |\n")
-
-	// Calculate duration
-	duration := time.Duration(report.SyncStatus.End-report.SyncStatus.Start) * time.Second
-	fmt.Fprintf(md, "| **Sync Duration** | %s |\n", formatDuration(duration))
 	fmt.Fprintf(md, "| **Progress Entries** | %d data points |\n", report.SyncStatus.EntriesCount)
 	md.WriteString("\n")
 }

@@ -34,7 +34,7 @@ inputs:
     default: '10s'
 
   run-timeout:
-    description: 'Timeout in minutes for network startup'
+    description: 'Timeout for sync operation - will cancel sync and generate report marked as "timeout" if exceeded (exits with code 124, treated as success in CI)'
     required: false
     default: '60m'
 
@@ -155,12 +155,10 @@ inputs:
   s3-bucket:
     description: 'S3 bucket name'
     required: false
-    type: string
 
   s3-path:
     description: 'Path prefix in S3 bucket'
     required: false
-    type: string
     default: ''
 
   s3-index-generate:
@@ -171,13 +169,11 @@ inputs:
   rclone-config:
     description: 'Rclone config file'
     required: false
-    type: string
     default: '' # Should be base64 encoded. Example: base64 -w 0 rclone.conf
 
   rclone-version:
     description: 'Rclone version to use'
     required: false
-    type: string
     default: 'latest'
 
 outputs:
@@ -195,26 +191,17 @@ runs:
       if: inputs.image == ''
       shell: bash
       run: |
-        # Determine source for building
-        if [ -n "${{ inputs.git-ref }}" ]; then
-          # Clone from specified git ref
-          echo "Cloning repository from ${{ inputs.repository }} at ref ${{ inputs.git-ref }}"
-          git clone ${{ inputs.repository }} syncoor-build
-          cd syncoor-build
-          git checkout ${{ inputs.git-ref }}
-        else
-          # Use current directory (action is likely being run with uses: ./ or from the repo)
-          echo "Building from current directory"
-          if [ -f "Dockerfile" ]; then
-            cp -r . syncoor-build
-            cd syncoor-build
-          else
-            # Fallback: clone from master if we're not in the repo
-            echo "Dockerfile not found in current directory, cloning from master"
-            git clone ${{ inputs.repository }} syncoor-build
-            cd syncoor-build
-          fi
+        # Determine git ref to use
+        GIT_REF="${{ inputs.git-ref }}"
+        if [ -z "$GIT_REF" ]; then
+          GIT_REF="master"
         fi
+
+        # Clone from specified git ref (defaults to master)
+        echo "Cloning repository from ${{ inputs.repository }} at ref $GIT_REF"
+        git clone ${{ inputs.repository }} syncoor-build
+        cd syncoor-build
+        git checkout $GIT_REF
 
         # Build the Docker image
         echo "Building Docker image..."
@@ -237,6 +224,76 @@ runs:
       run: |
         rclone touch s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/healthcheck.txt
 
+    - name: Install GitHub CLI if not present
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      run: |
+        if ! command -v gh &> /dev/null; then
+          echo "GitHub CLI not found, installing..."
+
+          # Detect OS
+          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux - assume Ubuntu/Debian
+            (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
+              && mkdir -p -m 755 /etc/apt/keyrings \
+              && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              && cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
+              && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+              && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt update
+            sudo apt install -y gh
+          elif [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            if command -v brew &> /dev/null; then
+              brew install gh
+            else
+              echo "Homebrew not found. Please install GitHub CLI manually: https://cli.github.com/"
+              exit 1
+            fi
+          else
+            echo "Unsupported OS. Please install GitHub CLI manually: https://cli.github.com/"
+            exit 1
+          fi
+
+          echo "GitHub CLI installed successfully"
+        else
+          echo "GitHub CLI already installed"
+          gh --version
+        fi
+
+
+    - name: Install Kurtosis CLI if not present
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      run: |
+        if ! command -v kurtosis &> /dev/null; then
+          echo "Kurtosis CLI not found, installing..."
+
+          # Detect OS
+          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            # Linux - assume Ubuntu/Debian
+            echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+            sudo apt update
+            sudo apt install -y kurtosis-cli
+          elif [[ "$OSTYPE" == "darwin"* ]]; then
+            # macOS
+            if command -v brew &> /dev/null; then
+              brew install kurtosis-tech/tap/kurtosis-cli
+            else
+              echo "Homebrew not found. Please install Kurtosis manually: https://docs.kurtosis.com/install"
+              exit 1
+            fi
+          else
+            echo "Unsupported OS. Please install Kurtosis manually: https://docs.kurtosis.com/install"
+            exit 1
+          fi
+
+          echo "Kurtosis CLI installed successfully"
+        else
+          echo "Kurtosis CLI already installed"
+          kurtosis version
+        fi
+
     - name: Make sure kurtosis engine is started
       if: ${{ inputs.run-tests == 'true' }}
       id: engine-start
@@ -244,6 +301,12 @@ runs:
       run: |
         kurtosis engine start
         kurtosis engine status
+
+    - name: Cleanup kurtosis enclaves and resources. We want a clean slate.
+      if: ${{ inputs.run-tests == 'true' }}
+      shell: bash
+      run: |
+        kurtosis clean -a
 
     - name: Determine which image to use
       id: determine-image
@@ -276,7 +339,7 @@ runs:
       shell: bash
       run: |
         IMAGE="${{ steps.determine-image.outputs.image }}"
-        
+
         # Validate that we have an image
         if [ -z "$IMAGE" ]; then
           echo "ERROR: Docker image not specified"
@@ -284,9 +347,9 @@ runs:
           echo "Input image: '${{ inputs.image }}'"
           exit 1
         fi
-        
+
         echo "Running syncoor test with Docker image: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
@@ -386,14 +449,37 @@ runs:
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
+        set +e  # Disable exit on error so we can handle the exit code ourselves
         eval $DOCKER_CMD
+        DOCKER_EXIT_CODE=$?
+        set -e  # Re-enable exit on error for the rest of the script
 
-        # Find the generated main.json file
-        MAIN_JSON_FILE=$(basename $(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1) .json)
+        # Find the generated main.json file (may not exist if test was interrupted)
+        MAIN_JSON_FILE=""
+        if [ -d "${{ github.workspace }}/${{ inputs.report-dir }}" ]; then
+          MAIN_JSON_PATH=$(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1)
+          if [ -n "$MAIN_JSON_PATH" ]; then
+            MAIN_JSON_FILE=$(basename "$MAIN_JSON_PATH" .json)
+          fi
+        fi
 
-        # Set outputs
+        # Set outputs (always set report-path, main-report-file may be empty)
         echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
         echo "main-report-file=$MAIN_JSON_FILE" >> $GITHUB_OUTPUT
+
+        # Handle exit codes appropriately
+        if [ $DOCKER_EXIT_CODE -eq 0 ]; then
+          echo "✅ Syncoor test completed successfully"
+          exit 0
+        elif [ $DOCKER_EXIT_CODE -eq 124 ]; then
+          echo "⏰ Syncoor test timed out (exit code 124) - this is acceptable for CI"
+          echo "The test will be marked as successful since timeout is expected behavior"
+          exit 0
+        else
+          echo "❌ Syncoor test failed with exit code $DOCKER_EXIT_CODE"
+          echo "This indicates an actual error that should fail the CI job"
+          exit $DOCKER_EXIT_CODE
+        fi
 
     - name: Upload results to S3
       if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
@@ -411,7 +497,7 @@ runs:
         # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
@@ -464,13 +550,13 @@ runs:
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
     - name: Generate report markdown for Github Actions summary
-      if: steps.run-test.outputs.main-report-file != ''
+      if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       shell: bash
       run: |
         # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for markdown generation: ${IMAGE}"
-        
+
         # Pull the image if it's not a local build
         if [ "$IMAGE" != "syncoor:local" ]; then
           echo "Pulling Docker image: ${IMAGE}"
@@ -499,8 +585,11 @@ runs:
         eval $DOCKER_CMD
 
     - name: Create GitHub Actions summary
-      uses: Ma11hewThomas/github-markdown-builder@99c463efc8c49a2951bcc12bfd52de7ebb989c6f # v1.0.1
-      if: steps.run-test.outputs.main-report-file != ''
+      uses: Ma11hewThomas/github-markdown-builder@2012f2e4a8cdea69ea3f3760114a763956bff86b # v1.0.2-unreleased
+      if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       with:
         template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
-        summary: true
+        summary: "true"
+        pull-request: "false"
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}

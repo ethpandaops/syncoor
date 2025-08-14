@@ -1,0 +1,31 @@
+name: Check - CI Github Action
+
+on:
+  pull_request:
+    branches: [ master ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run Syncoor Test
+      uses: ./
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+        repository: https://github.com/${{ github.repository }}.git
+        git-ref: ${{ github.event.pull_request.head.sha }}
+        log-force-colors: true
+        client-logs: true
+        network: hoodi
+        el-client: geth
+        cl-client: prysm
+        check-interval: 30s
+        run-timeout: 1m # We expect the run to timeout. It will still be marked as success in CI.
