@@ -590,5 +590,6 @@ runs:
       with:
         template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
         summary: true
+        pull-request: false
       env:
         GITHUB_TOKEN: ${{ inputs.github-token }}
