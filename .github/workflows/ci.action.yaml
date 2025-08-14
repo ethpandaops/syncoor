@@ -20,6 +20,7 @@ jobs:
       uses: ./
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
+        git-ref: ${{ github.ref }}
         log-force-colors: true
         client-logs: true
         network: hoodi
