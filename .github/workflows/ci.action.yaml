@@ -20,7 +20,7 @@ jobs:
       uses: ./
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        git-ref: ${{ github.sha }}
+        git-ref: ${{ github.event.pull_request.head.sha }}
         git-repository: ${{ github.repository }}
         log-force-colors: true
         client-logs: true
