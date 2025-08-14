@@ -137,7 +137,7 @@ Exit codes:
 					logger.Errorf("Sync operation timed out: %v", err)
 					os.Exit(ExitCodeTimeout)
 				} else {
-					logger.Errorf("Sync check failed: %v", err)
+					logger.Errorf("Sync failed: %v", err)
 					os.Exit(ExitCodeError)
 				}
 			}
