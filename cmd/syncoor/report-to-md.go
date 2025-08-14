@@ -138,7 +138,7 @@ func generateMarkdownSummary(report *MainReport, inputFile string) string {
 		strings.ToLower(report.ConsensusClientInfo.Type)))
 
 	// Status Information (prominently at the top)
-	addStatusInfo(&md, report)
+	addStatusInfo(&md, report, titleCaser)
 
 	// Basic Information
 	addBasicInfo(&md, report, titleCaser)
@@ -171,7 +171,7 @@ func generateMarkdownSummary(report *MainReport, inputFile string) string {
 	return md.String()
 }
 
-func addStatusInfo(md *strings.Builder, report *MainReport) {
+func addStatusInfo(md *strings.Builder, report *MainReport, titleCaser cases.Caser) {
 	md.WriteString("## 🚦 Sync Status\n\n")
 	md.WriteString("| Field | Value |\n")
 	md.WriteString("|-------|-------|\n")
@@ -184,7 +184,7 @@ func addStatusInfo(md *strings.Builder, report *MainReport) {
 		} else if report.SyncStatus.Status != "success" {
 			statusIcon = "❌"
 		}
-		fmt.Fprintf(md, "| **Status** | %s %s |\n", statusIcon, strings.Title(report.SyncStatus.Status))
+		fmt.Fprintf(md, "| **Status** | %s %s |\n", statusIcon, titleCaser.String(report.SyncStatus.Status))
 	}
 
 	// Add status message if available
