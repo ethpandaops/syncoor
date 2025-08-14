@@ -450,7 +450,8 @@ runs:
         # Execute the command
         echo "Running: $DOCKER_CMD"
         set +e  # Disable exit on error so we can handle the exit code ourselves
-        eval $DOCKER_CMD
+        eval $DOCKER_CMD &
+        wait $!
         DOCKER_EXIT_CODE=$?
         set -e  # Re-enable exit on error for the rest of the script
 
@@ -521,7 +522,8 @@ runs:
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
-        eval $DOCKER_CMD
+        eval $DOCKER_CMD &
+        wait $!
 
         echo "Upload index.json file to S3"
         rclone copy ${{ github.workspace }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
@@ -582,7 +584,8 @@ runs:
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
-        eval $DOCKER_CMD
+        eval $DOCKER_CMD &
+        wait $!
 
     - name: Create GitHub Actions summary
       uses: Ma11hewThomas/github-markdown-builder@2012f2e4a8cdea69ea3f3760114a763956bff86b # v1.0.2-unreleased
