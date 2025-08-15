@@ -30,6 +30,32 @@ export interface ProgressMetrics {
 }
 
 /**
+ * System information for a test run
+ */
+export interface SystemInfo {
+  hostname?: string;
+  go_version?: string;
+  syncoor_version?: string;
+  os_name?: string;
+  os_vendor?: string;
+  os_version?: string;
+  os_architecture?: string;
+  kernel_version?: string;
+  kernel_release?: string;
+  cpu_vendor?: string;
+  cpu_model?: string;
+  cpu_cache?: number;
+  cpu_cores?: number;
+  cpu_threads?: number;
+  total_memory?: number;
+  product_vendor?: string;
+  board_name?: string;
+  board_vendor?: string;
+  platform_family?: string;
+  platform_version?: string;
+}
+
+/**
  * Test summary data
  */
 export interface TestSummary {
@@ -43,6 +69,7 @@ export interface TestSummary {
   el_client: string;
   cl_client: string;
   current_metrics?: ProgressMetrics;
+  system_info?: SystemInfo;
   error?: string;
 }
 

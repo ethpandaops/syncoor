@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncoorApiEndpoint } from '../types/config';
 import { TestSummary, HealthResponse } from '../types/syncoor';
 import { fetchSyncoorTests, fetchSyncoorHealth } from '../lib/syncoorApi';
@@ -123,6 +124,12 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+  };
+
+  const formatMemory = (bytes?: number): string => {
+    if (!bytes || bytes === 0) return 'N/A';
+    const gb = bytes / (1024 * 1024 * 1024);
+    return `${gb.toFixed(1)} GB`;
   };
 
   const formatDuration = (startTime: string, endTime?: string): string => {
@@ -266,7 +273,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   }
 
   return (
-    <div className={className}>
+    <TooltipProvider>
+      <div className={className}>
       {endpointData.map((data, index) => (
         <Card key={index} className="mb-4">
           <CardHeader>
@@ -366,6 +374,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             <th className="pb-2 font-medium">EL Disk</th>
                             <th className="pb-2 font-medium">Source</th>
                             <th className="pb-2 font-medium">Duration</th>
+                            <th className="pb-2 font-medium text-center">System Info</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -381,15 +390,14 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                               const isRecent = diffSeconds < 60; // Consider updates within 60 seconds as recent
                               
                               return (
-                                <div 
-                                  className="relative group"
-                                  title={`Last updated: ${formatTimeAgo(test.last_update)}`}
-                                >
-                                  <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
-                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                                    Last updated: {formatTimeAgo(test.last_update)}
-                                  </div>
-                                </div>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className={`w-2 h-2 rounded-full cursor-help ${isRecent ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-gray-900 text-white border-gray-800">
+                                    <p className="text-xs">Last updated: {formatTimeAgo(test.last_update)}</p>
+                                  </TooltipContent>
+                                </Tooltip>
                               );
                             })()}
                           </div>
@@ -531,6 +539,89 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
                           </span>
                         </td>
+                        <td className="py-2">
+                          {test.system_info && (
+                            <div className="flex items-center gap-2 justify-center">
+                              <span className="text-xs font-mono text-muted-foreground">
+                                {test.system_info.hostname || 'N/A'}
+                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button className="inline-flex">
+                                    <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" align="end" className="w-80 bg-gray-900 text-white border-gray-800">
+                                  <div className="p-3 text-xs">
+                                    <div className="font-semibold mb-2 text-sm border-b border-gray-700 pb-1">System Information</div>
+                                    <div className="space-y-1.5">
+                                      {test.system_info.hostname && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Hostname:</span>
+                                          <span className="font-mono">{test.system_info.hostname}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.os_name && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">OS:</span>
+                                          <span>{test.system_info.os_name} {test.system_info.os_architecture}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.cpu_model && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">CPU:</span>
+                                          <span className="text-right ml-2">{test.system_info.cpu_model}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.cpu_cores && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">CPU Cores:</span>
+                                          <span>{test.system_info.cpu_cores} cores / {test.system_info.cpu_threads || test.system_info.cpu_cores} threads</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.total_memory && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Memory:</span>
+                                          <span>{formatMemory(test.system_info.total_memory)}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.kernel_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Kernel:</span>
+                                          <span>{test.system_info.kernel_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.syncoor_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Syncoor:</span>
+                                          <span>{test.system_info.syncoor_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.go_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Go Version:</span>
+                                          <span>{test.system_info.go_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.product_vendor && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Vendor:</span>
+                                          <span>{test.system_info.product_vendor}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.board_vendor && test.system_info.board_name && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Board:</span>
+                                          <span>{test.system_info.board_vendor} {test.system_info.board_name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -570,7 +661,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
           </CardContent>
         </Card>
       ))}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
@@ -679,6 +771,22 @@ function ChevronIcon({ className }: { className?: string }) {
       strokeWidth={2}
     >
       <polyline points="9,18 15,12 9,6" />
+    </svg>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }
