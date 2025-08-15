@@ -187,12 +187,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             stroke="#3b82f6"
             strokeWidth={2}
             name="Actual Disk Usage"
-            dot={{ 
-              fill: '#3b82f6', 
-              strokeWidth: 2, 
-              r: 4, 
-              cursor: 'pointer'
-            }}
+            dot={false}
             activeDot={{ 
               r: 6, 
               stroke: '#3b82f6', 

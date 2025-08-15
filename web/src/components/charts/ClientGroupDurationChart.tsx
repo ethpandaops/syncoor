@@ -185,12 +185,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             stroke="#3b82f6"
             strokeWidth={2}
             name="Actual Duration"
-            dot={{ 
-              fill: '#3b82f6', 
-              strokeWidth: 2, 
-              r: 4, 
-              cursor: 'pointer'
-            }}
+            dot={false}
             activeDot={{ 
               r: 6, 
               stroke: '#3b82f6', 
