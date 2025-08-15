@@ -138,6 +138,23 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return `${minutes}m`;
   };
 
+  const formatTimeAgo = (timestamp: string): string => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now.getTime() - then.getTime();
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+      return `${hours}h ago`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ago`;
+    }
+    return `${seconds}s ago`;
+  };
+
   const getStatusBadge = (test: TestSummary) => {
     if (test.is_running) {
       return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Running</Badge>;
@@ -332,7 +349,27 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                           {paginatedTests.map((test, testIndex) => (
                       <tr key={testIndex} className="border-b">
                         <td className="py-2">
-                          {getStatusBadge(test)}
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(test)}
+                            {(() => {
+                              const now = new Date();
+                              const lastUpdate = new Date(test.last_update);
+                              const diffSeconds = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
+                              const isRecent = diffSeconds < 60; // Consider updates within 60 seconds as recent
+                              
+                              return (
+                                <div 
+                                  className="relative group"
+                                  title={`Last updated: ${formatTimeAgo(test.last_update)}`}
+                                >
+                                  <div className={`w-2 h-2 rounded-full ${isRecent ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-xs text-white bg-gray-900 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                                    Last updated: {formatTimeAgo(test.last_update)}
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td className="py-2">
                           <Badge variant="outline">{test.network}</Badge>
