@@ -217,6 +217,23 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
   };
 
+  const trimClientVersion = (version: string, clientType: string): string => {
+    // Remove client name prefix from version string (case-insensitive)
+    const prefixes = [
+      `${clientType}/`,
+      `${clientType.toLowerCase()}/`,
+      `${capitalizeClient(clientType)}/`
+    ];
+    
+    for (const prefix of prefixes) {
+      if (version.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return version.slice(prefix.length);
+      }
+    }
+    
+    return version;
+  };
+
   const getNetworkSummary = (tests: TestSummary[]) => {
     const runningTests = tests.filter(test => test.is_running);
     const networkCounts = runningTests.reduce((acc, test) => {
@@ -390,7 +407,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />
-                            <span className="font-medium">{capitalizeClient(test.el_client)}</span>
+                            <div className="min-w-0">
+                              <span className="font-medium">{capitalizeClient(test.el_client)}</span>
+                              {test.current_metrics?.exec_version && (
+                                <div 
+                                  className="text-xs text-muted-foreground truncate max-w-[120px]" 
+                                  title={test.current_metrics.exec_version}
+                                >
+                                  {trimClientVersion(test.current_metrics.exec_version, test.el_client)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-2">
@@ -403,7 +430,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />
-                            <span className="font-medium">{capitalizeClient(test.cl_client)}</span>
+                            <div className="min-w-0">
+                              <span className="font-medium">{capitalizeClient(test.cl_client)}</span>
+                              {test.current_metrics?.cons_version && (
+                                <div 
+                                  className="text-xs text-muted-foreground truncate max-w-[120px]" 
+                                  title={test.current_metrics.cons_version}
+                                >
+                                  {trimClientVersion(test.current_metrics.cons_version, test.cl_client)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-2">
