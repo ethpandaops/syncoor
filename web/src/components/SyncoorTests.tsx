@@ -299,9 +299,15 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                 <span className="ml-2">Loading tests...</span>
               </div>
             ) : (() => {
-                const runningTests = data.tests.filter(test => test.is_running);
+                const runningTests = data.tests.filter(test => test.is_running)
+                  .sort((a, b) => {
+                    // Sort by duration (shortest running first)
+                    const durationA = new Date().getTime() - new Date(a.start_time).getTime();
+                    const durationB = new Date().getTime() - new Date(b.start_time).getTime();
+                    return durationA - durationB;
+                  });
                 const completedTests = data.tests.filter(test => !test.is_running);
-                const allTests = [...runningTests, ...completedTests]; // Running tests first
+                const allTests = [...runningTests, ...completedTests]; // Running tests first, sorted by duration
 
                 if (allTests.length === 0) {
                   return <p className="text-muted-foreground py-4">No tests available.</p>;
