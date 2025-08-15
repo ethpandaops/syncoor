@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncoorApiEndpoint } from '../types/config';
 import { TestSummary, HealthResponse } from '../types/syncoor';
 import { fetchSyncoorTests, fetchSyncoorHealth } from '../lib/syncoorApi';
@@ -125,6 +126,12 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
   };
 
+  const formatMemory = (bytes?: number): string => {
+    if (!bytes || bytes === 0) return 'N/A';
+    const gb = bytes / (1024 * 1024 * 1024);
+    return `${gb.toFixed(1)} GB`;
+  };
+
   const formatDuration = (startTime: string, endTime?: string): string => {
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
@@ -136,6 +143,23 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
       return `${hours}h ${minutes}m`;
     }
     return `${minutes}m`;
+  };
+
+  const formatTimeAgo = (timestamp: string): string => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diffMs = now.getTime() - then.getTime();
+    const seconds = Math.floor(diffMs / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+      return `${hours}h ago`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ago`;
+    }
+    return `${seconds}s ago`;
   };
 
   const getStatusBadge = (test: TestSummary) => {
@@ -200,6 +224,23 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
   };
 
+  const trimClientVersion = (version: string, clientType: string): string => {
+    // Remove client name prefix from version string (case-insensitive)
+    const prefixes = [
+      `${clientType}/`,
+      `${clientType.toLowerCase()}/`,
+      `${capitalizeClient(clientType)}/`
+    ];
+    
+    for (const prefix of prefixes) {
+      if (version.toLowerCase().startsWith(prefix.toLowerCase())) {
+        return version.slice(prefix.length);
+      }
+    }
+    
+    return version;
+  };
+
   const getNetworkSummary = (tests: TestSummary[]) => {
     const runningTests = tests.filter(test => test.is_running);
     const networkCounts = runningTests.reduce((acc, test) => {
@@ -232,7 +273,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   }
 
   return (
-    <div className={className}>
+    <TooltipProvider>
+      <div className={className}>
       {endpointData.map((data, index) => (
         <Card key={index} className="mb-4">
           <CardHeader>
@@ -282,9 +324,15 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                 <span className="ml-2">Loading tests...</span>
               </div>
             ) : (() => {
-                const runningTests = data.tests.filter(test => test.is_running);
+                const runningTests = data.tests.filter(test => test.is_running)
+                  .sort((a, b) => {
+                    // Sort by duration (shortest running first)
+                    const durationA = new Date().getTime() - new Date(a.start_time).getTime();
+                    const durationB = new Date().getTime() - new Date(b.start_time).getTime();
+                    return durationA - durationB;
+                  });
                 const completedTests = data.tests.filter(test => !test.is_running);
-                const allTests = [...runningTests, ...completedTests]; // Running tests first
+                const allTests = [...runningTests, ...completedTests]; // Running tests first, sorted by duration
 
                 if (allTests.length === 0) {
                   return <p className="text-muted-foreground py-4">No tests available.</p>;
@@ -326,13 +374,33 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             <th className="pb-2 font-medium">EL Disk</th>
                             <th className="pb-2 font-medium">Source</th>
                             <th className="pb-2 font-medium">Duration</th>
+                            <th className="pb-2 font-medium text-center">System Info</th>
                           </tr>
                         </thead>
                         <tbody>
                           {paginatedTests.map((test, testIndex) => (
                       <tr key={testIndex} className="border-b">
                         <td className="py-2">
-                          {getStatusBadge(test)}
+                          <div className="flex items-center gap-2">
+                            {getStatusBadge(test)}
+                            {(() => {
+                              const now = new Date();
+                              const lastUpdate = new Date(test.last_update);
+                              const diffSeconds = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
+                              const isRecent = diffSeconds < 60; // Consider updates within 60 seconds as recent
+                              
+                              return (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div className={`w-2 h-2 rounded-full cursor-help ${isRecent ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                                  </TooltipTrigger>
+                                  <TooltipContent className="bg-gray-900 text-white border-gray-800">
+                                    <p className="text-xs">Last updated: {formatTimeAgo(test.last_update)}</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              );
+                            })()}
+                          </div>
                         </td>
                         <td className="py-2">
                           <Badge variant="outline">{test.network}</Badge>
@@ -347,7 +415,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />
-                            <span className="font-medium">{capitalizeClient(test.el_client)}</span>
+                            <div className="min-w-0">
+                              <span className="font-medium">{capitalizeClient(test.el_client)}</span>
+                              {test.current_metrics?.exec_version && (
+                                <div 
+                                  className="text-xs text-muted-foreground truncate max-w-[120px]" 
+                                  title={test.current_metrics.exec_version}
+                                >
+                                  {trimClientVersion(test.current_metrics.exec_version, test.el_client)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-2">
@@ -360,7 +438,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />
-                            <span className="font-medium">{capitalizeClient(test.cl_client)}</span>
+                            <div className="min-w-0">
+                              <span className="font-medium">{capitalizeClient(test.cl_client)}</span>
+                              {test.current_metrics?.cons_version && (
+                                <div 
+                                  className="text-xs text-muted-foreground truncate max-w-[120px]" 
+                                  title={test.current_metrics.cons_version}
+                                >
+                                  {trimClientVersion(test.current_metrics.cons_version, test.cl_client)}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-2">
@@ -451,6 +539,89 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
                           </span>
                         </td>
+                        <td className="py-2">
+                          {test.system_info && (
+                            <div className="flex items-center gap-2 justify-center">
+                              <span className="text-xs font-mono text-muted-foreground">
+                                {test.system_info.hostname || 'N/A'}
+                              </span>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button className="inline-flex">
+                                    <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="left" align="end" className="w-80 bg-gray-900 text-white border-gray-800">
+                                  <div className="p-3 text-xs">
+                                    <div className="font-semibold mb-2 text-sm border-b border-gray-700 pb-1">System Information</div>
+                                    <div className="space-y-1.5">
+                                      {test.system_info.hostname && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Hostname:</span>
+                                          <span className="font-mono">{test.system_info.hostname}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.os_name && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">OS:</span>
+                                          <span>{test.system_info.os_name} {test.system_info.os_architecture}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.cpu_model && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">CPU:</span>
+                                          <span className="text-right ml-2">{test.system_info.cpu_model}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.cpu_cores && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">CPU Cores:</span>
+                                          <span>{test.system_info.cpu_cores} cores / {test.system_info.cpu_threads || test.system_info.cpu_cores} threads</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.total_memory && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Memory:</span>
+                                          <span>{formatMemory(test.system_info.total_memory)}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.kernel_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Kernel:</span>
+                                          <span>{test.system_info.kernel_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.syncoor_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Syncoor:</span>
+                                          <span>{test.system_info.syncoor_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.go_version && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Go Version:</span>
+                                          <span>{test.system_info.go_version}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.product_vendor && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Vendor:</span>
+                                          <span>{test.system_info.product_vendor}</span>
+                                        </div>
+                                      )}
+                                      {test.system_info.board_vendor && test.system_info.board_name && (
+                                        <div className="flex justify-between">
+                                          <span className="text-gray-400">Board:</span>
+                                          <span>{test.system_info.board_vendor} {test.system_info.board_name}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </div>
+                          )}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -490,7 +661,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
           </CardContent>
         </Card>
       ))}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 };
 
@@ -599,6 +771,22 @@ function ChevronIcon({ className }: { className?: string }) {
       strokeWidth={2}
     >
       <polyline points="9,18 15,12 9,6" />
+    </svg>
+  );
+}
+
+function InfoIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   );
 }

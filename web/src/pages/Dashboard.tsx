@@ -18,12 +18,19 @@ export default function Dashboard() {
     pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
 
-  // Get all unique directories
+  // Get all unique directories in the order from config
   const availableDirectories = useMemo(() => {
     if (!reports || reports.length === 0) return [];
-    const directories = new Set(reports.map(report => report.source_directory));
-    return Array.from(directories).sort();
-  }, [reports]);
+    if (!config?.directories) return [];
+    
+    // Get directories that have reports
+    const directoriesWithReports = new Set(reports.map(report => report.source_directory));
+    
+    // Return directories in config order, filtering to only those with reports
+    return config.directories
+      .map(dir => dir.name)
+      .filter(name => directoriesWithReports.has(name));
+  }, [reports, config]);
 
   // Get networks for the active directory
   const getNetworksForDirectory = (directory: string) => {
