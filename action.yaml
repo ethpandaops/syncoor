@@ -189,7 +189,7 @@ runs:
   steps:
     - name: Verify and install dependencies
       if: ${{ inputs.run-tests == 'true' }}
-      uses: .github/actions/dependencies
+      uses: ./.github/actions/dependencies
 
     - name: Build Syncoor Docker image locally
       if: inputs.image == ''
