@@ -322,6 +322,23 @@ runs:
         fi
         echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
+        # Validate that we have an image
+        if [ -z "$IMAGE" ]; then
+          echo "ERROR: Docker image not specified"
+          echo "Git ref: '${{ inputs.git-ref }}'"
+          echo "Input image: '${{ inputs.image }}'"
+          exit 1
+        fi
+
+        # Pull the image if it's not a local build
+        if [ "$IMAGE" != "syncoor:local" ]; then
+          echo "Pulling Docker image: ${IMAGE}"
+          docker pull "${IMAGE}" || {
+            echo "Failed to pull Docker image: ${IMAGE}"
+            exit 1
+          }
+        fi
+
     - name: Get Job ID from GH API
       if: ${{ inputs.run-tests == 'true' }}
       id: get-job-id
@@ -339,25 +356,7 @@ runs:
       shell: bash
       run: |
         IMAGE="${{ steps.determine-image.outputs.image }}"
-
-        # Validate that we have an image
-        if [ -z "$IMAGE" ]; then
-          echo "ERROR: Docker image not specified"
-          echo "Git ref: '${{ inputs.git-ref }}'"
-          echo "Input image: '${{ inputs.image }}'"
-          exit 1
-        fi
-
         echo "Running syncoor test with Docker image: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm --name=syncoor-run"
@@ -495,18 +494,8 @@ runs:
         echo "Fetching results from S3"
         rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.workspace }}/tmp_results
 
-        # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index"
@@ -555,18 +544,8 @@ runs:
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       shell: bash
       run: |
-        # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for markdown generation: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-md"
