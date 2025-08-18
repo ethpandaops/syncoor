@@ -532,13 +532,25 @@ runs:
       run: |
         kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
 
-    - name: Upload enclave dump
+    - name: Upload enclave dump as github artifact
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-enclave-dump
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
+
+    - name: Upload enclave dump to S3
+      if: >
+        inputs.s3-upload == 'true' &&
+        inputs.run-tests == 'true' &&
+        steps.run-test.outputs.main-report-file != '' &&
+        steps.run-test.outputs.main-report-file != null
+      shell: bash
+      run: |
+        filename="${{ steps.run-test.outputs.main-report-file }}.dump.zip"
+        zip -r $filename kurtosis-enclave-dump
+        rclone copy $filename s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Generate report markdown for Github Actions summary
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
