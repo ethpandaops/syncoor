@@ -482,8 +482,12 @@ runs:
         steps.run-test.outputs.main-report-file != null
       shell: bash
       run: |
+        echo "Uploading enclave dump to S3"
+        set -x
         filename="${{ steps.run-test.outputs.main-report-file }}.dump.zip"
-        zip -r $filename kurtosis-enclave-dump
+        cd kurtosis-enclave-dump
+        zip -r ../$filename .
+        cd ..
         rclone copy $filename s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Generate report markdown for Github Actions summary
