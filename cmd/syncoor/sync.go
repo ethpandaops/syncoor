@@ -39,6 +39,10 @@ func NewSyncCommand() *cobra.Command {
 		supernode             bool
 		checkpointSyncEnabled bool
 		checkpointSyncURL     string
+		publicPorts           bool
+		publicPortEL          uint32
+		publicPortCL          uint32
+		publicIP              string
 	)
 
 	cmd := &cobra.Command{
@@ -87,6 +91,10 @@ Exit codes:
 				Supernode:             supernode,
 				CheckpointSyncEnabled: checkpointSyncEnabled,
 				CheckpointSyncURL:     checkpointSyncURL,
+				PublicPorts:           publicPorts,
+				PublicPortEL:          publicPortEL,
+				PublicPortCL:          publicPortCL,
+				PublicIP:              publicIP,
 			}
 
 			// Parse labels
@@ -168,6 +176,12 @@ Exit codes:
 	// Handle the case where user explicitly wants to disable checkpoint sync
 	cmd.Flags().Lookup("checkpoint-sync-enabled").NoOptDefVal = "true"
 	cmd.Flags().StringVar(&checkpointSyncURL, "checkpoint-sync-url", "", "Checkpoint sync URL (e.g., https://checkpoint-sync.sepolia.ethpandaops.io/)")
+
+	// Public port flags
+	cmd.Flags().BoolVar(&publicPorts, "public", false, "Enable public port publishing")
+	cmd.Flags().Uint32Var(&publicPortEL, "public-port-el", 40000, "Public port for execution layer client")
+	cmd.Flags().Uint32Var(&publicPortCL, "public-port-cl", 41000, "Public port for consensus layer client")
+	cmd.Flags().StringVar(&publicIP, "public-ip", "auto", "Public IP for port publishing. If not set, the IP will be automatically detected.")
 
 	return cmd
 }

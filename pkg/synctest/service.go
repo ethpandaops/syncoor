@@ -142,20 +142,43 @@ func (s *service) Start(ctx context.Context) error {
 		"checkpoint_sync_url":     s.cfg.CheckpointSyncURL,
 	}).Info("Checkpoint sync configuration")
 
+	// Create ethereum package config
+	ethConfig := &config.EthereumPackageConfig{
+		EthereumMetricsExporterEnabled: boolPtr(true),
+		Participants:                   []config.ParticipantConfig{participantConfig},
+		NetworkParams: &config.NetworkParams{
+			Network: s.cfg.Network,
+		},
+		CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
+		CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
+		Persistent:            true,
+	}
+
+	// Set port publisher configuration if public ports are enabled
+	if s.cfg.PublicPorts {
+		ethConfig.PortPublisher = &config.PortPublisherConfig{
+			NatExitIP: s.cfg.PublicIP,
+			EL: &config.PortPublisherComponent{
+				Enabled:         true,
+				PublicPortStart: int(s.cfg.PublicPortEL),
+			},
+			CL: &config.PortPublisherComponent{
+				Enabled:         true,
+				PublicPortStart: int(s.cfg.PublicPortCL),
+			},
+		}
+		s.log.WithFields(logrus.Fields{
+			"public_ip":      s.cfg.PublicIP,
+			"public_port_el": s.cfg.PublicPortEL,
+			"public_port_cl": s.cfg.PublicPortCL,
+		}).Info("Public port publishing enabled")
+	}
+
 	runOpts := []ethereum.RunOption{
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
 		ethereum.WithEnclaveName(s.cfg.EnclaveName),
-		ethereum.WithConfig(&config.EthereumPackageConfig{
-			EthereumMetricsExporterEnabled: boolPtr(true),
-			Participants:                   []config.ParticipantConfig{participantConfig},
-			NetworkParams: &config.NetworkParams{
-				Network: s.cfg.Network,
-			},
-			CheckpointSyncEnabled: s.cfg.CheckpointSyncEnabled,
-			CheckpointSyncURL:     s.cfg.CheckpointSyncURL,
-			Persistent:            true,
-		}),
+		ethereum.WithConfig(ethConfig),
 		ethereum.WithTimeout(15 * time.Minute), // It shouldn't take more than 15 minutes to start the nodes
 	}
 
