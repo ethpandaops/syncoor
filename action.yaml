@@ -130,6 +130,27 @@ inputs:
     required: false
     default: ''
 
+  # Public port configuration
+  public:
+    description: 'Enable public port publishing'
+    required: false
+    default: 'false'
+
+  public-port-el:
+    description: 'Public port for execution layer client'
+    required: false
+    default: '40000'
+
+  public-port-cl:
+    description: 'Public port for consensus layer client'
+    required: false
+    default: '41000'
+
+  public-ip:
+    description: 'Public IP for port publishing (default: auto)'
+    required: false
+    default: 'auto'
+
   # Github artifacts upload
   upload-artifacts:
     description: 'Whether to upload test reports as artifacts'
@@ -378,6 +399,14 @@ runs:
 
         if [ -n "${{ inputs.checkpoint-sync-url }}" ]; then
           DOCKER_CMD="$DOCKER_CMD --checkpoint-sync-url=\"${{ inputs.checkpoint-sync-url }}\""
+        fi
+
+        # Add public port configuration parameters
+        if [ "${{ inputs.public }}" = "true" ]; then
+          DOCKER_CMD="$DOCKER_CMD --public"
+          DOCKER_CMD="$DOCKER_CMD --public-port-el=${{ inputs.public-port-el }}"
+          DOCKER_CMD="$DOCKER_CMD --public-port-cl=${{ inputs.public-port-cl }}"
+          DOCKER_CMD="$DOCKER_CMD --public-ip=\"${{ inputs.public-ip }}\""
         fi
 
         # Execute the command

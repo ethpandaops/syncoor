@@ -127,6 +127,7 @@ jobs:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         log-force-colors: true
         client-logs: true
+        public: true
         network: ${{ matrix.network }}
         el-client: ${{ matrix.el-client }}
         cl-client: ${{ matrix.cl-client }}
