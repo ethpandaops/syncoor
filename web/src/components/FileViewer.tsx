@@ -4,6 +4,8 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { extractFileFromDump } from '../lib/api';
 import { formatBytes } from '../lib/utils';
+// @ts-ignore
+import Convert from 'ansi-to-html';
 
 interface FileViewerProps {
   sourceUrl: string;
@@ -175,6 +177,46 @@ export function FileViewer({
     }
   };
 
+  // Function to detect and convert ANSI codes
+  const renderContent = (text: string) => {
+    // Check if the first line contains ANSI escape sequences (for performance)
+    const firstLine = text.split('\n')[0];
+    const ansiRegex = /\x1b\[[0-9;]*m/;
+    
+    if (ansiRegex.test(firstLine)) {
+      // Convert ANSI to HTML
+      const convert = new Convert({
+        fg: '#000',
+        bg: '#FFF',
+        newline: true,
+        escapeXML: true,
+        stream: false
+      });
+      
+      const htmlContent = convert.toHtml(text);
+      
+      return (
+        <div 
+          className="text-xs font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto"
+          dangerouslySetInnerHTML={{ __html: htmlContent }}
+          style={{ 
+            background: 'var(--muted)',
+            color: 'var(--foreground)',
+            whiteSpace: 'pre-wrap',
+            wordWrap: 'break-word'
+          }}
+        />
+      );
+    }
+    
+    // Regular text rendering
+    return (
+      <pre className="text-xs font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+        <code>{text}</code>
+      </pre>
+    );
+  };
+
   if (fullWindow && content) {
     return (
       <div className="fixed inset-0 z-50 bg-background overflow-auto">
@@ -204,9 +246,41 @@ export function FileViewer({
           </div>
         </div>
         <div className="p-4 w-full">
-          <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full">
-            <code>{content}</code>
-          </pre>
+          {(() => {
+            // Check if the first line contains ANSI escape sequences (for performance)
+            const firstLine = content.split('\n')[0];
+            const ansiRegex = /\x1b\[[0-9;]*m/;
+            if (ansiRegex.test(firstLine)) {
+              const convert = new Convert({
+                fg: '#000',
+                bg: '#FFF',
+                newline: true,
+                escapeXML: true,
+                stream: false
+              });
+              
+              const htmlContent = convert.toHtml(content);
+              
+              return (
+                <div 
+                  className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full"
+                  dangerouslySetInnerHTML={{ __html: htmlContent }}
+                  style={{ 
+                    background: 'var(--muted)',
+                    color: 'var(--foreground)',
+                    whiteSpace: 'pre-wrap',
+                    wordWrap: 'break-word'
+                  }}
+                />
+              );
+            }
+            
+            return (
+              <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full">
+                <code>{content}</code>
+              </pre>
+            );
+          })()}
         </div>
       </div>
     );
@@ -264,9 +338,7 @@ export function FileViewer({
                   Loaded: {formatBytes(loadedSize)}
                 </div>
               )}
-              <pre className="text-xs font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
-                <code>{content}</code>
-              </pre>
+              {renderContent(content)}
             </div>
           ) : loading && isViewable ? (
             <div className="flex items-center justify-center py-8">
