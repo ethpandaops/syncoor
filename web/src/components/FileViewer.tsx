@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -44,6 +44,31 @@ export function FileViewer({
   useEffect(() => {
     setFullWindow(initialFullWindow);
   }, [initialFullWindow]);
+
+  const toggleFullWindow = useCallback(() => {
+    const newFullWindow = !fullWindow;
+    setFullWindow(newFullWindow);
+    if (onFullWindowToggle) {
+      onFullWindowToggle(newFullWindow);
+    }
+  }, [fullWindow, onFullWindowToggle]);
+
+  // Add ESC key listener for full window mode
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && fullWindow) {
+        toggleFullWindow();
+      }
+    };
+
+    if (fullWindow) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [fullWindow, toggleFullWindow]);
 
   const getFileType = (path: string): string => {
     const ext = path.split('.').pop()?.toLowerCase();
@@ -166,14 +191,6 @@ export function FileViewer({
       setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
     } catch (err) {
       console.error('Failed to copy content:', err);
-    }
-  };
-
-  const toggleFullWindow = () => {
-    const newFullWindow = !fullWindow;
-    setFullWindow(newFullWindow);
-    if (onFullWindowToggle) {
-      onFullWindowToggle(newFullWindow);
     }
   };
 
