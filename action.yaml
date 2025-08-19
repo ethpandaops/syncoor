@@ -189,7 +189,7 @@ runs:
   steps:
     - name: Verify and install dependencies
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ./.github/actions/dependencies
+      uses: ethpandaops/syncoor/.github/actions/dependencies@b64b2368935a1a9f552efac7ed5cebd1820ddf60
 
     - name: Build Syncoor Docker image locally
       if: inputs.image == ''
