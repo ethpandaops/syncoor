@@ -538,8 +538,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             <div className="flex items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button className="inline-flex">
-                                    <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                                  <button className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors duration-200 cursor-help">
+                                    <InfoIcon className="h-3 w-3" />
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left" align="end" className="w-80 bg-gray-900 text-white border-gray-800">
