@@ -269,6 +269,22 @@ runs:
       run: |
         kurtosis clean -a
 
+    - name: Cleanup any existing named containers
+      shell: bash
+      run: |
+        # List of named containers that might exist from previous runs
+        CONTAINERS=("syncoor-run" "syncoor-index" "syncoor-md")
+
+        for container in "${CONTAINERS[@]}"; do
+          if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+            echo "Stopping and removing existing container: ${container}"
+            docker stop "${container}" >/dev/null 2>&1 || true
+            docker rm "${container}" >/dev/null 2>&1 || true
+          else
+            echo "Container ${container} does not exist, skipping cleanup"
+          fi
+        done
+
     - name: Determine which image to use
       id: determine-image
       shell: bash
