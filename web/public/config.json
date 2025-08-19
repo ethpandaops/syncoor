@@ -1,6 +1,14 @@
 {
   "directories": [
     {
+      "name": "fusaka-devnet-3",
+      "url": "https://syncoor-data.ethpandaops.io/devnets/fusaka-devnet-3"
+    },
+    {
+      "name": "test-reports",
+      "url": "https://syncoor-data.ethpandaops.io/test-reports"
+    },
+    {
       "name": "Mock Reports",
       "url": "http://localhost:3000/reports/mock/",
       "enabled": true
@@ -12,6 +20,14 @@
     }
   ],
   "syncoorApiEndpoints": [
+    {
+      "name": "FusakaDevnet-3",
+      "url": "https://syncoor-api.fusaka-devnet-3.ethpandaops.io"
+    },
+    {
+      "name": "PerfDevnet-2",
+      "url": "https://syncoor-api.perf-devnet-2.ethpandaops.io"
+    },
     {
       "name": "Local Syncoor",
       "url": "http://localhost:8080",

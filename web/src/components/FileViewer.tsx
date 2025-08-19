@@ -6,6 +6,9 @@ import { extractFileFromDump } from '../lib/api';
 import { formatBytes } from '../lib/utils';
 // @ts-ignore
 import Convert from 'ansi-to-html';
+import Prism from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
 
 interface FileViewerProps {
   sourceUrl: string;
@@ -194,7 +197,7 @@ export function FileViewer({
     }
   };
 
-  // Function to detect and convert ANSI codes
+  // Function to detect and convert ANSI codes or apply syntax highlighting
   const renderContent = (text: string) => {
     // Check if the first line contains ANSI escape sequences (for performance)
     const firstLine = text.split('\n')[0];
@@ -223,6 +226,64 @@ export function FileViewer({
             wordWrap: 'break-word'
           }}
         />
+      );
+    }
+    
+    // Apply syntax highlighting for JSON and YAML files
+    if (fileType === 'json') {
+      const highlightedHtml = Prism.highlight(text, Prism.languages.json, 'json');
+      return (
+        <div>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              .syntax-json .token.property { color: #0066cc; }
+              .syntax-json .token.string { color: #22863a; }
+              .syntax-json .token.number { color: #005cc5; }
+              .syntax-json .token.boolean { color: #d73a49; }
+              .syntax-json .token.null { color: #6f42c1; }
+              .syntax-json .token.punctuation { color: #586069; }
+            `
+          }} />
+          <pre className="text-xs font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+            <code 
+              className="syntax-json"
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              style={{ 
+                textShadow: 'none',
+                fontFamily: 'inherit'
+              }}
+            />
+          </pre>
+        </div>
+      );
+    }
+    
+    if (fileType === 'yaml') {
+      const highlightedHtml = Prism.highlight(text, Prism.languages.yaml, 'yaml');
+      return (
+        <div>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+              .syntax-yaml .token.key { color: #0066cc; }
+              .syntax-yaml .token.string { color: #22863a; }
+              .syntax-yaml .token.number { color: #005cc5; }
+              .syntax-yaml .token.boolean { color: #d73a49; }
+              .syntax-yaml .token.null { color: #6f42c1; }
+              .syntax-yaml .token.punctuation { color: #586069; }
+              .syntax-yaml .token.comment { color: #6a737d; font-style: italic; }
+            `
+          }} />
+          <pre className="text-xs font-mono bg-muted p-4 rounded-lg overflow-x-auto max-h-96 overflow-y-auto">
+            <code 
+              className="syntax-yaml"
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              style={{ 
+                textShadow: 'none',
+                fontFamily: 'inherit'
+              }}
+            />
+          </pre>
+        </div>
       );
     }
     
@@ -267,6 +328,7 @@ export function FileViewer({
             // Check if the first line contains ANSI escape sequences (for performance)
             const firstLine = content.split('\n')[0];
             const ansiRegex = /\x1b\[[0-9;]*m/;
+            
             if (ansiRegex.test(firstLine)) {
               const convert = new Convert({
                 fg: '#000',
@@ -289,6 +351,64 @@ export function FileViewer({
                     wordWrap: 'break-word'
                   }}
                 />
+              );
+            }
+            
+            // Apply syntax highlighting for JSON and YAML files in full window
+            if (fileType === 'json') {
+              const highlightedHtml = Prism.highlight(content, Prism.languages.json, 'json');
+              return (
+                <div>
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
+                      .syntax-json-full .token.property { color: #0066cc; }
+                      .syntax-json-full .token.string { color: #22863a; }
+                      .syntax-json-full .token.number { color: #005cc5; }
+                      .syntax-json-full .token.boolean { color: #d73a49; }
+                      .syntax-json-full .token.null { color: #6f42c1; }
+                      .syntax-json-full .token.punctuation { color: #586069; }
+                    `
+                  }} />
+                  <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full">
+                    <code 
+                      className="syntax-json-full"
+                      dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+                      style={{ 
+                        textShadow: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </pre>
+                </div>
+              );
+            }
+            
+            if (fileType === 'yaml') {
+              const highlightedHtml = Prism.highlight(content, Prism.languages.yaml, 'yaml');
+              return (
+                <div>
+                  <style dangerouslySetInnerHTML={{
+                    __html: `
+                      .syntax-yaml-full .token.key { color: #0066cc; }
+                      .syntax-yaml-full .token.string { color: #22863a; }
+                      .syntax-yaml-full .token.number { color: #005cc5; }
+                      .syntax-yaml-full .token.boolean { color: #d73a49; }
+                      .syntax-yaml-full .token.null { color: #6f42c1; }
+                      .syntax-yaml-full .token.punctuation { color: #586069; }
+                      .syntax-yaml-full .token.comment { color: #6a737d; font-style: italic; }
+                    `
+                  }} />
+                  <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full">
+                    <code 
+                      className="syntax-yaml-full"
+                      dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+                      style={{ 
+                        textShadow: 'none',
+                        fontFamily: 'inherit'
+                      }}
+                    />
+                  </pre>
+                </div>
               );
             }
             
