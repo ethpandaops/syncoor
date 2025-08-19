@@ -7,6 +7,7 @@ import { getDumpFileInfo } from '../lib/api';
 import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
+import { FileIcon, defaultStyles } from 'react-file-icon';
 
 interface DumpFileViewerProps {
   sourceUrl: string;
@@ -87,9 +88,361 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     }
   };
 
+  const getFileIconComponent = (fileName: string, isDirectory: boolean) => {
+    if (isDirectory) {
+      return <span className="text-lg">📁</span>;
+    }
+    
+    const name = fileName.split('/').pop()?.toLowerCase() || '';
+    let ext = fileName.split('.').pop()?.toLowerCase();
+    
+    // Handle special cases and map to extensions that react-file-icon supports
+    if (name === 'dockerfile') ext = 'docker';
+    if (name === 'makefile') ext = 'make';
+    if (name === 'readme' || name === 'readme.md') ext = 'md';
+    if (name === 'jwtsecret') ext = 'key';
+    
+    // Map some extensions to more common ones that react-file-icon supports
+    switch (ext) {
+      case 'yml':
+        ext = 'yaml';
+        break;
+      case 'text':
+        ext = 'txt';
+        break;
+      case 'sh':
+      case 'bash':
+        ext = 'sh';
+        break;
+      case 'cc':
+      case 'cpp':
+        ext = 'cpp';
+        break;
+      case 'jpeg':
+        ext = 'jpg';
+        break;
+      case 'conf':
+      case 'config':
+      case 'ini':
+        ext = 'config';
+        break;
+      case 'sqlite':
+        ext = 'db';
+        break;
+      case 'pem':
+      case 'crt':
+      case 'cert':
+        ext = 'key';
+        break;
+      case '7z':
+      case 'tar':
+      case 'gz':
+        ext = 'zip';
+        break;
+    }
+    
+    // Get default styles as base
+    const baseIconProps = defaultStyles[ext as keyof typeof defaultStyles] || defaultStyles.txt;
+    
+    // Define custom colors for different file types
+    let customProps = { ...baseIconProps };
+    
+    switch (ext) {
+      // Programming languages
+      case 'js':
+      case 'jsx':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#f7df1e',      // JavaScript yellow
+          gradientColor: '#f0db4f',   // Lighter JS yellow
+          labelColor: '#323330'       // Dark gray for contrast
+        };
+        break;
+      case 'ts':
+      case 'tsx':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#3178c6',      // TypeScript blue
+          gradientColor: '#235a97',   // Darker TS blue
+          labelColor: '#ffffff'       // White for contrast
+        };
+        break;
+      case 'py':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#3776ab',      // Python blue
+          gradientColor: '#ffd43b',   // Python yellow
+          labelColor: '#646464'       // Gray
+        };
+        break;
+      case 'go':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#00add8',      // Go cyan
+          gradientColor: '#007d9c',   // Darker Go blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'rs':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#ce422b',      // Rust red
+          gradientColor: '#000000',   // Black
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'java':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#f89820',      // Java orange
+          gradientColor: '#5382a1',   // Java blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'cpp':
+      case 'c':
+      case 'h':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#00599c',      // C++ blue
+          gradientColor: '#004482',   // Darker C++ blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'rb':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#cc342d',      // Ruby red
+          gradientColor: '#a91401',   // Darker ruby red
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Web files
+      case 'html':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#e34c26',      // HTML orange
+          gradientColor: '#f16529',   // Lighter HTML orange
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'css':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#1572b6',      // CSS blue
+          gradientColor: '#33a9dc',   // Lighter CSS blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'scss':
+      case 'sass':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#cc6699',      // Sass pink
+          gradientColor: '#bf4080',   // Darker Sass pink
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Data files
+      case 'json':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#90a959',      // JSON green
+          gradientColor: '#cbcb41',   // JSON yellow-green
+          labelColor: '#3d3d3d'       // Dark gray
+        };
+        break;
+      case 'yaml':
+      case 'yml':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#cb171e',      // YAML red
+          gradientColor: '#ff6b6b',   // Lighter red
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'toml':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#9c4221',      // TOML brown
+          gradientColor: '#e37933',   // TOML orange
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'xml':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#f97316',      // XML orange
+          gradientColor: '#ff9800',   // Lighter orange
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'csv':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#22c55e',      // CSV green
+          gradientColor: '#16a34a',   // Darker green
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Config files
+      case 'env':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#ecd53f',      // ENV yellow
+          gradientColor: '#f4e55d',   // Lighter yellow
+          labelColor: '#3d3d3d'       // Dark gray
+        };
+        break;
+      case 'config':
+      case 'ini':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#6b7280',      // Config gray
+          gradientColor: '#9ca3af',   // Lighter gray
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Shell scripts
+      case 'sh':
+      case 'bash':
+      case 'zsh':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#4eaa25',      // Shell green
+          gradientColor: '#89e051',   // Lighter green
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Docker
+      case 'docker':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#2496ed',      // Docker blue
+          gradientColor: '#0db7ed',   // Docker cyan
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Documentation
+      case 'md':
+      case 'markdown':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#083fa1',      // Markdown blue
+          gradientColor: '#0e7fc1',   // Lighter blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      case 'txt':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#6b7280',      // Text gray
+          gradientColor: '#a8a8a8',   // Lighter gray
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Logs
+      case 'log':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#f59e0b',      // Log amber
+          gradientColor: '#fbbf24',   // Lighter amber
+          labelColor: '#7c2d12'       // Dark amber
+        };
+        break;
+      
+      // Archives
+      case 'zip':
+      case 'tar':
+      case 'gz':
+      case '7z':
+      case 'rar':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#a855f7',      // Archive purple
+          gradientColor: '#c084fc',   // Lighter purple
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Images
+      case 'png':
+      case 'jpg':
+      case 'jpeg':
+      case 'gif':
+      case 'svg':
+      case 'webp':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#06b6d4',      // Image cyan
+          gradientColor: '#22d3ee',   // Lighter cyan
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Certificates/Keys
+      case 'key':
+      case 'pem':
+      case 'crt':
+      case 'cert':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#ef4444',      // Security red
+          gradientColor: '#dc2626',   // Darker red
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Database
+      case 'db':
+      case 'sqlite':
+      case 'sql':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#336791',      // Database blue
+          gradientColor: '#4e8bbf',   // Lighter database blue
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      // Build files
+      case 'make':
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#427819',      // Make green
+          gradientColor: '#6dad2a',   // Lighter green
+          labelColor: '#ffffff'       // White
+        };
+        break;
+      
+      default:
+        customProps = { 
+          ...baseIconProps, 
+          glyphColor: '#9ca3af',      // Default gray
+          gradientColor: '#d1d5db',   // Lighter gray
+          labelColor: '#374151'       // Dark gray
+        };
+        break;
+    }
+    
+    return (
+      <FileIcon
+        extension={ext || 'txt'}
+        {...customProps}
+      />
+    );
+  };
+
   const renderFileEntry = (entry: ZipFileEntry, index: number) => {
     const isFolder = entry.is_directory;
-    const icon = isFolder ? '📁' : '📄';
+    const iconComponent = getFileIconComponent(entry.name, isFolder);
     
     return (
       <div 
@@ -98,7 +451,9 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         onClick={() => !isFolder && handleFileSelect(entry)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-lg">{icon}</span>
+          <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
+            {iconComponent}
+          </div>
           <span className="font-mono text-sm truncate" title={entry.name}>
             {entry.name}
           </span>
@@ -176,6 +531,9 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
                   onClick={() => handleFileSelect(elLogFile)}
                 >
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
+                      {getFileIconComponent(elLogFile.name, false)}
+                    </div>
                     <Badge variant="outline" className="text-xs">EL</Badge>
                     <span className="font-mono text-sm">
                       {elLogFile.name.split('/').slice(-2).join('/')}
@@ -195,6 +553,9 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
                   onClick={() => handleFileSelect(clLogFile)}
                 >
                   <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
+                      {getFileIconComponent(clLogFile.name, false)}
+                    </div>
                     <Badge variant="outline" className="text-xs">CL</Badge>
                     <span className="font-mono text-sm">
                       {clLogFile.name.split('/').slice(-2).join('/')}

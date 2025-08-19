@@ -331,7 +331,7 @@ export function FileViewer({
   const renderContentByType = (text: string, lines: string[]) => {
     // Check if the first line contains ANSI escape sequences (for performance)
     const firstLine = text.split('\n')[0];
-    const ansiRegex = /\x1b\[[0-9;]*m/;
+    const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m');
     
     // Handle ANSI content line by line
     if (ansiRegex.test(firstLine)) {
