@@ -74,6 +74,13 @@ export function FileViewer({
   }, [fullWindow, toggleFullWindow]);
 
   const getFileType = (path: string): string => {
+    const fileName = path.split('/').pop()?.toLowerCase() || '';
+    
+    // Check for specific filenames first
+    if (fileName === 'jwtsecret') {
+      return 'text';
+    }
+    
     const ext = path.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'log':
