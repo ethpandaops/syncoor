@@ -16,13 +16,19 @@ interface DumpFileViewerProps {
   clClient: string;
   onClose?: () => void;
   showExpandLink?: boolean;
+  initialSelectedFile?: string;
+  onFileSelect?: (filePath: string | null) => void;
+  initialFullWindow?: boolean;
+  onFullWindowToggle?: (fullWindow: boolean) => void;
 }
 
-export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, onClose, showExpandLink = true }: DumpFileViewerProps) {
+export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, onClose, showExpandLink = true, initialSelectedFile, onFileSelect, initialFullWindow, onFullWindowToggle }: DumpFileViewerProps) {
   const [zipInfo, setZipInfo] = useState<ZipFileInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<ZipFileEntry | null>(null);
+  const [elLogFile, setElLogFile] = useState<ZipFileEntry | null>(null);
+  const [clLogFile, setClLogFile] = useState<ZipFileEntry | null>(null);
 
   useEffect(() => {
     const fetchZipInfo = async () => {
@@ -36,6 +42,33 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
           setError('Dump file not found');
         } else if (info.error) {
           setError(info.error);
+        } else if (info.entries) {
+          // Find EL and CL output.log files
+          const elLog = info.entries.find(entry => 
+            !entry.is_directory && 
+            entry.name.includes(`el-`) && 
+            entry.name.includes(`-${elClient}-`) && 
+            entry.name.endsWith('/output.log')
+          );
+          const clLog = info.entries.find(entry => 
+            !entry.is_directory && 
+            entry.name.includes(`cl-`) && 
+            entry.name.includes(`-${clClient}-`) && 
+            entry.name.endsWith('/output.log')
+          );
+          
+          setElLogFile(elLog || null);
+          setClLogFile(clLog || null);
+          
+          // Set initial selected file if provided
+          if (initialSelectedFile && info.entries) {
+            const file = info.entries.find(entry => 
+              !entry.is_directory && entry.name === initialSelectedFile
+            );
+            if (file) {
+              setSelectedFile(file);
+            }
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load dump file info');
@@ -45,7 +78,14 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     };
 
     fetchZipInfo();
-  }, [sourceUrl, runId, network, elClient, clClient]);
+  }, [sourceUrl, runId, network, elClient, clClient, initialSelectedFile]);
+
+  const handleFileSelect = (file: ZipFileEntry | null) => {
+    setSelectedFile(file);
+    if (onFileSelect) {
+      onFileSelect(file ? file.name : null);
+    }
+  };
 
   const renderFileEntry = (entry: ZipFileEntry, index: number) => {
     const isFolder = entry.is_directory;
@@ -55,7 +95,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       <div 
         key={index} 
         className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50 ${!isFolder ? 'cursor-pointer' : ''}`}
-        onClick={() => !isFolder && setSelectedFile(entry)}
+        onClick={() => !isFolder && handleFileSelect(entry)}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-lg">{icon}</span>
@@ -118,17 +158,73 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span>Kurtosis Enclave Dump</span>
-            <Badge variant="secondary">{runId}-{network}_{elClient}_{clClient}.main.dump.zip</Badge>
-          </div>
-          {onClose && <Button variant="ghost" size="sm" onClick={onClose}>×</Button>}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <div className="space-y-4">
+      {/* Quick Access Logs Section */}
+      {(elLogFile || clLogFile) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <span>📋</span>
+              <span>Quick Access Logs</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {elLogFile && (
+                <div 
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleFileSelect(elLogFile)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">EL</Badge>
+                    <span className="font-mono text-sm">
+                      {elLogFile.name.split('/').slice(-2).join('/')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ({formatBytes(elLogFile.size)})
+                    </span>
+                  </div>
+                  <Button size="sm" variant="ghost">
+                    View Log
+                  </Button>
+                </div>
+              )}
+              {clLogFile && (
+                <div 
+                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                  onClick={() => handleFileSelect(clLogFile)}
+                >
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">CL</Badge>
+                    <span className="font-mono text-sm">
+                      {clLogFile.name.split('/').slice(-2).join('/')}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ({formatBytes(clLogFile.size)})
+                    </span>
+                  </div>
+                  <Button size="sm" variant="ghost">
+                    View Log
+                  </Button>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Dump File Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span>Kurtosis Enclave Dump</span>
+              <Badge variant="secondary">{runId}-{network}_{elClient}_{clClient}.main.dump.zip</Badge>
+            </div>
+            {onClose && <Button variant="ghost" size="sm" onClick={onClose}>×</Button>}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
         <div className="space-y-4">
           {/* File info */}
           <div className="flex items-center justify-between">
@@ -181,25 +277,28 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
               )}
             </div>
           )}
-
-          {/* File viewer */}
-          {selectedFile && (
-            <div>
-              <FileViewer
-                sourceUrl={sourceUrl}
-                runId={runId}
-                network={network}
-                elClient={elClient}
-                clClient={clClient}
-                filePath={selectedFile.name}
-                fileSize={selectedFile.size}
-                onClose={() => setSelectedFile(null)}
-              />
-            </div>
-          )}
         </div>
       </CardContent>
     </Card>
+
+    {/* File viewer */}
+    {selectedFile && (
+      <Card>
+        <FileViewer
+          sourceUrl={sourceUrl}
+          runId={runId}
+          network={network}
+          elClient={elClient}
+          clClient={clClient}
+          filePath={selectedFile.name}
+          fileSize={selectedFile.size}
+          onClose={() => handleFileSelect(null)}
+          initialFullWindow={initialFullWindow}
+          onFullWindowToggle={onFullWindowToggle}
+        />
+      </Card>
+    )}
+  </div>
   );
 }
 

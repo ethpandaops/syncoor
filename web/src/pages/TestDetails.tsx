@@ -11,14 +11,12 @@ import { formatDuration, formatTimestamp, getStatusBadgeInfo, getStatusIcon } fr
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 import { SystemInformation } from '../components/SystemInformation';
 import { GithubActionsInfo } from '../components/GithubActionsInfo';
-import { DumpFileViewer } from '../components/DumpFileViewer';
 import { useDumpFile } from '../hooks/useDumpFile';
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
   const [showExecutionDetails, setShowExecutionDetails] = useState(false);
   const [showConsensusDetails, setShowConsensusDetails] = useState(false);
-  const [showDumpFile, setShowDumpFile] = useState(false);
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: reports, isLoading: reportsLoading } = useReports({
     directories: config?.directories || [],
@@ -483,14 +481,14 @@ export default function TestDetails() {
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Kurtosis Dump</span>
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowDumpFile(!showDumpFile)}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-mono"
+                  <a
+                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 hover:text-blue-800 hover:underline font-mono"
                   >
                     {testReport.run_id}-{testReport.network}_{testReport.execution_client_info.type}_{testReport.consensus_client_info.type}.main.dump.zip
-                  </Button>
+                  </a>
                   <Badge variant="secondary" className="text-xs">Available</Badge>
                 </div>
               </div>
@@ -498,19 +496,6 @@ export default function TestDetails() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Dump File Viewer */}
-      {showDumpFile && dumpExists && testReport && (
-        <DumpFileViewer
-          sourceUrl={testReport.source_url}
-          runId={testReport.run_id}
-          network={testReport.network}
-          elClient={testReport.execution_client_info.type}
-          clClient={testReport.consensus_client_info.type}
-          onClose={() => setShowDumpFile(false)}
-          showExpandLink={true}
-        />
-      )}
     </div>
   );
 }

@@ -1,16 +1,39 @@
 import { useParams, Link, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { DumpFileViewer } from '../components/DumpFileViewer';
 
 export default function DumpExplorer() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sourceUrl = searchParams.get('sourceUrl');
   const network = searchParams.get('network');
   const elClient = searchParams.get('elClient');
   const clClient = searchParams.get('clClient');
+  const selectedFile = searchParams.get('file');
+  const fullWindow = searchParams.get('fullWindow') === 'true';
+  
+  const handleFileSelect = (filePath: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (filePath) {
+      newParams.set('file', filePath);
+    } else {
+      newParams.delete('file');
+      newParams.delete('fullWindow'); // Clear full window when closing file
+    }
+    setSearchParams(newParams);
+  };
+
+  const handleFullWindowToggle = (isFullWindow: boolean) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (isFullWindow) {
+      newParams.set('fullWindow', 'true');
+    } else {
+      newParams.delete('fullWindow');
+    }
+    setSearchParams(newParams);
+  };
   
   if (!id || !sourceUrl || !network || !elClient || !clClient) {
     return (
@@ -44,14 +67,9 @@ export default function DumpExplorer() {
             Explore the contents of the Kurtosis enclave dump file
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link to={`/test/${id}`}>
-            <Button variant="outline">Back to Test</Button>
-          </Link>
-          <Link to="/tests">
-            <Button variant="outline">All Tests</Button>
-          </Link>
-        </div>
+        <Link to={`/test/${id}`}>
+          <Button variant="outline">Back to Test</Button>
+        </Link>
       </div>
 
       {/* Dump File Viewer */}
@@ -62,32 +80,11 @@ export default function DumpExplorer() {
         elClient={elClient}
         clClient={clClient}
         showExpandLink={false}
+        initialSelectedFile={selectedFile || undefined}
+        onFileSelect={handleFileSelect}
+        initialFullWindow={fullWindow}
+        onFullWindowToggle={handleFullWindowToggle}
       />
-
-      {/* Help Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>About Kurtosis Dumps</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>
-              Kurtosis enclave dumps contain valuable debugging information from test runs, including:
-            </p>
-            <ul className="list-disc list-inside space-y-1 ml-4">
-              <li>Container logs from all services</li>
-              <li>Configuration files and parameters</li>
-              <li>Network topology information</li>
-              <li>Service metadata and status</li>
-              <li>Environment variables and settings</li>
-            </ul>
-            <p>
-              <strong>Note:</strong> Files are extracted directly from the ZIP archive using HTTP range requests.
-              Click on any file in the listing above to view its contents.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

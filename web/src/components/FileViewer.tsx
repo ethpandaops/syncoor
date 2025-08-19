@@ -14,6 +14,8 @@ interface FileViewerProps {
   filePath: string;
   fileSize?: number;
   onClose?: () => void;
+  initialFullWindow?: boolean;
+  onFullWindowToggle?: (fullWindow: boolean) => void;
 }
 
 export function FileViewer({ 
@@ -24,13 +26,22 @@ export function FileViewer({
   clClient, 
   filePath, 
   fileSize,
-  onClose 
+  onClose,
+  initialFullWindow = false,
+  onFullWindowToggle
 }: FileViewerProps) {
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadedSize, setLoadedSize] = useState<number | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [fullWindow, setFullWindow] = useState(initialFullWindow);
   const currentRequestRef = useRef<string | null>(null);
+
+  // Update full window state when initialFullWindow changes
+  useEffect(() => {
+    setFullWindow(initialFullWindow);
+  }, [initialFullWindow]);
 
   const getFileType = (path: string): string => {
     const ext = path.split('.').pop()?.toLowerCase();
@@ -144,6 +155,63 @@ export function FileViewer({
     }
   };
 
+  const copyContent = async () => {
+    if (!content) return;
+    
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
+    } catch (err) {
+      console.error('Failed to copy content:', err);
+    }
+  };
+
+  const toggleFullWindow = () => {
+    const newFullWindow = !fullWindow;
+    setFullWindow(newFullWindow);
+    if (onFullWindowToggle) {
+      onFullWindowToggle(newFullWindow);
+    }
+  };
+
+  if (fullWindow && content) {
+    return (
+      <div className="fixed inset-0 z-50 bg-background overflow-auto">
+        <div className="sticky top-0 bg-background border-b p-4">
+          <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
+            <div className="flex items-center gap-2">
+              <span>📄</span>
+              <span className="font-mono text-sm">{filePath}</span>
+              {loadedSize && <Badge variant="outline">{formatBytes(loadedSize)}</Badge>}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={copyContent} 
+                size="sm" 
+                variant="outline"
+                className={copied ? 'text-green-600' : ''}
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </Button>
+              <Button onClick={downloadFile} size="sm" variant="outline">
+                Download
+              </Button>
+              <Button onClick={toggleFullWindow} size="sm" variant="outline">
+                Exit Full Window
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 max-w-screen-2xl mx-auto">
+          <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto">
+            <code>{content}</code>
+          </pre>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -159,9 +227,24 @@ export function FileViewer({
                 Loading...
               </Badge>
             )}
+            {content && (
+              <Button 
+                onClick={copyContent} 
+                size="sm" 
+                variant="outline"
+                className={copied ? 'text-green-600' : ''}
+              >
+                {copied ? '✓ Copied' : 'Copy'}
+              </Button>
+            )}
             <Button onClick={downloadFile} disabled={loading} size="sm" variant="outline">
               Download
             </Button>
+            {content && (
+              <Button onClick={toggleFullWindow} size="sm" variant="outline">
+                Full Window
+              </Button>
+            )}
             {onClose && (
               <Button onClick={onClose} size="sm" variant="ghost">
                 ×
