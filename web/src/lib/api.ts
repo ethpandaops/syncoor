@@ -1,5 +1,6 @@
 import { Directory } from '../types/config';
-import { ReportIndex, ProgressEntry, TestReport } from '../types/report';
+import { ReportIndex, ProgressEntry, TestReport, ZipFileInfo } from '../types/report';
+import * as zip from '@zip.js/zip.js';
 
 /**
  * Default headers for fetch requests
@@ -237,6 +238,285 @@ export async function fetchMainReport(directory: Directory, filename: string): P
     }
     throw new ApiError(
       `Failed to fetch report from ${directory.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      undefined,
+      undefined,
+      url
+    );
+  }
+}
+
+/**
+ * Checks if a dump.zip file exists for a test run
+ * @param sourceUrl - Base URL for the test files
+ * @param runId - The test run ID
+ * @param network - Network name
+ * @param elClient - Execution layer client name
+ * @param clClient - Consensus layer client name
+ * @returns Promise<boolean> - Whether the dump file exists
+ */
+export async function checkDumpFileExists(
+  sourceUrl: string, 
+  runId: string,
+  network: string,
+  elClient: string,
+  clClient: string
+): Promise<boolean> {
+  const dumpFileName = `${runId}-${network}_${elClient}_${clClient}.main.dump.zip`;
+  const url = sourceUrl.endsWith('/') ? `${sourceUrl}${dumpFileName}` : `${sourceUrl}/${dumpFileName}`;
+  
+  try {
+    const response = await fetch(url, { method: 'HEAD' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Gets information about a dump.zip file including its file listing
+ * Uses zip.js to read the ZIP file contents via HTTP range requests
+ * @param sourceUrl - Base URL for the test files  
+ * @param runId - The test run ID
+ * @param network - Network name
+ * @param elClient - Execution layer client name
+ * @param clClient - Consensus layer client name
+ * @returns Promise<ZipFileInfo> - Information about the ZIP file
+ */
+export async function getDumpFileInfo(
+  sourceUrl: string, 
+  runId: string,
+  network: string,
+  elClient: string,
+  clClient: string
+): Promise<ZipFileInfo> {
+  const dumpFileName = `${runId}-${network}_${elClient}_${clClient}.main.dump.zip`;
+  const url = sourceUrl.endsWith('/') ? `${sourceUrl}${dumpFileName}` : `${sourceUrl}/${dumpFileName}`;
+  
+  let reader: zip.ZipReader<unknown> | null = null;
+  
+  try {
+    // First check if file exists and get size
+    const headResponse = await fetch(url, { method: 'HEAD' });
+    
+    if (!headResponse.ok) {
+      return { exists: false, error: `HTTP ${headResponse.status}: ${headResponse.statusText}` };
+    }
+    
+    const sizeHeader = headResponse.headers.get('Content-Length');
+    const size = sizeHeader ? parseInt(sizeHeader, 10) : undefined;
+    const acceptRanges = headResponse.headers.get('Accept-Ranges');
+    
+    // Note: Server headers - Accept-Ranges and Size are used for ZIP reading optimization
+    
+    // Configure zip.js
+    zip.configure({
+      useWebWorkers: true,
+      workerScripts: {
+        deflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js'],
+        inflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js']
+      }
+    });
+    
+    let zipEntries;
+    
+    // Now that CORS is fixed, we can use HttpRangeReader when the server supports it
+    if (acceptRanges && acceptRanges !== 'none') {
+      try {
+        // Using HttpRangeReader for efficient ZIP reading
+        const httpReader = new zip.HttpRangeReader(url);
+        reader = new zip.ZipReader(httpReader);
+        zipEntries = await reader.getEntries();
+        // HttpRangeReader succeeded - efficient reading complete
+      } catch (error) {
+        // HttpRangeReader failed, falling back to full download
+        
+        // Fallback to full download
+        // Falling back to full file download
+        
+        // Check file size before downloading
+        if (size && size > 100 * 1024 * 1024) { // 100MB limit
+          return {
+            exists: true,
+            size,
+            entries: [],
+            error: `ZIP file is too large (${Math.round(size / 1024 / 1024)}MB) to list contents. HttpRangeReader failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+          };
+        }
+        
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobReader = new zip.BlobReader(blob);
+        reader = new zip.ZipReader(blobReader);
+        zipEntries = await reader.getEntries();
+      }
+    } else {
+      // No range support, download the entire file
+      // No range support detected, downloading entire file
+      
+      // Check file size before downloading
+      if (size && size > 100 * 1024 * 1024) { // 100MB limit
+        return {
+          exists: true,
+          size,
+          entries: [],
+          error: `ZIP file is too large (${Math.round(size / 1024 / 1024)}MB) to list contents without range support.`
+        };
+      }
+      
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobReader = new zip.BlobReader(blob);
+      reader = new zip.ZipReader(blobReader);
+      zipEntries = await reader.getEntries();
+    }
+    
+    // Convert zip.js entries to our format
+    const entries = zipEntries.map(entry => ({
+      name: entry.filename,
+      size: entry.uncompressedSize,
+      compressed_size: entry.compressedSize,
+      modified: entry.lastModDate ? entry.lastModDate.toISOString() : new Date().toISOString(),
+      is_directory: entry.directory
+    }));
+    
+    // Close the reader
+    await reader.close();
+    
+    return {
+      exists: true,
+      size,
+      entries
+    };
+  } catch (error) {
+    // Clean up reader if it was created
+    if (reader) {
+      try {
+        await reader.close();
+      } catch {
+        // Ignore close errors
+      }
+    }
+    
+    // Check if it's a CORS error
+    if (error instanceof Error && error.message.includes('CORS')) {
+      // Fallback to placeholder data if CORS blocks the request
+      // CORS blocked ZIP reading, using placeholder data
+      return {
+        exists: true,
+        size: undefined,
+        entries: [
+          {
+            name: "Note: Real file listing unavailable due to CORS",
+            size: 0,
+            compressed_size: 0,
+            modified: new Date().toISOString(),
+            is_directory: false
+          }
+        ],
+        error: "Unable to read ZIP contents due to CORS policy. Download the file to view contents."
+      };
+    }
+    
+    return {
+      exists: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
+
+/**
+ * Extracts a specific file from a ZIP archive
+ * @param sourceUrl - Base URL for the test files
+ * @param runId - The test run ID
+ * @param network - Network name
+ * @param elClient - Execution layer client name
+ * @param clClient - Consensus layer client name
+ * @param filePath - Path of the file to extract from the ZIP
+ * @returns Promise<Blob> - The extracted file as a Blob
+ */
+export async function extractFileFromDump(
+  sourceUrl: string,
+  runId: string,
+  network: string,
+  elClient: string,
+  clClient: string,
+  filePath: string
+): Promise<Blob> {
+  const dumpFileName = `${runId}-${network}_${elClient}_${clClient}.main.dump.zip`;
+  const url = sourceUrl.endsWith('/') ? `${sourceUrl}${dumpFileName}` : `${sourceUrl}/${dumpFileName}`;
+  
+  let reader: zip.ZipReader<unknown> | null = null;
+  
+  try {
+    // Configure zip.js
+    zip.configure({
+      useWebWorkers: true,
+      workerScripts: {
+        deflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js'],
+        inflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js']
+      }
+    });
+    
+    let entries;
+    
+    // Check if server supports range requests
+    const headResponse = await fetch(url, { method: 'HEAD' });
+    const acceptRanges = headResponse.headers.get('Accept-Ranges');
+    
+    if (acceptRanges && acceptRanges !== 'none') {
+      try {
+        // Using HttpRangeReader to extract file
+        const httpReader = new zip.HttpRangeReader(url);
+        reader = new zip.ZipReader(httpReader);
+        entries = await reader.getEntries();
+      } catch (error) {
+        // HttpRangeReader failed for extraction, falling back
+        // Fallback to full download
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const blobReader = new zip.BlobReader(blob);
+        reader = new zip.ZipReader(blobReader);
+        entries = await reader.getEntries();
+      }
+    } else {
+      // Downloading ZIP file to extract
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobReader = new zip.BlobReader(blob);
+      reader = new zip.ZipReader(blobReader);
+      entries = await reader.getEntries();
+    }
+    
+    // Find the requested file
+    const entry = entries.find(e => e.filename === filePath);
+    
+    if (!entry) {
+      throw new Error(`File not found in ZIP: ${filePath}`);
+    }
+    
+    if (entry.directory) {
+      throw new Error(`Cannot extract directory: ${filePath}`);
+    }
+    
+    // Extract the file as a Blob
+    const extractedBlob = await entry.getData!(new zip.BlobWriter());
+    
+    // Close the reader
+    await reader.close();
+    
+    return extractedBlob;
+  } catch (error) {
+    // Clean up reader if it was created
+    if (reader) {
+      try {
+        await reader.close();
+      } catch {
+        // Ignore close errors
+      }
+    }
+    
+    throw new ApiError(
+      `Failed to extract file from dump: ${error instanceof Error ? error.message : 'Unknown error'}`,
       undefined,
       undefined,
       url

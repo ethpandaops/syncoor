@@ -36,7 +36,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   className = '',
   height = 300,
   showGrid = true,
-  color: _color = '#10b981',
+  color = '#10b981',
   title = 'EL Disk Usage Over Time',
 }) => {
   const navigate = useNavigate();
@@ -184,7 +184,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
           <Line
             type="monotone"
             dataKey="diskUsage"
-            stroke="#3b82f6"
+            stroke={color}
             strokeWidth={2}
             name="Actual Disk Usage"
             dot={false}

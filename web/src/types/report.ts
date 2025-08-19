@@ -54,6 +54,10 @@ export interface IndexEntry {
   timestamp: string;
   /** Network name (e.g., 'mainnet', 'sepolia') */
   network: string;
+  /** Source directory for the test files */
+  source_directory: string;
+  /** Base URL for the test files */
+  source_url: string;
   /** Execution client information */
   execution_client_info: ClientInfo;
   /** Consensus client information */
@@ -64,6 +68,8 @@ export interface IndexEntry {
   main_file: string;
   /** Path to the progress file */
   progress_file: string;
+  /** Path to the dump file (if exists) */
+  dump_file?: string;
 }
 
 /**
@@ -136,4 +142,34 @@ export interface TestReport {
     /** Error timestamp */
     timestamp: string;
   };
+}
+
+/**
+ * ZIP file entry information
+ */
+export interface ZipFileEntry {
+  /** File name/path within the ZIP */
+  name: string;
+  /** Uncompressed size in bytes */
+  size: number;
+  /** Compressed size in bytes */
+  compressed_size: number;
+  /** Last modified timestamp */
+  modified: string;
+  /** Whether this entry is a directory */
+  is_directory: boolean;
+}
+
+/**
+ * ZIP file information response
+ */
+export interface ZipFileInfo {
+  /** Whether the ZIP file exists */
+  exists: boolean;
+  /** Total ZIP file size in bytes */
+  size?: number;
+  /** List of files/directories in the ZIP */
+  entries?: ZipFileEntry[];
+  /** Error message if failed to read */
+  error?: string;
 }

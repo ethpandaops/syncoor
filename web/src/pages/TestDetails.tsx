@@ -7,10 +7,12 @@ import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { useProgressData } from '../hooks/useProgressData';
 import { useMainReport } from '../hooks/useMainReport';
-import { formatDuration, formatTimestamp, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
+import { formatDuration, formatTimestamp, getStatusBadgeInfo, getStatusIcon, formatBytes } from '../lib/utils';
+import { extractFileFromDump } from '../lib/api';
 import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 import { SystemInformation } from '../components/SystemInformation';
 import { GithubActionsInfo } from '../components/GithubActionsInfo';
+import { useDumpFileInfo } from '../hooks/useDumpFile';
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
@@ -38,6 +40,42 @@ export default function TestDetails() {
     mainUrl,
     enabled: !!testReport && !configLoading && !reportsLoading
   });
+
+  // Get detailed dump file information
+  const { zipInfo: dumpInfo, loading: dumpLoading, error: dumpError } = useDumpFileInfo({
+    sourceUrl: testReport?.source_url,
+    runId: testReport?.run_id,
+    network: testReport?.network,
+    elClient: testReport?.execution_client_info.type,
+    clClient: testReport?.consensus_client_info.type,
+    enabled: !!testReport && !configLoading && !reportsLoading
+  });
+
+  const downloadLogFile = async (filePath: string, fileName: string) => {
+    if (!testReport) return;
+    
+    try {
+      const blob = await extractFileFromDump(
+        testReport.source_url,
+        testReport.run_id,
+        testReport.network,
+        testReport.execution_client_info.type,
+        testReport.consensus_client_info.type,
+        filePath
+      );
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      // Failed to download log file - ignore silently
+    }
+  };
 
   if (configLoading || reportsLoading || mainLoading) {
     return (
@@ -165,16 +203,39 @@ export default function TestDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <img 
-                src={`img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
-                alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
-                className="w-6 h-6 rounded"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <CardTitle className="capitalize">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={`img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
+                  alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
+                  className="w-6 h-6 rounded"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <CardTitle className="capitalize">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</CardTitle>
+              </div>
+              {(() => {
+                // Find EL log file if dump info is available
+                const elLog = dumpInfo?.entries?.find(entry => 
+                  !entry.is_directory && 
+                  entry.name.includes(`el-`) && 
+                  entry.name.includes(`-${testReport.execution_client_info.type}-`) && 
+                  entry.name.endsWith('/output.log')
+                );
+                
+                return elLog ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Logs
+                    </a>
+                  </Button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
@@ -230,16 +291,39 @@ export default function TestDetails() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <img 
-                src={`img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
-                alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
-                className="w-6 h-6 rounded"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <CardTitle className="capitalize">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={`img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
+                  alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
+                  className="w-6 h-6 rounded"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <CardTitle className="capitalize">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</CardTitle>
+              </div>
+              {(() => {
+                // Find CL log file if dump info is available
+                const clLog = dumpInfo?.entries?.find(entry => 
+                  !entry.is_directory && 
+                  entry.name.includes(`cl-`) && 
+                  entry.name.includes(`-${testReport.consensus_client_info.type}-`) && 
+                  entry.name.endsWith('/output.log')
+                );
+                
+                return clLog ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Logs
+                    </a>
+                  </Button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
@@ -460,6 +544,142 @@ export default function TestDetails() {
                 {testReport.progress_file}
               </a>
             </div>
+            {/* Dump File */}
+            {dumpLoading ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Kurtosis Dump</span>
+                <div className="animate-pulse bg-muted h-4 w-32 rounded"></div>
+              </div>
+            ) : dumpInfo && dumpInfo.exists ? (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm font-medium text-muted-foreground">Kurtosis Dump</span>
+                    {dumpInfo.size && (
+                      <span className="text-xs text-muted-foreground">
+                        {formatBytes(dumpInfo.size)} compressed
+                      </span>
+                    )}
+                    {dumpInfo.entries && (
+                      <span className="text-xs text-muted-foreground">
+                        {dumpInfo.entries.filter(entry => !entry.is_directory).length} files
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button asChild variant="outline" size="sm">
+                      <a
+                        href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Inspect
+                      </a>
+                    </Button>
+                    <Button asChild variant="ghost" size="sm">
+                      <a
+                        href={`${testReport.source_url}${testReport.source_url.endsWith('/') ? '' : '/'}${testReport.run_id}-${testReport.network}_${testReport.execution_client_info.type}_${testReport.consensus_client_info.type}.main.dump.zip`}
+                        download
+                      >
+                        Download
+                      </a>
+                    </Button>
+                  </div>
+                </div>
+                
+                {/* Dump file details */}
+                <div className="ml-4 space-y-2 text-sm text-muted-foreground">
+                  {dumpInfo.entries && (
+                    <>
+                      
+                      {(() => {
+                        // Find EL and CL output.log files
+                        const elLog = dumpInfo.entries.find(entry => 
+                          !entry.is_directory && 
+                          entry.name.includes(`el-`) && 
+                          entry.name.includes(`-${testReport.execution_client_info.type}-`) && 
+                          entry.name.endsWith('/output.log')
+                        );
+                        const clLog = dumpInfo.entries.find(entry => 
+                          !entry.is_directory && 
+                          entry.name.includes(`cl-`) && 
+                          entry.name.includes(`-${testReport.consensus_client_info.type}-`) && 
+                          entry.name.endsWith('/output.log')
+                        );
+                        
+                        return (
+                          <>
+                            {elLog && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">EL</Badge>
+                                  <span className="font-mono text-xs">
+                                    {elLog.name.split('/').slice(-2, -1)[0]}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs">{formatBytes(elLog.size)}</span>
+                                  <a
+                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    View logs
+                                  </a>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => downloadLogFile(elLog.name, `${testReport.run_id}-el-output.log`)}
+                                  >
+                                    Download
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {clLog && (
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-xs">CL</Badge>
+                                  <span className="font-mono text-xs">
+                                    {clLog.name.split('/').slice(-2, -1)[0]}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-mono text-xs">{formatBytes(clLog.size)}</span>
+                                  <a
+                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
+                                  >
+                                    View logs
+                                  </a>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm"
+                                    className="h-6 px-2 text-xs"
+                                    onClick={() => downloadLogFile(clLog.name, `${testReport.run_id}-cl-output.log`)}
+                                  >
+                                    Download
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </>
+                  )}
+                </div>
+              </div>
+            ) : dumpError ? (
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-muted-foreground">Kurtosis Dump</span>
+                <span className="text-sm text-muted-foreground">Not available</span>
+              </div>
+            ) : null}
           </div>
         </CardContent>
       </Card>

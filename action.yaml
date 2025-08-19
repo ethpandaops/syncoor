@@ -187,6 +187,10 @@ outputs:
 runs:
   using: 'composite'
   steps:
+    - name: Verify and install dependencies
+      if: ${{ inputs.run-tests == 'true' }}
+      uses: ./.github/actions/dependencies
+
     - name: Build Syncoor Docker image locally
       if: inputs.image == ''
       shell: bash
@@ -224,76 +228,6 @@ runs:
       run: |
         rclone touch s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/healthcheck.txt
 
-    - name: Install GitHub CLI if not present
-      if: ${{ inputs.run-tests == 'true' }}
-      shell: bash
-      run: |
-        if ! command -v gh &> /dev/null; then
-          echo "GitHub CLI not found, installing..."
-
-          # Detect OS
-          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux - assume Ubuntu/Debian
-            (type -p wget >/dev/null || (sudo apt update && sudo apt-get install wget -y)) \
-              && mkdir -p -m 755 /etc/apt/keyrings \
-              && out=$(mktemp) && wget -nv -O$out https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-              && cat $out | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null \
-              && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
-              && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install -y gh
-          elif [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            if command -v brew &> /dev/null; then
-              brew install gh
-            else
-              echo "Homebrew not found. Please install GitHub CLI manually: https://cli.github.com/"
-              exit 1
-            fi
-          else
-            echo "Unsupported OS. Please install GitHub CLI manually: https://cli.github.com/"
-            exit 1
-          fi
-
-          echo "GitHub CLI installed successfully"
-        else
-          echo "GitHub CLI already installed"
-          gh --version
-        fi
-
-
-    - name: Install Kurtosis CLI if not present
-      if: ${{ inputs.run-tests == 'true' }}
-      shell: bash
-      run: |
-        if ! command -v kurtosis &> /dev/null; then
-          echo "Kurtosis CLI not found, installing..."
-
-          # Detect OS
-          if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-            # Linux - assume Ubuntu/Debian
-            echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
-            sudo apt update
-            sudo apt install -y kurtosis-cli
-          elif [[ "$OSTYPE" == "darwin"* ]]; then
-            # macOS
-            if command -v brew &> /dev/null; then
-              brew install kurtosis-tech/tap/kurtosis-cli
-            else
-              echo "Homebrew not found. Please install Kurtosis manually: https://docs.kurtosis.com/install"
-              exit 1
-            fi
-          else
-            echo "Unsupported OS. Please install Kurtosis manually: https://docs.kurtosis.com/install"
-            exit 1
-          fi
-
-          echo "Kurtosis CLI installed successfully"
-        else
-          echo "Kurtosis CLI already installed"
-          kurtosis version
-        fi
-
     - name: Make sure kurtosis engine is started
       if: ${{ inputs.run-tests == 'true' }}
       id: engine-start
@@ -322,6 +256,23 @@ runs:
         fi
         echo "image=${IMAGE}" >> $GITHUB_OUTPUT
 
+        # Validate that we have an image
+        if [ -z "$IMAGE" ]; then
+          echo "ERROR: Docker image not specified"
+          echo "Git ref: '${{ inputs.git-ref }}'"
+          echo "Input image: '${{ inputs.image }}'"
+          exit 1
+        fi
+
+        # Pull the image if it's not a local build
+        if [ "$IMAGE" != "syncoor:local" ]; then
+          echo "Pulling Docker image: ${IMAGE}"
+          docker pull "${IMAGE}" || {
+            echo "Failed to pull Docker image: ${IMAGE}"
+            exit 1
+          }
+        fi
+
     - name: Get Job ID from GH API
       if: ${{ inputs.run-tests == 'true' }}
       id: get-job-id
@@ -339,25 +290,7 @@ runs:
       shell: bash
       run: |
         IMAGE="${{ steps.determine-image.outputs.image }}"
-
-        # Validate that we have an image
-        if [ -z "$IMAGE" ]; then
-          echo "ERROR: Docker image not specified"
-          echo "Git ref: '${{ inputs.git-ref }}'"
-          echo "Input image: '${{ inputs.image }}'"
-          exit 1
-        fi
-
         echo "Running syncoor test with Docker image: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm --name=syncoor-run"
@@ -495,18 +428,8 @@ runs:
         echo "Fetching results from S3"
         rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.workspace }}/tmp_results
 
-        # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index"
@@ -543,7 +466,7 @@ runs:
       run: |
         kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
 
-    - name: Upload enclave dump
+    - name: Upload enclave dump as github artifact
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
@@ -551,22 +474,28 @@ runs:
         path: kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
+    - name: Upload enclave dump to S3
+      if: >
+        inputs.s3-upload == 'true' &&
+        inputs.run-tests == 'true' &&
+        steps.run-test.outputs.main-report-file != '' &&
+        steps.run-test.outputs.main-report-file != null
+      shell: bash
+      run: |
+        echo "Uploading enclave dump to S3"
+        set -x
+        filename="${{ steps.run-test.outputs.main-report-file }}.dump.zip"
+        cd kurtosis-enclave-dump
+        zip -r ../$filename .
+        cd ..
+        rclone copy $filename s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
+
     - name: Generate report markdown for Github Actions summary
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       shell: bash
       run: |
-        # Get image from determine-image step
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for markdown generation: ${IMAGE}"
-
-        # Pull the image if it's not a local build
-        if [ "$IMAGE" != "syncoor:local" ]; then
-          echo "Pulling Docker image: ${IMAGE}"
-          docker pull "${IMAGE}" || {
-            echo "Failed to pull Docker image: ${IMAGE}"
-            exit 1
-          }
-        fi
 
         # Build docker run command
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-md"
