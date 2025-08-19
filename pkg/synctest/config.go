@@ -41,10 +41,10 @@ func (c *Config) SetDefaults() {
 	// Set default public ports if not specified
 	if c.PublicPorts {
 		if c.PublicPortEL == 0 {
-			c.PublicPortEL = 8545
+			c.PublicPortEL = 40000
 		}
 		if c.PublicPortCL == 0 {
-			c.PublicPortCL = 4000
+			c.PublicPortCL = 41000
 		}
 		if c.PublicIP == "" {
 			c.PublicIP = "auto"
