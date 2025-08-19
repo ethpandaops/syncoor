@@ -27,10 +27,10 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   const [currentPage, setCurrentPage] = useState(1);
   const testsPerPage = 10;
 
-  // Initialize collapsed state from URL or default to true
+  // Initialize collapsed state from URL or default to false (expanded)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const collapsed = searchParams.get('liveTestsCollapsed');
-    return collapsed === null ? true : collapsed === 'true';
+    return collapsed === null ? false : collapsed === 'true';
   });
 
   // Function to toggle collapsed state and update URL
@@ -373,8 +373,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             <th className="pb-2 font-medium">CL Peers</th>
                             <th className="pb-2 font-medium">EL Disk</th>
                             <th className="pb-2 font-medium">Source</th>
+                            <th className="pb-2 font-medium text-left">System Info</th>
                             <th className="pb-2 font-medium">Duration</th>
-                            <th className="pb-2 font-medium text-center">System Info</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -534,21 +534,12 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                           })()}
                         </td>
                         <td className="py-2">
-                          <span className="flex items-center gap-1">
-                            <ClockIcon className="h-3 w-3" />
-                            {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
-                          </span>
-                        </td>
-                        <td className="py-2">
                           {test.system_info && (
-                            <div className="flex items-center gap-2 justify-center">
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {test.system_info.hostname || 'N/A'}
-                              </span>
+                            <div className="flex items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <button className="inline-flex">
-                                    <InfoIcon className="h-4 w-4 text-muted-foreground hover:text-foreground cursor-help" />
+                                  <button className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors duration-200 cursor-help">
+                                    <InfoIcon className="h-3 w-3" />
                                   </button>
                                 </TooltipTrigger>
                                 <TooltipContent side="left" align="end" className="w-80 bg-gray-900 text-white border-gray-800">
@@ -557,61 +548,61 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                     <div className="space-y-1.5">
                                       {test.system_info.hostname && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Hostname:</span>
+                                          <span className="text-gray-200">Hostname:</span>
                                           <span className="font-mono">{test.system_info.hostname}</span>
                                         </div>
                                       )}
                                       {test.system_info.os_name && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">OS:</span>
+                                          <span className="text-gray-200">OS:</span>
                                           <span>{test.system_info.os_name} {test.system_info.os_architecture}</span>
                                         </div>
                                       )}
                                       {test.system_info.cpu_model && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">CPU:</span>
+                                          <span className="text-gray-200">CPU:</span>
                                           <span className="text-right ml-2">{test.system_info.cpu_model}</span>
                                         </div>
                                       )}
                                       {test.system_info.cpu_cores && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">CPU Cores:</span>
+                                          <span className="text-gray-200">CPU Cores:</span>
                                           <span>{test.system_info.cpu_cores} cores / {test.system_info.cpu_threads || test.system_info.cpu_cores} threads</span>
                                         </div>
                                       )}
                                       {test.system_info.total_memory && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Memory:</span>
+                                          <span className="text-gray-200">Memory:</span>
                                           <span>{formatMemory(test.system_info.total_memory)}</span>
                                         </div>
                                       )}
                                       {test.system_info.kernel_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Kernel:</span>
+                                          <span className="text-gray-200">Kernel:</span>
                                           <span>{test.system_info.kernel_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.syncoor_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Syncoor:</span>
+                                          <span className="text-gray-200">Syncoor:</span>
                                           <span>{test.system_info.syncoor_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.go_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Go Version:</span>
+                                          <span className="text-gray-200">Go Version:</span>
                                           <span>{test.system_info.go_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.product_vendor && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Vendor:</span>
+                                          <span className="text-gray-200">Vendor:</span>
                                           <span>{test.system_info.product_vendor}</span>
                                         </div>
                                       )}
                                       {test.system_info.board_vendor && test.system_info.board_name && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Board:</span>
+                                          <span className="text-gray-200">Board:</span>
                                           <span>{test.system_info.board_vendor} {test.system_info.board_name}</span>
                                         </div>
                                       )}
@@ -619,8 +610,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
+                              <span className="text-xs font-mono text-muted-foreground truncate max-w-[20ch]" title={test.system_info.hostname || 'N/A'}>
+                                {test.system_info.hostname || 'N/A'}
+                              </span>
                             </div>
                           )}
+                        </td>
+                        <td className="py-2">
+                          <span className="flex items-center gap-1">
+                            <ClockIcon className="h-3 w-3" />
+                            {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
+                          </span>
                         </td>
                       </tr>
                     ))}
