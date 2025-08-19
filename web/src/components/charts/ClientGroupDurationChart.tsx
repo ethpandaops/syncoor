@@ -36,7 +36,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   className = '',
   height = 300,
   showGrid = true,
-  color: _color = '#3b82f6',
+  color = '#3b82f6',
   title = 'Test Duration Over Time',
 }) => {
   const navigate = useNavigate();
@@ -182,7 +182,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
           <Line
             type="monotone"
             dataKey="duration"
-            stroke="#3b82f6"
+            stroke={color}
             strokeWidth={2}
             name="Actual Duration"
             dot={false}

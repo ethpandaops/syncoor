@@ -73,7 +73,7 @@ export default function TestDetails() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Failed to download log file:', error);
+      // Failed to download log file - ignore silently
     }
   };
 

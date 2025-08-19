@@ -306,7 +306,7 @@ export async function getDumpFileInfo(
     const size = sizeHeader ? parseInt(sizeHeader, 10) : undefined;
     const acceptRanges = headResponse.headers.get('Accept-Ranges');
     
-    console.log('Server headers - Accept-Ranges:', acceptRanges, 'Size:', size ? `${Math.round(size / 1024)}KB` : 'unknown');
+    // Note: Server headers - Accept-Ranges and Size are used for ZIP reading optimization
     
     // Configure zip.js
     zip.configure({
@@ -322,16 +322,16 @@ export async function getDumpFileInfo(
     // Now that CORS is fixed, we can use HttpRangeReader when the server supports it
     if (acceptRanges && acceptRanges !== 'none') {
       try {
-        console.log('Using HttpRangeReader for efficient ZIP reading');
+        // Using HttpRangeReader for efficient ZIP reading
         const httpReader = new zip.HttpRangeReader(url);
         reader = new zip.ZipReader(httpReader);
         zipEntries = await reader.getEntries();
-        console.log('HttpRangeReader succeeded - efficient reading complete!');
+        // HttpRangeReader succeeded - efficient reading complete
       } catch (error) {
-        console.error('HttpRangeReader failed:', error);
+        // HttpRangeReader failed, falling back to full download
         
         // Fallback to full download
-        console.log('Falling back to full file download');
+        // Falling back to full file download
         
         // Check file size before downloading
         if (size && size > 100 * 1024 * 1024) { // 100MB limit
@@ -351,7 +351,7 @@ export async function getDumpFileInfo(
       }
     } else {
       // No range support, download the entire file
-      console.log('No range support detected, downloading entire file');
+      // No range support detected, downloading entire file
       
       // Check file size before downloading
       if (size && size > 100 * 1024 * 1024) { // 100MB limit
@@ -400,7 +400,7 @@ export async function getDumpFileInfo(
     // Check if it's a CORS error
     if (error instanceof Error && error.message.includes('CORS')) {
       // Fallback to placeholder data if CORS blocks the request
-      console.warn('CORS blocked ZIP reading, using placeholder data:', error);
+      // CORS blocked ZIP reading, using placeholder data
       return {
         exists: true,
         size: undefined,
@@ -465,12 +465,12 @@ export async function extractFileFromDump(
     
     if (acceptRanges && acceptRanges !== 'none') {
       try {
-        console.log('Using HttpRangeReader to extract file:', filePath);
+        // Using HttpRangeReader to extract file
         const httpReader = new zip.HttpRangeReader(url);
         reader = new zip.ZipReader(httpReader);
         entries = await reader.getEntries();
       } catch (error) {
-        console.error('HttpRangeReader failed for extraction, falling back:', error);
+        // HttpRangeReader failed for extraction, falling back
         // Fallback to full download
         const response = await fetch(url);
         const blob = await response.blob();
@@ -479,7 +479,7 @@ export async function extractFileFromDump(
         entries = await reader.getEntries();
       }
     } else {
-      console.log('Downloading ZIP file to extract:', filePath);
+      // Downloading ZIP file to extract
       const response = await fetch(url);
       const blob = await response.blob();
       const blobReader = new zip.BlobReader(blob);

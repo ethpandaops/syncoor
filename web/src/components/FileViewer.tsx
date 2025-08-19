@@ -5,7 +5,7 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { extractFileFromDump } from '../lib/api';
 import { formatBytes } from '../lib/utils';
-// @ts-ignore
+// @ts-expect-error - ansi-to-html doesn't have TypeScript definitions
 import Convert from 'ansi-to-html';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
@@ -151,8 +151,7 @@ export function FileViewer({
     // Copy permalink to clipboard
     const url = `${window.location.origin}${window.location.pathname}#${window.location.hash.split('?')[0]}?${newParams.toString()}`;
     navigator.clipboard.writeText(url).catch(() => {
-      // Fallback if clipboard API is not available
-      console.log('Permalink:', url);
+      // Fallback if clipboard API is not available - ignore silently
     });
   };
 
@@ -283,7 +282,7 @@ export function FileViewer({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000); // Reset after 2 seconds
     } catch (err) {
-      console.error('Failed to copy content:', err);
+      // Failed to copy content - ignore silently
     }
   };
 
@@ -333,7 +332,7 @@ export function FileViewer({
   const renderContentByType = (text: string, lines: string[]) => {
     // Check if the first line contains ANSI escape sequences (for performance)
     const firstLine = text.split('\n')[0];
-    const ansiRegex = /\x1b\[[0-9;]*m/;
+    const ansiRegex = /\033\[[0-9;]*m/;
     
     // Handle ANSI content line by line
     if (ansiRegex.test(firstLine)) {
