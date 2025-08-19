@@ -5,3 +5,4 @@ export * from './select';
 export * from './badge';
 export * from './tabs';
 export * from './tooltip';
+export * from './input';

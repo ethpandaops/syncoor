@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { Input } from './ui/input';
 import { getDumpFileInfo } from '../lib/api';
 import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
@@ -30,6 +31,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const [selectedFile, setSelectedFile] = useState<ZipFileEntry | null>(null);
   const [elLogFile, setElLogFile] = useState<ZipFileEntry | null>(null);
   const [clLogFile, setClLogFile] = useState<ZipFileEntry | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
     const fetchZipInfo = async () => {
@@ -87,6 +89,27 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       onFileSelect(file ? file.name : null);
     }
   };
+
+  // Filter files based on search query
+  const filteredFiles = useMemo(() => {
+    if (!zipInfo?.entries || !searchQuery) {
+      return zipInfo?.entries?.filter(entry => !entry.is_directory) || [];
+    }
+    
+    const query = searchQuery.toLowerCase();
+    return zipInfo.entries.filter(entry => {
+      if (entry.is_directory) return false;
+      
+      // Search in file name and path
+      const fileName = entry.name.toLowerCase();
+      const fileNameOnly = entry.name.split('/').pop()?.toLowerCase() || '';
+      
+      // Check if query matches file name, path, or extension
+      return fileName.includes(query) || 
+             fileNameOnly.includes(query) ||
+             fileName.split('.').pop()?.includes(query);
+    });
+  }, [zipInfo?.entries, searchQuery]);
 
   const getFileIconComponent = (fileName: string, isDirectory: boolean) => {
     if (isDirectory) {
@@ -622,14 +645,71 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
           {/* File listing */}
           {zipInfo.entries && zipInfo.entries.length > 0 && (
             <div>
-              <h4 className="text-sm font-medium mb-2">
-                Contents: 
-                <span className="text-xs text-muted-foreground font-normal ml-1">
-                  (click files to view)
-                </span>
-              </h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium">
+                  Contents: 
+                  <span className="text-xs text-muted-foreground font-normal ml-1">
+                    (click files to view)
+                  </span>
+                </h4>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {searchQuery && `${filteredFiles.length} of `}
+                    {zipInfo.entries.filter(entry => !entry.is_directory).length} files
+                  </span>
+                </div>
+              </div>
+              
+              {/* Search input */}
+              <div className="mb-3">
+                <div className="relative">
+                  <svg 
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    width="16" 
+                    height="16" 
+                    viewBox="0 0 16 16" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <Input
+                    type="text"
+                    placeholder="Search files by name, path, or extension..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 pr-10"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label="Clear search"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
+              
               <div className="border rounded-lg max-h-96 overflow-y-auto">
-                {zipInfo.entries.filter(entry => !entry.is_directory).map((entry, index) => renderFileEntry(entry, index))}
+                {filteredFiles.length > 0 ? (
+                  filteredFiles.map((entry, index) => renderFileEntry(entry, index))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    {searchQuery ? (
+                      <>
+                        <p className="font-medium">No files found</p>
+                        <p className="text-sm mt-1">Try a different search term</p>
+                      </>
+                    ) : (
+                      <p>No files in this dump</p>
+                    )}
+                  </div>
+                )}
               </div>
               {zipInfo.error && (
                 <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
