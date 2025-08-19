@@ -548,61 +548,61 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                     <div className="space-y-1.5">
                                       {test.system_info.hostname && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Hostname:</span>
+                                          <span className="text-gray-200">Hostname:</span>
                                           <span className="font-mono">{test.system_info.hostname}</span>
                                         </div>
                                       )}
                                       {test.system_info.os_name && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">OS:</span>
+                                          <span className="text-gray-200">OS:</span>
                                           <span>{test.system_info.os_name} {test.system_info.os_architecture}</span>
                                         </div>
                                       )}
                                       {test.system_info.cpu_model && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">CPU:</span>
+                                          <span className="text-gray-200">CPU:</span>
                                           <span className="text-right ml-2">{test.system_info.cpu_model}</span>
                                         </div>
                                       )}
                                       {test.system_info.cpu_cores && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">CPU Cores:</span>
+                                          <span className="text-gray-200">CPU Cores:</span>
                                           <span>{test.system_info.cpu_cores} cores / {test.system_info.cpu_threads || test.system_info.cpu_cores} threads</span>
                                         </div>
                                       )}
                                       {test.system_info.total_memory && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Memory:</span>
+                                          <span className="text-gray-200">Memory:</span>
                                           <span>{formatMemory(test.system_info.total_memory)}</span>
                                         </div>
                                       )}
                                       {test.system_info.kernel_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Kernel:</span>
+                                          <span className="text-gray-200">Kernel:</span>
                                           <span>{test.system_info.kernel_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.syncoor_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Syncoor:</span>
+                                          <span className="text-gray-200">Syncoor:</span>
                                           <span>{test.system_info.syncoor_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.go_version && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Go Version:</span>
+                                          <span className="text-gray-200">Go Version:</span>
                                           <span>{test.system_info.go_version}</span>
                                         </div>
                                       )}
                                       {test.system_info.product_vendor && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Vendor:</span>
+                                          <span className="text-gray-200">Vendor:</span>
                                           <span>{test.system_info.product_vendor}</span>
                                         </div>
                                       )}
                                       {test.system_info.board_vendor && test.system_info.board_name && (
                                         <div className="flex justify-between">
-                                          <span className="text-gray-400">Board:</span>
+                                          <span className="text-gray-200">Board:</span>
                                           <span>{test.system_info.board_vendor} {test.system_info.board_name}</span>
                                         </div>
                                       )}
