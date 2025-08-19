@@ -179,7 +179,7 @@ export function FileViewer({
     return (
       <div className="fixed inset-0 z-50 bg-background overflow-auto">
         <div className="sticky top-0 bg-background border-b p-4">
-          <div className="flex items-center justify-between max-w-screen-2xl mx-auto">
+          <div className="flex items-center justify-between w-full">
             <div className="flex items-center gap-2">
               <span>📄</span>
               <span className="font-mono text-sm">{filePath}</span>
@@ -203,8 +203,8 @@ export function FileViewer({
             </div>
           </div>
         </div>
-        <div className="p-4 max-w-screen-2xl mx-auto">
-          <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto">
+        <div className="p-4 w-full">
+          <pre className="text-xs font-mono bg-muted p-6 rounded-lg overflow-x-auto w-full">
             <code>{content}</code>
           </pre>
         </div>
