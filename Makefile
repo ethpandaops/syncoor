@@ -87,7 +87,6 @@ docker-build:
 docker-run:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG)..."
 	@docker run -it --rm \
-		-u $$(id -u):$$(id -g) \
 		-v /var/run/docker.sock:/var/run/docker.sock:ro \
 		-v $(HOME)/.docker:/root/.docker:ro \
 		-v $(PWD)/reports:/app/reports \
@@ -102,7 +101,6 @@ docker-run:
 docker-run-server:
 	@echo "Running Docker container $(DOCKER_IMAGE):$(DOCKER_TAG) as server..."
 	@docker run -it --rm \
-		-u $$(id -u):$$(id -g) \
 		-p 8080:8080 \
 		--network host \
 		$(DOCKER_IMAGE):$(DOCKER_TAG) server $(ARGS)

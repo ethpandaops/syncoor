@@ -320,7 +320,7 @@ runs:
         echo "Running syncoor test with Docker image: ${IMAGE}"
 
         # Build docker run command
-        DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm --name=syncoor-run -u $(id -u):$(id -g)"
+        DOCKER_CMD="docker run --platform linux/amd64 --network=host --rm --name=syncoor-run"
 
         # Add Docker socket mount for Kurtosis
         DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
@@ -471,7 +471,7 @@ runs:
         echo "Using Docker image for report index generation: ${IMAGE}"
 
         # Build docker run command
-        DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index -u $(id -u):$(id -g)"
+        DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index"
 
         # Mount report directory
         DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/tmp_results:/app/reports"
@@ -537,7 +537,7 @@ runs:
         echo "Using Docker image for markdown generation: ${IMAGE}"
 
         # Build docker run command
-        DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-md -u $(id -u):$(id -g)"
+        DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-md"
 
         # Mount report file
         DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/reports:/app/reports"
