@@ -16,7 +16,6 @@ require (
 	github.com/zcalusic/sysinfo v1.1.3
 	golang.org/x/text v0.27.0
 	gopkg.in/cenkalti/backoff.v1 v1.1.0
-	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -78,4 +77,5 @@ require (
 	google.golang.org/grpc v1.74.2 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
