@@ -27,10 +27,10 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   const [currentPage, setCurrentPage] = useState(1);
   const testsPerPage = 10;
 
-  // Initialize collapsed state from URL or default to true
+  // Initialize collapsed state from URL or default to false (expanded)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const collapsed = searchParams.get('liveTestsCollapsed');
-    return collapsed === null ? true : collapsed === 'true';
+    return collapsed === null ? false : collapsed === 'true';
   });
 
   // Function to toggle collapsed state and update URL
@@ -373,8 +373,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                             <th className="pb-2 font-medium">CL Peers</th>
                             <th className="pb-2 font-medium">EL Disk</th>
                             <th className="pb-2 font-medium">Source</th>
+                            <th className="pb-2 font-medium text-left">System Info</th>
                             <th className="pb-2 font-medium">Duration</th>
-                            <th className="pb-2 font-medium text-center">System Info</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -534,17 +534,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                           })()}
                         </td>
                         <td className="py-2">
-                          <span className="flex items-center gap-1">
-                            <ClockIcon className="h-3 w-3" />
-                            {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
-                          </span>
-                        </td>
-                        <td className="py-2">
                           {test.system_info && (
-                            <div className="flex items-center gap-2 justify-center">
-                              <span className="text-xs font-mono text-muted-foreground">
-                                {test.system_info.hostname || 'N/A'}
-                              </span>
+                            <div className="flex items-center gap-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <button className="inline-flex">
@@ -619,8 +610,17 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                   </div>
                                 </TooltipContent>
                               </Tooltip>
+                              <span className="text-xs font-mono text-muted-foreground truncate max-w-[20ch]" title={test.system_info.hostname || 'N/A'}>
+                                {test.system_info.hostname || 'N/A'}
+                              </span>
                             </div>
                           )}
+                        </td>
+                        <td className="py-2">
+                          <span className="flex items-center gap-1">
+                            <ClockIcon className="h-3 w-3" />
+                            {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
+                          </span>
                         </td>
                       </tr>
                     ))}
