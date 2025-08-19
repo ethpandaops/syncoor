@@ -83,11 +83,6 @@ inputs:
     required: false
     default: 'sync-test'
 
-  report-dir:
-    description: 'Directory to save reports'
-    required: false
-    default: './reports'
-
   log-level:
     description: 'Log level (panic, fatal, error, warn, info, debug, trace)'
     required: false
@@ -321,6 +316,9 @@ runs:
       id: run-test
       shell: bash
       run: |
+        mkdir -p ${{ runner.temp }}/reports
+        echo "Created reports directory at ${{ runner.temp }}/reports"
+
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Running syncoor test with Docker image: ${IMAGE}"
 
@@ -331,7 +329,7 @@ runs:
         DOCKER_CMD="$DOCKER_CMD -v /var/run/docker.sock:/var/run/docker.sock"
 
         # Mount report directory
-        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/${{ inputs.report-dir }}:/app/${{ inputs.report-dir }}"
+        DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/reports:/app/reports"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
@@ -345,7 +343,7 @@ runs:
         DOCKER_CMD="$DOCKER_CMD --el-client=${{ inputs.el-client }}"
         DOCKER_CMD="$DOCKER_CMD --cl-client=${{ inputs.cl-client }}"
         DOCKER_CMD="$DOCKER_CMD --network=${{ inputs.network }}"
-        DOCKER_CMD="$DOCKER_CMD --report-dir=${{ inputs.report-dir }}"
+        DOCKER_CMD="$DOCKER_CMD --report-dir=/app/reports"
         DOCKER_CMD="$DOCKER_CMD --log-level=${{ inputs.log-level }}"
         DOCKER_CMD="$DOCKER_CMD --enclave=${{ inputs.enclave }}"
         DOCKER_CMD="$DOCKER_CMD --log-force-colors=${{ inputs.log-force-colors }}"
@@ -434,15 +432,15 @@ runs:
 
         # Find the generated main.json file (may not exist if test was interrupted)
         MAIN_JSON_FILE=""
-        if [ -d "${{ github.workspace }}/${{ inputs.report-dir }}" ]; then
-          MAIN_JSON_PATH=$(find ${{ github.workspace }}/${{ inputs.report-dir }} -name "*.main.json" -type f | head -1)
+        if [ -d "${{ runner.temp }}/reports" ]; then
+          MAIN_JSON_PATH=$(find ${{ runner.temp }}/reports -name "*.main.json" -type f | head -1)
           if [ -n "$MAIN_JSON_PATH" ]; then
             MAIN_JSON_FILE=$(basename "$MAIN_JSON_PATH" .json)
           fi
         fi
 
         # Set outputs (always set report-path, main-report-file may be empty)
-        echo "report-path=${{ github.workspace }}/${{ inputs.report-dir }}" >> $GITHUB_OUTPUT
+        echo "report-path=${{ runner.temp }}/reports" >> $GITHUB_OUTPUT
         echo "main-report-file=$MAIN_JSON_FILE" >> $GITHUB_OUTPUT
 
         # Handle exit codes appropriately
@@ -463,14 +461,17 @@ runs:
       if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
       shell: bash
       run: |
-        rclone copy --no-traverse ${{ inputs.report-dir }} s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
+        rclone copy --no-traverse ${{ runner.temp }}/reports s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
 
     - name: Generate report index and upload to S3
       if: ${{ inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
       shell: bash
       run: |
+        mkdir -p ${{ github.temp }}/tmp_results
+        echo "Created tmp_results directory at ${{ github.temp }}/tmp_results"
+
         echo "Fetching results from S3"
-        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.workspace }}/tmp_results
+        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.temp }}/tmp_results
 
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
@@ -479,7 +480,7 @@ runs:
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index"
 
         # Mount report directory
-        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/tmp_results:/app/reports"
+        DOCKER_CMD="$DOCKER_CMD -v ${{ github.temp }}/tmp_results:/app/reports"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
@@ -493,14 +494,14 @@ runs:
         wait $!
 
         echo "Upload index.json file to S3"
-        rclone copy ${{ github.workspace }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
+        rclone copy ${{ github.temp }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Upload test reports
       uses: actions/upload-artifact@v4
       if: always() && inputs.upload-artifacts == 'true' && inputs.run-tests == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-sync-report
-        path: ${{ inputs.report-dir }}
+        path: ${{ runner.temp }}/reports
         retention-days: ${{ inputs.artifact-retention-days-test-report }}
 
     - name: Get kurtosis enclave dump
@@ -545,15 +546,15 @@ runs:
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-md"
 
         # Mount report file
-        DOCKER_CMD="$DOCKER_CMD -v ${{ github.workspace }}/${{ inputs.report-dir }}:/app/${{ inputs.report-dir }}"
+        DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/reports:/app/reports"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
 
         # Use 'report-to-md' command
         DOCKER_CMD="$DOCKER_CMD report-to-md"
-        DOCKER_CMD="$DOCKER_CMD --input /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.json"
-        DOCKER_CMD="$DOCKER_CMD --output /app/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md"
+        DOCKER_CMD="$DOCKER_CMD --input /app/reports/${{ steps.run-test.outputs.main-report-file }}.json"
+        DOCKER_CMD="$DOCKER_CMD --output /app/reports/${{ steps.run-test.outputs.main-report-file }}.md"
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
@@ -564,7 +565,7 @@ runs:
       uses: Ma11hewThomas/github-markdown-builder@2012f2e4a8cdea69ea3f3760114a763956bff86b # v1.0.2-unreleased
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       with:
-        template-file-path: '${{ github.workspace }}/${{ inputs.report-dir }}/${{ steps.run-test.outputs.main-report-file }}.md'
+        template-file-path: '${{ runner.temp }}/reports/${{ steps.run-test.outputs.main-report-file }}.md'
         summary: "true"
         pull-request: "false"
       env:
