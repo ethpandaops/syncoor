@@ -203,16 +203,39 @@ export default function TestDetails() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <img 
-                src={`img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
-                alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
-                className="w-6 h-6 rounded"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <CardTitle className="capitalize">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={`img/clients/${mainReport?.execution_client_info.type || testReport.execution_client_info.type}.jpg`} 
+                  alt={`${mainReport?.execution_client_info.type || testReport.execution_client_info.type} logo`}
+                  className="w-6 h-6 rounded"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <CardTitle className="capitalize">{mainReport?.execution_client_info.type || testReport.execution_client_info.type}</CardTitle>
+              </div>
+              {(() => {
+                // Find EL log file if dump info is available
+                const elLog = dumpInfo?.entries?.find(entry => 
+                  !entry.is_directory && 
+                  entry.name.includes(`el-`) && 
+                  entry.name.includes(`-${testReport.execution_client_info.type}-`) && 
+                  entry.name.endsWith('/output.log')
+                );
+                
+                return elLog ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Logs
+                    </a>
+                  </Button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
@@ -268,16 +291,39 @@ export default function TestDetails() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-2">
-              <img 
-                src={`img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
-                alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
-                className="w-6 h-6 rounded"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-              <CardTitle className="capitalize">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <img 
+                  src={`img/clients/${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}.jpg`} 
+                  alt={`${mainReport?.consensus_client_info.type || testReport.consensus_client_info.type} logo`}
+                  className="w-6 h-6 rounded"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+                <CardTitle className="capitalize">{mainReport?.consensus_client_info.type || testReport.consensus_client_info.type}</CardTitle>
+              </div>
+              {(() => {
+                // Find CL log file if dump info is available
+                const clLog = dumpInfo?.entries?.find(entry => 
+                  !entry.is_directory && 
+                  entry.name.includes(`cl-`) && 
+                  entry.name.includes(`-${testReport.consensus_client_info.type}-`) && 
+                  entry.name.endsWith('/output.log')
+                );
+                
+                return clLog ? (
+                  <Button asChild variant="outline" size="sm">
+                    <a
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View Logs
+                    </a>
+                  </Button>
+                ) : null;
+              })()}
             </div>
           </CardHeader>
           <CardContent>
@@ -631,7 +677,7 @@ export default function TestDetails() {
             ) : dumpError ? (
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Kurtosis Dump</span>
-                <span className="text-sm text-muted-foreground">Error loading info</span>
+                <span className="text-sm text-muted-foreground">Not available</span>
               </div>
             ) : null}
           </div>
