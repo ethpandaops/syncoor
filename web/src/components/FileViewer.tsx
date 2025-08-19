@@ -88,8 +88,11 @@ export function FileViewer({
         return [Number(line)];
       }).flat().filter(line => !isNaN(line) && line > 0);
       setHighlightedLines(lines);
+    } else {
+      // Clear highlighted lines if no lines parameter
+      setHighlightedLines([]);
     }
-  }, [searchParams]);
+  }, [searchParams, filePath]);
 
   // Scroll to highlighted lines when they change and content is loaded
   useEffect(() => {

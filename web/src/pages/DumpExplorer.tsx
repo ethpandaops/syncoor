@@ -18,9 +18,12 @@ export default function DumpExplorer() {
     const newParams = new URLSearchParams(searchParams);
     if (filePath) {
       newParams.set('file', filePath);
+      // Reset lines parameter when changing files
+      newParams.delete('lines');
     } else {
       newParams.delete('file');
       newParams.delete('fullWindow'); // Clear full window when closing file
+      newParams.delete('lines'); // Clear lines when closing file
     }
     setSearchParams(newParams);
   };
