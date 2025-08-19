@@ -151,6 +151,17 @@ inputs:
     required: false
     default: 'auto'
 
+  # Client log levels
+  log-level-el:
+    description: 'Log level for execution layer client (trace, debug, info, warn, error)'
+    required: false
+    default: 'info'
+
+  log-level-cl:
+    description: 'Log level for consensus layer client (trace, debug, info, warn, error)'
+    required: false
+    default: 'info'
+
   # Github artifacts upload
   upload-artifacts:
     description: 'Whether to upload test reports as artifacts'
@@ -408,6 +419,10 @@ runs:
           DOCKER_CMD="$DOCKER_CMD --public-port-cl=${{ inputs.public-port-cl }}"
           DOCKER_CMD="$DOCKER_CMD --public-ip=\"${{ inputs.public-ip }}\""
         fi
+
+        # Add client log level parameters
+        DOCKER_CMD="$DOCKER_CMD --log-level-el=${{ inputs.log-level-el }}"
+        DOCKER_CMD="$DOCKER_CMD --log-level-cl=${{ inputs.log-level-cl }}"
 
         # Execute the command
         echo "Running: $DOCKER_CMD"
