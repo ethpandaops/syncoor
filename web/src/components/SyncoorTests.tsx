@@ -335,7 +335,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                 const allTests = [...runningTests, ...completedTests]; // Running tests first, sorted by duration
 
                 if (allTests.length === 0) {
-                  return <p className="text-muted-foreground py-4">No tests available.</p>;
+                  return <p className="text-muted-foreground py-4">There are currently no tests being executed.</p>;
                 }
 
                 if (isCollapsed) {
