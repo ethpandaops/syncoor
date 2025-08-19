@@ -1,8 +1,15 @@
 package synctest
 
 import (
+	"errors"
 	"fmt"
 	"time"
+)
+
+// Config validation errors
+var (
+	ErrInvalidELLogLevel = errors.New("invalid execution client log level")
+	ErrInvalidCLLogLevel = errors.New("invalid consensus client log level")
 )
 
 // Config contains the configuration for the synctest service
@@ -29,6 +36,8 @@ type Config struct {
 	PublicPortEL          uint32 // Public port for execution layer client (default: 8545)
 	PublicPortCL          uint32 // Public port for consensus layer client (default: 4000)
 	PublicIP              string // Public IP for port publishing (default: 'auto')
+	ClientLogsLevelEL     string // Log level for execution layer client (default: 'info')
+	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
 }
 
 // SetDefaults sets default values for unspecified configuration fields
@@ -49,6 +58,14 @@ func (c *Config) SetDefaults() {
 		if c.PublicIP == "" {
 			c.PublicIP = "auto"
 		}
+	}
+
+	// Set default client log levels if not specified
+	if c.ClientLogsLevelEL == "" {
+		c.ClientLogsLevelEL = "info"
+	}
+	if c.ClientLogsLevelCL == "" {
+		c.ClientLogsLevelCL = "info"
 	}
 }
 
@@ -72,5 +89,25 @@ func (c *Config) Validate() error {
 	if c.ReportDir == "" {
 		return fmt.Errorf("report directory is required")
 	}
+
+	// Validate client log levels
+	validLogLevels := []string{"trace", "debug", "info", "warn", "error"}
+	if !isValidLogLevel(c.ClientLogsLevelEL, validLogLevels) {
+		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error)", ErrInvalidELLogLevel, c.ClientLogsLevelEL)
+	}
+	if !isValidLogLevel(c.ClientLogsLevelCL, validLogLevels) {
+		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error)", ErrInvalidCLLogLevel, c.ClientLogsLevelCL)
+	}
+
 	return nil
+}
+
+// isValidLogLevel checks if the provided log level is valid
+func isValidLogLevel(level string, validLevels []string) bool {
+	for _, valid := range validLevels {
+		if level == valid {
+			return true
+		}
+	}
+	return false
 }

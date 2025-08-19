@@ -136,6 +136,14 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
 	}
 
+	// Set client log levels
+	if s.cfg.ClientLogsLevelEL != "" {
+		participantConfig.ELLogLevel = &s.cfg.ClientLogsLevelEL
+	}
+	if s.cfg.ClientLogsLevelCL != "" {
+		participantConfig.CLLogLevel = &s.cfg.ClientLogsLevelCL
+	}
+
 	// Debug log checkpoint sync configuration
 	s.log.WithFields(logrus.Fields{
 		"checkpoint_sync_enabled": s.cfg.CheckpointSyncEnabled,

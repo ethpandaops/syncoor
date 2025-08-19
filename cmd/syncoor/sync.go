@@ -43,6 +43,8 @@ func NewSyncCommand() *cobra.Command {
 		publicPortEL          uint32
 		publicPortCL          uint32
 		publicIP              string
+		clientLogsLevelEL     string
+		clientLogsLevelCL     string
 	)
 
 	cmd := &cobra.Command{
@@ -95,6 +97,8 @@ Exit codes:
 				PublicPortEL:          publicPortEL,
 				PublicPortCL:          publicPortCL,
 				PublicIP:              publicIP,
+				ClientLogsLevelEL:     clientLogsLevelEL,
+				ClientLogsLevelCL:     clientLogsLevelCL,
 			}
 
 			// Parse labels
@@ -182,6 +186,10 @@ Exit codes:
 	cmd.Flags().Uint32Var(&publicPortEL, "public-port-el", 40000, "Public port for execution layer client")
 	cmd.Flags().Uint32Var(&publicPortCL, "public-port-cl", 41000, "Public port for consensus layer client")
 	cmd.Flags().StringVar(&publicIP, "public-ip", "auto", "Public IP for port publishing. If not set, the IP will be automatically detected.")
+
+	// Client log level flags
+	cmd.Flags().StringVar(&clientLogsLevelEL, "log-level-el", "info", "Log level for execution layer client (trace, debug, info, warn, error)")
+	cmd.Flags().StringVar(&clientLogsLevelCL, "log-level-cl", "info", "Log level for consensus layer client (trace, debug, info, warn, error)")
 
 	return cmd
 }
