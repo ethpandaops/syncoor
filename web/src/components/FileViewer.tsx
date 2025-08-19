@@ -297,10 +297,10 @@ export function FileViewer({
     
     return (
       <div ref={contentRef} className={`text-xs font-mono bg-muted rounded-lg overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
-        <div className="flex min-w-fit h-full">
+        <div className="flex min-w-fit">
           {/* Line numbers */}
-          <div className="bg-muted-foreground/10 px-4 py-4 select-none border-r border-border sticky left-0">
-            <div className="flex flex-col">
+          <div className="bg-muted-foreground/10 px-4 py-4 select-none border-r border-border sticky left-0 flex-shrink-0" style={{ minHeight: '100%' }}>
+            <div className="flex flex-col h-full">
               {lines.map((_, index) => (
                 <div
                   key={index}
