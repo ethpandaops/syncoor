@@ -5,7 +5,6 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { extractFileFromDump } from '../lib/api';
 import { formatBytes } from '../lib/utils';
-// @ts-expect-error - ansi-to-html doesn't have TypeScript definitions
 import Convert from 'ansi-to-html';
 import Prism from 'prismjs';
 import 'prismjs/components/prism-json';
@@ -332,7 +331,7 @@ export function FileViewer({
   const renderContentByType = (text: string, lines: string[]) => {
     // Check if the first line contains ANSI escape sequences (for performance)
     const firstLine = text.split('\n')[0];
-    const ansiRegex = /\033\[[0-9;]*m/;
+    const ansiRegex = /\x1b\[[0-9;]*m/;
     
     // Handle ANSI content line by line
     if (ansiRegex.test(firstLine)) {
