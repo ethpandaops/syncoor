@@ -483,11 +483,11 @@ runs:
       if: ${{ inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
       shell: bash
       run: |
-        mkdir -p ${{ github.temp }}/tmp_results
-        echo "Created tmp_results directory at ${{ github.temp }}/tmp_results"
+        mkdir -p ${{ runner.temp }}/tmp_results
+        echo "Created tmp_results directory at ${{ runner.temp }}/tmp_results"
 
         echo "Fetching results from S3"
-        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ github.temp }}/tmp_results
+        rclone copy --progress --transfers=100 --include "*.main.json" s3://${{ inputs.s3-bucket }}/${{ inputs.s3-path }} ${{ runner.temp }}/tmp_results
 
         IMAGE="${{ steps.determine-image.outputs.image }}"
         echo "Using Docker image for report index generation: ${IMAGE}"
@@ -496,7 +496,7 @@ runs:
         DOCKER_CMD="docker run --platform linux/amd64 --rm --name=syncoor-index"
 
         # Mount report directory
-        DOCKER_CMD="$DOCKER_CMD -v ${{ github.temp }}/tmp_results:/app/reports"
+        DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/tmp_results:/app/reports"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
@@ -510,7 +510,7 @@ runs:
         wait $!
 
         echo "Upload index.json file to S3"
-        rclone copy ${{ github.temp }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
+        rclone copy ${{ runner.temp }}/tmp_results/index.json s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
 
     - name: Upload test reports
       uses: actions/upload-artifact@v4
