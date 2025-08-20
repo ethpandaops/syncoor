@@ -591,10 +591,12 @@ runs:
       shell: bash
       if: always()
       run: |
+        echo "Cleaning up"
+        set -x
         rm -rf ${{ runner.temp }}/tmp_results
         rm -rf ${{ runner.temp }}/reports
         rm -rf ${{ runner.temp }}/kurtosis-enclave-dump
         docker rm -f syncoor-run
         docker rm -f syncoor-index
         docker rm -f syncoor-md
-        kurtosis clean -a
+        kurtosis clean -a || true
