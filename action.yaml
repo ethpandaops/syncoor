@@ -64,14 +64,14 @@ inputs:
     default: ''
 
   el-extra-args:
-    description: 'Extra arguments for execution layer client (optional)'
+    description: 'Extra arguments for execution layer client (array of strings). Example: ["--some-arg", "--another-arg"]'
     required: false
-    default: ''
+    default: '[]'
 
   cl-extra-args:
-    description: 'Extra arguments for consensus layer client (optional)'
+    description: 'Extra arguments for consensus layer client (array of strings). Example: ["--some-arg", "--another-arg"]'
     required: false
-    default: ''
+    default: '[]'
 
   network:
     description: 'Network to connect to (e.g., hoodi, sepolia, mainnet)'
@@ -374,12 +374,24 @@ runs:
           DOCKER_CMD="$DOCKER_CMD --cl-image=${{ inputs.cl-image }}"
         fi
 
-        if [ -n "${{ inputs.el-extra-args }}" ]; then
-          DOCKER_CMD="$DOCKER_CMD --el-extra-args=\"${{ inputs.el-extra-args }}\""
+        # Handle el-extra-args array
+        if [ "${{ inputs.el-extra-args }}" != "[]" ] && [ -n "${{ inputs.el-extra-args }}" ]; then
+          # Parse JSON array and add each item as a separate --el-extra-args flag
+          for arg in $(echo '${{ inputs.el-extra-args }}' | jq -r '.[]'); do
+            if [ -n "$arg" ]; then
+              DOCKER_CMD="$DOCKER_CMD --el-extra-args=\"$arg\""
+            fi
+          done
         fi
 
-        if [ -n "${{ inputs.cl-extra-args }}" ]; then
-          DOCKER_CMD="$DOCKER_CMD --cl-extra-args=\"${{ inputs.cl-extra-args }}\""
+        # Handle cl-extra-args array
+        if [ "${{ inputs.cl-extra-args }}" != "[]" ] && [ -n "${{ inputs.cl-extra-args }}" ]; then
+          # Parse JSON array and add each item as a separate --cl-extra-args flag
+          for arg in $(echo '${{ inputs.cl-extra-args }}' | jq -r '.[]'); do
+            if [ -n "$arg" ]; then
+              DOCKER_CMD="$DOCKER_CMD --cl-extra-args=\"$arg\""
+            fi
+          done
         fi
 
         # Add GitHub Actions context labels for traceability

@@ -25,8 +25,14 @@ jobs:
         log-force-colors: true
         client-logs: true
         network: hoodi
-        el-client: geth
+        el-client: reth
+        el-extra-args: >-
+          [
+            "--full",
+            "--disable-discovery"
+          ]
         cl-client: prysm
+
         check-interval: 30s
         public: true
         run-timeout: 1m # We expect the run to timeout. It will still be marked as success in CI.
