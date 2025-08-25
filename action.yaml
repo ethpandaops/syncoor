@@ -601,7 +601,8 @@ runs:
         wait $!
 
     - name: Create GitHub Actions summary
-      uses: Ma11hewThomas/github-markdown-builder@2012f2e4a8cdea69ea3f3760114a763956bff86b # v1.0.2-unreleased
+      # TODO: update to latest version once the fix in here is merged: https://github.com/Ma11hewThomas/github-markdown-builder/pull/20
+      uses: skylenet/github-markdown-builder@260b47837207cf26b62f8fea225036a87cb94a12
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       with:
         template-file-path: '${{ runner.temp }}/reports/${{ steps.run-test.outputs.main-report-file }}.md'
