@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   LineChart,
   Line,
@@ -40,6 +40,12 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   title = 'EL Disk Usage Over Time',
 }) => {
   const navigate = useNavigate();
+  
+  // State for controlling line visibility
+  const [visibleLines, setVisibleLines] = useState({
+    diskUsage: true,
+    movingAverage: true
+  });
 
   // Handle click on data point
   const handleDataPointClick = (data: any) => {
@@ -47,6 +53,15 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
       const payload = data.activePayload[0].payload as ChartDataPoint;
       navigate(`/test/${payload.runId}`);
     }
+  };
+
+  // Handle legend click to toggle line visibility
+  const handleLegendClick = (entry: any) => {
+    const { dataKey } = entry;
+    setVisibleLines(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey as keyof typeof prev]
+    }));
   };
   // Transform data for the chart
   const chartData: ChartDataPoint[] = React.useMemo(() => {
@@ -178,7 +193,9 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               paddingTop: '10px',
               fontSize: '12px',
               color: 'var(--foreground)',
+              cursor: 'pointer',
             }}
+            onClick={handleLegendClick}
           />
           
           <Line
@@ -188,6 +205,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             strokeWidth={2}
             name="Actual Disk Usage"
             dot={false}
+            hide={!visibleLines.diskUsage}
             activeDot={{ 
               r: 6, 
               stroke: color, 
@@ -206,6 +224,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               strokeDasharray="5 5"
               name={`Trend (${getOptimalMovingAverageWindow(chartData.length)}-point avg)`}
               dot={false}
+              hide={!visibleLines.movingAverage}
               activeDot={false}
               opacity={0.7}
             />
