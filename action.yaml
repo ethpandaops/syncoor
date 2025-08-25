@@ -601,7 +601,7 @@ runs:
         wait $!
 
     - name: Create GitHub Actions summary
-      uses: Ma11hewThomas/github-markdown-builder@2012f2e4a8cdea69ea3f3760114a763956bff86b # v1.0.2-unreleased
+      uses: skylenet/github-markdown-builder@f11be8563948e75f1ea9ecf68457adf46ea01d11 # fix-boolean-parsing branch
       if: steps.run-test.outputs.main-report-file != '' && steps.run-test.outputs.main-report-file != null
       with:
         template-file-path: '${{ runner.temp }}/reports/${{ steps.run-test.outputs.main-report-file }}.md'
