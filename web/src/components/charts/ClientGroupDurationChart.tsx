@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatDuration, formatTimestamp, calculateMovingAverage } from '../../lib/utils';
+import { formatDuration, formatTimestamp, calculateMovingAverage, getOptimalMovingAverageWindow } from '../../lib/utils';
 
 interface ClientGroupDurationChartProps {
   data: IndexEntry[];
@@ -64,7 +64,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
 
     // Calculate moving average only if we have enough data points
     if (baseData.length >= 3) {
-      return calculateMovingAverage(baseData, 'duration', 3);
+      return calculateMovingAverage(baseData, 'duration');
     }
 
     return baseData;
@@ -202,7 +202,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="5 5"
-              name="Trend (3-point avg)"
+              name={`Trend (${getOptimalMovingAverageWindow(chartData.length)}-point avg)`}
               dot={false}
               activeDot={false}
               opacity={0.7}

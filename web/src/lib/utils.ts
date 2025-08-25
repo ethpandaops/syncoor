@@ -332,24 +332,41 @@ export function getUniqueConsensusClients<T extends { consensus_client_info: { t
 }
 
 /**
+ * Calculates optimal moving average window size based on data length
+ * @param dataLength - Number of data points
+ * @returns Optimal window size
+ */
+export function getOptimalMovingAverageWindow(dataLength: number): number {
+  if (dataLength < 5) return Math.max(3, dataLength);
+  if (dataLength < 20) return 5;
+  if (dataLength < 50) return 10;
+  if (dataLength < 100) return 15;
+  if (dataLength < 200) return 20;
+  return Math.min(30, Math.floor(dataLength * 0.15)); // 15% of data points, max 30
+}
+
+/**
  * Calculates a simple moving average for chart data
  * @param data - Array of data points with numeric values
  * @param valueKey - Key to extract numeric value from each data point
- * @param windowSize - Number of points to include in moving average (default: 3)
+ * @param windowSize - Number of points to include in moving average (default: auto-calculated)
  * @returns Array of data points with moving average values
  */
 export function calculateMovingAverage<T extends Record<string, any>>(
   data: T[],
   valueKey: keyof T,
-  windowSize: number = 3
+  windowSize?: number
 ): (T & { movingAverage: number })[] {
   if (!data || data.length === 0) return [];
   
+  // Use provided window size or calculate optimal size
+  const effectiveWindowSize = windowSize ?? getOptimalMovingAverageWindow(data.length);
+  
   return data.map((point, index) => {
     // Calculate the start index for the window
-    const start = Math.max(0, index - Math.floor(windowSize / 2));
+    const start = Math.max(0, index - Math.floor(effectiveWindowSize / 2));
     // Calculate the end index for the window
-    const end = Math.min(data.length, start + windowSize);
+    const end = Math.min(data.length, start + effectiveWindowSize);
     
     // Extract values for the window
     const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
@@ -409,8 +426,8 @@ export function calculateClientGroupStats(reports: any[]) {
           duration: r.sync_info.duration
         }));
       
-      // Calculate moving average and get the last value
-      const withMovingAvg = calculateMovingAverage(sortedByTime, 'duration', 3);
+      // Calculate moving average with dynamic window size and get the last value
+      const withMovingAvg = calculateMovingAverage(sortedByTime, 'duration');
       if (withMovingAvg.length > 0) {
         avgDuration = withMovingAvg[withMovingAvg.length - 1].movingAverage;
       }

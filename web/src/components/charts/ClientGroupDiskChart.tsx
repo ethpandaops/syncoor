@@ -11,7 +11,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatBytes, formatTimestamp, calculateMovingAverage } from '../../lib/utils';
+import { formatBytes, formatTimestamp, calculateMovingAverage, getOptimalMovingAverageWindow } from '../../lib/utils';
 
 interface ClientGroupDiskChartProps {
   data: IndexEntry[];
@@ -66,7 +66,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
 
     // Calculate moving average only if we have enough data points
     if (baseData.length >= 3) {
-      return calculateMovingAverage(baseData, 'diskUsage', 3);
+      return calculateMovingAverage(baseData, 'diskUsage');
     }
 
     return baseData;
@@ -204,7 +204,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="5 5"
-              name="Trend (3-point avg)"
+              name={`Trend (${getOptimalMovingAverageWindow(chartData.length)}-point avg)`}
               dot={false}
               activeDot={false}
               opacity={0.7}
