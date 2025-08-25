@@ -386,16 +386,22 @@ export function calculateClientGroupStats(reports: any[]) {
   // Last runtime (most recent test timestamp)
   const lastRuntime = Number(sortedReports[0].timestamp);
   
-  // Calculate trend duration (last moving average value)
+  // Filter to only successful runs for duration and disk usage calculations
+  const successfulReports = reports.filter(r => {
+    const status = r.sync_info.status || 'success'; // Default to success
+    return status === 'success';
+  });
+  
+  // Calculate trend duration (last moving average value) - only from successful runs
   let avgDuration = null;
-  const validDurations = reports
+  const validDurations = successfulReports
     .map(r => r.sync_info.duration)
     .filter(d => typeof d === 'number' && d > 0);
   
   if (validDurations.length > 0) {
     if (validDurations.length >= 3) {
       // Sort by timestamp for proper trend calculation
-      const sortedByTime = [...reports]
+      const sortedByTime = [...successfulReports]
         .filter(r => typeof r.sync_info.duration === 'number' && r.sync_info.duration > 0)
         .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
         .map(r => ({
@@ -414,8 +420,9 @@ export function calculateClientGroupStats(reports: any[]) {
     }
   }
   
-  // Most recent disk usage (from most recent test with disk data)
-  const mostRecentWithDisk = sortedReports.find(r => r.sync_info.last_entry?.de);
+  // Most recent disk usage (from most recent successful test with disk data)
+  const sortedSuccessfulReports = [...successfulReports].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  const mostRecentWithDisk = sortedSuccessfulReports.find(r => r.sync_info.last_entry?.de);
   const mostRecentDiskUsage = mostRecentWithDisk?.sync_info.last_entry?.de || null;
   
   return {
