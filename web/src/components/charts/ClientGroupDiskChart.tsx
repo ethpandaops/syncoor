@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -13,7 +12,7 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatBytes, formatTimestamp, calculateMovingAverage, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
+import { formatBytes, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
 
 interface ClientGroupDiskChartProps {
   data: IndexEntry[];
