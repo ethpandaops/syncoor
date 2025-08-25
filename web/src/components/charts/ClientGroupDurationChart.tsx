@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -8,10 +7,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Area,
+  ComposedChart,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatDuration, formatTimestamp, calculateMovingAverage } from '../../lib/utils';
+import { formatDuration, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
 
 interface ClientGroupDurationChartProps {
   data: IndexEntry[];
@@ -29,6 +30,10 @@ interface ChartDataPoint {
   runId: string;
   network: string;
   movingAverage?: number;
+  upperBand?: number;
+  lowerBand?: number;
+  stdDev?: number;
+  confidenceBandRange?: number[];
 }
 
 const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
@@ -40,6 +45,12 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   title = 'Test Duration Over Time',
 }) => {
   const navigate = useNavigate();
+  
+  // State for controlling line visibility
+  const [visibleLines, setVisibleLines] = useState({
+    duration: true,
+    movingAverage: true
+  });
 
   // Handle click on data point
   const handleDataPointClick = (data: any) => {
@@ -47,6 +58,15 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
       const payload = data.activePayload[0].payload as ChartDataPoint;
       navigate(`/test/${payload.runId}`);
     }
+  };
+
+  // Handle legend click to toggle line visibility
+  const handleLegendClick = (entry: any) => {
+    const { dataKey } = entry;
+    setVisibleLines(prev => ({
+      ...prev,
+      [dataKey]: !prev[dataKey as keyof typeof prev]
+    }));
   };
 
   // Transform data for the chart
@@ -62,9 +82,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
       network: entry.network,
     }));
 
-    // Calculate moving average only if we have enough data points
+    // Calculate moving average and confidence bands only if we have enough data points
     if (baseData.length >= 3) {
-      return calculateMovingAverage(baseData, 'duration', 3);
+      const withConfidenceBands = calculateConfidenceBands(baseData, 'duration');
+      // Add confidence band range for area chart
+      return withConfidenceBands.map(point => ({
+        ...point,
+        confidenceBandRange: [point.lowerBand || 0, point.upperBand || 0]
+      }));
     }
 
     return baseData;
@@ -89,6 +114,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
                 <span className="text-gray-600">Trend:</span>
                 <span className="font-medium text-gray-800">
                   {formatDuration(data.movingAverage)}
+                </span>
+              </div>
+            )}
+            {data.upperBand && data.lowerBand && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600">95% CI:</span>
+                <span className="font-medium text-gray-800">
+                  {formatDuration(data.lowerBand)} - {formatDuration(data.upperBand)}
                 </span>
               </div>
             )}
@@ -134,7 +167,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
         <h4 className="text-sm font-medium text-foreground">{title}</h4>
       </div>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart
+        <ComposedChart
           data={chartData}
           margin={{
             top: 10,
@@ -176,7 +209,9 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               paddingTop: '10px',
               fontSize: '12px',
               color: 'var(--foreground)',
+              cursor: 'pointer',
             }}
+            onClick={handleLegendClick}
           />
           
           <Line
@@ -186,6 +221,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             strokeWidth={2}
             name="Actual Duration"
             dot={false}
+            hide={!visibleLines.duration}
             activeDot={{ 
               r: 6, 
               stroke: '#3b82f6', 
@@ -202,13 +238,28 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               stroke="#10b981"
               strokeWidth={2}
               strokeDasharray="5 5"
-              name="Trend (3-point avg)"
+              name={`Trend (${getOptimalMovingAverageWindow(chartData.length)}-point avg)`}
               dot={false}
+              hide={!visibleLines.movingAverage}
               activeDot={false}
               opacity={0.7}
             />
           )}
-        </LineChart>
+          
+          {/* Confidence Band Area */}
+          {chartData.length >= 3 && chartData[0].upperBand !== undefined && (
+            <Area
+              type="monotone"
+              dataKey="confidenceBandRange"
+              stroke="none"
+              fill={color}
+              fillOpacity={0.15}
+              isAnimationActive={false}
+              legendType="none"
+            />
+          )}
+          
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );

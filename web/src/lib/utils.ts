@@ -332,24 +332,110 @@ export function getUniqueConsensusClients<T extends { consensus_client_info: { t
 }
 
 /**
+ * Calculates optimal moving average window size based on data length
+ * @param dataLength - Number of data points
+ * @returns Optimal window size
+ */
+export function getOptimalMovingAverageWindow(dataLength: number): number {
+  if (dataLength < 5) return Math.max(3, dataLength);
+  if (dataLength < 20) return 5;
+  if (dataLength < 50) return 10;
+  if (dataLength < 100) return 15;
+  if (dataLength < 200) return 20;
+  return Math.min(30, Math.floor(dataLength * 0.15)); // 15% of data points, max 30
+}
+
+/**
+ * Calculates confidence bands for a dataset
+ * @param data - Array of data points with numeric values
+ * @param valueKey - Key to extract numeric value from each data point
+ * @param windowSize - Window size for calculation
+ * @param confidenceLevel - Confidence level (default: 0.95 for 95%)
+ * @returns Array of data points with confidence bands
+ */
+export function calculateConfidenceBands<T extends Record<string, any>>(
+  data: T[],
+  valueKey: keyof T,
+  windowSize?: number,
+  confidenceLevel: number = 0.95
+): (T & { movingAverage: number; upperBand: number; lowerBand: number; stdDev: number })[] {
+  if (!data || data.length === 0) return [];
+  
+  // Use provided window size or calculate optimal size
+  const effectiveWindowSize = windowSize ?? getOptimalMovingAverageWindow(data.length);
+  
+  // Z-score for confidence level (95% = 1.96, 90% = 1.645, 99% = 2.576)
+  const zScore = confidenceLevel === 0.95 ? 1.96 : 
+                 confidenceLevel === 0.90 ? 1.645 :
+                 confidenceLevel === 0.99 ? 2.576 : 1.96;
+  
+  return data.map((point, index) => {
+    // Calculate the start index for the window
+    const start = Math.max(0, index - Math.floor(effectiveWindowSize / 2));
+    // Calculate the end index for the window
+    const end = Math.min(data.length, start + effectiveWindowSize);
+    
+    // Extract values for the window
+    const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
+    
+    if (windowValues.length === 0) {
+      const value = Number(point[valueKey]);
+      return {
+        ...point,
+        movingAverage: value,
+        upperBand: value,
+        lowerBand: value,
+        stdDev: 0
+      };
+    }
+    
+    // Calculate average
+    const average = windowValues.reduce((sum, val) => sum + val, 0) / windowValues.length;
+    
+    // Calculate standard deviation
+    const variance = windowValues.reduce((sum, val) => sum + Math.pow(val - average, 2), 0) / windowValues.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Calculate standard error of the mean
+    const standardError = stdDev / Math.sqrt(windowValues.length);
+    
+    // Calculate confidence bands
+    const margin = zScore * standardError;
+    const upperBand = average + margin;
+    const lowerBand = Math.max(0, average - margin); // Ensure lower band doesn't go negative
+    
+    return {
+      ...point,
+      movingAverage: average,
+      upperBand,
+      lowerBand,
+      stdDev
+    };
+  });
+}
+
+/**
  * Calculates a simple moving average for chart data
  * @param data - Array of data points with numeric values
  * @param valueKey - Key to extract numeric value from each data point
- * @param windowSize - Number of points to include in moving average (default: 3)
+ * @param windowSize - Number of points to include in moving average (default: auto-calculated)
  * @returns Array of data points with moving average values
  */
 export function calculateMovingAverage<T extends Record<string, any>>(
   data: T[],
   valueKey: keyof T,
-  windowSize: number = 3
+  windowSize?: number
 ): (T & { movingAverage: number })[] {
   if (!data || data.length === 0) return [];
   
+  // Use provided window size or calculate optimal size
+  const effectiveWindowSize = windowSize ?? getOptimalMovingAverageWindow(data.length);
+  
   return data.map((point, index) => {
     // Calculate the start index for the window
-    const start = Math.max(0, index - Math.floor(windowSize / 2));
+    const start = Math.max(0, index - Math.floor(effectiveWindowSize / 2));
     // Calculate the end index for the window
-    const end = Math.min(data.length, start + windowSize);
+    const end = Math.min(data.length, start + effectiveWindowSize);
     
     // Extract values for the window
     const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
@@ -386,16 +472,22 @@ export function calculateClientGroupStats(reports: any[]) {
   // Last runtime (most recent test timestamp)
   const lastRuntime = Number(sortedReports[0].timestamp);
   
-  // Calculate trend duration (last moving average value)
+  // Filter to only successful runs for duration and disk usage calculations
+  const successfulReports = reports.filter(r => {
+    const status = r.sync_info.status || 'success'; // Default to success
+    return status === 'success';
+  });
+  
+  // Calculate trend duration (last moving average value) - only from successful runs
   let avgDuration = null;
-  const validDurations = reports
+  const validDurations = successfulReports
     .map(r => r.sync_info.duration)
     .filter(d => typeof d === 'number' && d > 0);
   
   if (validDurations.length > 0) {
     if (validDurations.length >= 3) {
       // Sort by timestamp for proper trend calculation
-      const sortedByTime = [...reports]
+      const sortedByTime = [...successfulReports]
         .filter(r => typeof r.sync_info.duration === 'number' && r.sync_info.duration > 0)
         .sort((a, b) => Number(a.timestamp) - Number(b.timestamp))
         .map(r => ({
@@ -403,8 +495,8 @@ export function calculateClientGroupStats(reports: any[]) {
           duration: r.sync_info.duration
         }));
       
-      // Calculate moving average and get the last value
-      const withMovingAvg = calculateMovingAverage(sortedByTime, 'duration', 3);
+      // Calculate moving average with dynamic window size and get the last value
+      const withMovingAvg = calculateMovingAverage(sortedByTime, 'duration');
       if (withMovingAvg.length > 0) {
         avgDuration = withMovingAvg[withMovingAvg.length - 1].movingAverage;
       }
@@ -414,8 +506,9 @@ export function calculateClientGroupStats(reports: any[]) {
     }
   }
   
-  // Most recent disk usage (from most recent test with disk data)
-  const mostRecentWithDisk = sortedReports.find(r => r.sync_info.last_entry?.de);
+  // Most recent disk usage (from most recent successful test with disk data)
+  const sortedSuccessfulReports = [...successfulReports].sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
+  const mostRecentWithDisk = sortedSuccessfulReports.find(r => r.sync_info.last_entry?.de);
   const mostRecentDiskUsage = mostRecentWithDisk?.sync_info.last_entry?.de || null;
   
   return {

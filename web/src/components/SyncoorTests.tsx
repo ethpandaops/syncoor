@@ -163,7 +163,15 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   };
 
   const getStatusBadge = (test: TestSummary) => {
+    // Check if last update is >= 3 minutes ago for running tests
     if (test.is_running) {
+      const now = new Date();
+      const lastUpdate = new Date(test.last_update);
+      const diffMinutes = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60));
+      
+      if (diffMinutes >= 3) {
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">Unknown</Badge>;
+      }
       return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Running</Badge>;
     }
     if (test.is_complete) {
@@ -387,7 +395,8 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                               const now = new Date();
                               const lastUpdate = new Date(test.last_update);
                               const diffSeconds = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
-                              const isRecent = diffSeconds < 60; // Consider updates within 60 seconds as recent
+                              const diffMinutes = Math.floor(diffSeconds / 60);
+                              const isRecent = diffMinutes < 3; // Consider updates within 3 minutes as recent
                               
                               return (
                                 <Tooltip>
