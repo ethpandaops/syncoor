@@ -112,7 +112,9 @@ function buildUrl(directory: Directory, path: string): string {
  * @throws ApiError if the fetch fails
  */
 export async function fetchIndex(directory: Directory): Promise<ReportIndex> {
-  const url = buildUrl(directory, 'index.json');
+  const baseUrl = buildUrl(directory, 'index.json');
+  // Add cache-busting parameter to ensure we get fresh data
+  const url = `${baseUrl}?_t=${Date.now()}`;
   
   try {
     const response = await fetchWithRetry(url);
