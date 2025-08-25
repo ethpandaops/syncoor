@@ -346,6 +346,75 @@ export function getOptimalMovingAverageWindow(dataLength: number): number {
 }
 
 /**
+ * Calculates confidence bands for a dataset
+ * @param data - Array of data points with numeric values
+ * @param valueKey - Key to extract numeric value from each data point
+ * @param windowSize - Window size for calculation
+ * @param confidenceLevel - Confidence level (default: 0.95 for 95%)
+ * @returns Array of data points with confidence bands
+ */
+export function calculateConfidenceBands<T extends Record<string, any>>(
+  data: T[],
+  valueKey: keyof T,
+  windowSize?: number,
+  confidenceLevel: number = 0.95
+): (T & { movingAverage: number; upperBand: number; lowerBand: number; stdDev: number })[] {
+  if (!data || data.length === 0) return [];
+  
+  // Use provided window size or calculate optimal size
+  const effectiveWindowSize = windowSize ?? getOptimalMovingAverageWindow(data.length);
+  
+  // Z-score for confidence level (95% = 1.96, 90% = 1.645, 99% = 2.576)
+  const zScore = confidenceLevel === 0.95 ? 1.96 : 
+                 confidenceLevel === 0.90 ? 1.645 :
+                 confidenceLevel === 0.99 ? 2.576 : 1.96;
+  
+  return data.map((point, index) => {
+    // Calculate the start index for the window
+    const start = Math.max(0, index - Math.floor(effectiveWindowSize / 2));
+    // Calculate the end index for the window
+    const end = Math.min(data.length, start + effectiveWindowSize);
+    
+    // Extract values for the window
+    const windowValues = data.slice(start, end).map(p => Number(p[valueKey])).filter(v => !isNaN(v));
+    
+    if (windowValues.length === 0) {
+      const value = Number(point[valueKey]);
+      return {
+        ...point,
+        movingAverage: value,
+        upperBand: value,
+        lowerBand: value,
+        stdDev: 0
+      };
+    }
+    
+    // Calculate average
+    const average = windowValues.reduce((sum, val) => sum + val, 0) / windowValues.length;
+    
+    // Calculate standard deviation
+    const variance = windowValues.reduce((sum, val) => sum + Math.pow(val - average, 2), 0) / windowValues.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Calculate standard error of the mean
+    const standardError = stdDev / Math.sqrt(windowValues.length);
+    
+    // Calculate confidence bands
+    const margin = zScore * standardError;
+    const upperBand = average + margin;
+    const lowerBand = Math.max(0, average - margin); // Ensure lower band doesn't go negative
+    
+    return {
+      ...point,
+      movingAverage: average,
+      upperBand,
+      lowerBand,
+      stdDev
+    };
+  });
+}
+
+/**
  * Calculates a simple moving average for chart data
  * @param data - Array of data points with numeric values
  * @param valueKey - Key to extract numeric value from each data point

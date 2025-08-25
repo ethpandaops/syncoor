@@ -8,10 +8,12 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  Area,
+  ComposedChart,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { IndexEntry } from '../../types/report';
-import { formatDuration, formatTimestamp, calculateMovingAverage, getOptimalMovingAverageWindow } from '../../lib/utils';
+import { formatDuration, formatTimestamp, calculateMovingAverage, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
 
 interface ClientGroupDurationChartProps {
   data: IndexEntry[];
@@ -29,6 +31,10 @@ interface ChartDataPoint {
   runId: string;
   network: string;
   movingAverage?: number;
+  upperBand?: number;
+  lowerBand?: number;
+  stdDev?: number;
+  confidenceBandRange?: number[];
 }
 
 const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
@@ -77,9 +83,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
       network: entry.network,
     }));
 
-    // Calculate moving average only if we have enough data points
+    // Calculate moving average and confidence bands only if we have enough data points
     if (baseData.length >= 3) {
-      return calculateMovingAverage(baseData, 'duration');
+      const withConfidenceBands = calculateConfidenceBands(baseData, 'duration');
+      // Add confidence band range for area chart
+      return withConfidenceBands.map(point => ({
+        ...point,
+        confidenceBandRange: [point.lowerBand || 0, point.upperBand || 0]
+      }));
     }
 
     return baseData;
@@ -104,6 +115,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
                 <span className="text-gray-600">Trend:</span>
                 <span className="font-medium text-gray-800">
                   {formatDuration(data.movingAverage)}
+                </span>
+              </div>
+            )}
+            {data.upperBand && data.lowerBand && (
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-gray-600">95% CI:</span>
+                <span className="font-medium text-gray-800">
+                  {formatDuration(data.lowerBand)} - {formatDuration(data.upperBand)}
                 </span>
               </div>
             )}
@@ -149,7 +168,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
         <h4 className="text-sm font-medium text-foreground">{title}</h4>
       </div>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart
+        <ComposedChart
           data={chartData}
           margin={{
             top: 10,
@@ -227,7 +246,21 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               opacity={0.7}
             />
           )}
-        </LineChart>
+          
+          {/* Confidence Band Area */}
+          {chartData.length >= 3 && chartData[0].upperBand !== undefined && (
+            <Area
+              type="monotone"
+              dataKey="confidenceBandRange"
+              stroke="none"
+              fill={color}
+              fillOpacity={0.15}
+              isAnimationActive={false}
+              legendType="none"
+            />
+          )}
+          
+        </ComposedChart>
       </ResponsiveContainer>
     </div>
   );
