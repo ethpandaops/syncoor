@@ -356,7 +356,7 @@ export default function Dashboard() {
                                       <ClientGroupDiskChart
                                         data={successfulReports}
                                         height={300}
-                                        color="#10b981"
+                                        color="#3b82f6"
                                         title={`EL Disk Usage Trends - Successful Runs${activeCLClient !== 'All' ? ` (${activeCLClient})` : ''}`}
                                       />
                                     </div>

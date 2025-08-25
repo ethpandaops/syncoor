@@ -190,7 +190,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             dot={false}
             activeDot={{ 
               r: 6, 
-              stroke: '#3b82f6', 
+              stroke: color, 
               strokeWidth: 2, 
               cursor: 'pointer'
             }}
