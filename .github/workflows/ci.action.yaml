@@ -32,6 +32,10 @@ jobs:
             "--disable-discovery"
           ]
         cl-client: prysm
+        cl-env-vars: >-
+          [
+            "SOME_VAR=has-something"
+          ]
 
         check-interval: 30s
         public: true
