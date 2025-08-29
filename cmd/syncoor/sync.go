@@ -28,6 +28,8 @@ func NewSyncCommand() *cobra.Command {
 		clImage               string
 		elExtraArgs           []string
 		clExtraArgs           []string
+		elEnvVars             []string
+		clEnvVars             []string
 		networkName           string
 		enclaveName           string
 		reportDir             string
@@ -113,6 +115,30 @@ Exit codes:
 			}
 			config.Labels = parsedLabels
 
+			// Parse EL environment variables
+			parsedELEnvVars := make(map[string]string)
+			for _, envVar := range elEnvVars {
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					parsedELEnvVars[parts[0]] = parts[1]
+				} else {
+					logger.Warnf("Invalid EL env var format '%s', skipping", envVar)
+				}
+			}
+			config.ELEnvVars = parsedELEnvVars
+
+			// Parse CL environment variables
+			parsedCLEnvVars := make(map[string]string)
+			for _, envVar := range clEnvVars {
+				parts := strings.SplitN(envVar, "=", 2)
+				if len(parts) == 2 {
+					parsedCLEnvVars[parts[0]] = parts[1]
+				} else {
+					logger.Warnf("Invalid CL env var format '%s', skipping", envVar)
+				}
+			}
+			config.CLEnvVars = parsedCLEnvVars
+
 			// Set configuration defaults
 			config.SetDefaults()
 
@@ -166,6 +192,10 @@ Exit codes:
 	cmd.Flags().StringVar(&clImage, "cl-image", "", "Consensus layer client image (optional)")
 	cmd.Flags().StringSliceVar(&elExtraArgs, "el-extra-args", []string{}, "Extra arguments for execution layer client (can be used multiple times)")
 	cmd.Flags().StringSliceVar(&clExtraArgs, "cl-extra-args", []string{}, "Extra arguments for consensus layer client (can be used multiple times)")
+	cmd.Flags().StringSliceVar(&elEnvVars, "el-env-vars", []string{},
+		"Environment variables for execution layer client in KEY=VALUE format (can be used multiple times)")
+	cmd.Flags().StringSliceVar(&clEnvVars, "cl-env-vars", []string{},
+		"Environment variables for consensus layer client in KEY=VALUE format (can be used multiple times)")
 	cmd.Flags().StringVar(&networkName, "network", "hoodi", "Network to connect to (e.g., hoodi, sepolia, mainnet)")
 	cmd.Flags().StringVar(&enclaveName, "enclave", "", "Enclave name (optional - defaults to sync-test-$network-$el-client-$cl-client)")
 	cmd.Flags().StringVar(&reportDir, "report-dir", "./reports", "Directory to save reports (defaults to ./reports)")

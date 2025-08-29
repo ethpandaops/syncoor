@@ -18,6 +18,8 @@ type Config struct {
 	CLImage     string
 	ELExtraArgs []string
 	CLExtraArgs []string
+	ELEnvVars   map[string]string
+	CLEnvVars   map[string]string
 	EnclaveName string
 }
 

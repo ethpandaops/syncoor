@@ -18,6 +18,8 @@ export interface ClientInfo {
   entrypoint?: string[];
   /** Docker cmd parameters */
   cmd?: string[];
+  /** Environment variables used by the client */
+  env_vars?: Record<string, string>;
 }
 
 /**
