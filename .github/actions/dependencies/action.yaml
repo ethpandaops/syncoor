@@ -125,7 +125,6 @@ runs:
         elif [ "$DESIRED_VERSION" = "latest" ]; then
           echo "Latest version requested, will upgrade if available"
           INSTALL_NEEDED=true
-          ENGINE_RESTART_NEEDED=true  # Always restart engine when latest is requested
         elif [ "$CURRENT_VERSION" != "$DESIRED_VERSION" ]; then
           echo "Version mismatch: current=$CURRENT_VERSION, desired=$DESIRED_VERSION"
           INSTALL_NEEDED=true
@@ -191,8 +190,8 @@ runs:
           NEW_VERSION=$(kurtosis version --json 2>/dev/null | jq -r '.cli_version' 2>/dev/null || kurtosis version 2>/dev/null | grep "CLI Version:" | awk '{print $3}' || echo "unknown")
           echo "Installed version: $NEW_VERSION"
 
-          # Check if engine restart is needed
-          if [ "$ENGINE_RESTART_NEEDED" = true ] || [ "$NEW_VERSION" != "$CURRENT_VERSION" ] || [ "$DESIRED_VERSION" = "latest" ]; then
+          # Check if engine restart is needed (only if version actually changed)
+          if [ "$ENGINE_RESTART_NEEDED" = true ] || [ "$NEW_VERSION" != "$CURRENT_VERSION" ]; then
             echo "Restarting Kurtosis engine..."
             echo "  Reason: ENGINE_RESTART_NEEDED=$ENGINE_RESTART_NEEDED, version change: '$CURRENT_VERSION' -> '$NEW_VERSION', desired: '$DESIRED_VERSION'"
 
