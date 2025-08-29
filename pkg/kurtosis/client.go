@@ -3,6 +3,7 @@ package kurtosis
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os/exec"
 
@@ -11,7 +12,7 @@ import (
 
 // Client defines the interface for execution layer operations
 type Client interface {
-	InspectService(enclaveName, service string) (*KurtosisServiceInspectResult, error)
+	InspectService(ctx context.Context, enclaveName, service string) (*KurtosisServiceInspectResult, error)
 	DoesEnclaveExist(ctx context.Context, enclaveName string) (bool, error)
 }
 
@@ -56,13 +57,24 @@ func NewClient(log logrus.FieldLogger) Client {
 }
 
 // InspectKurtosisService runs `kurtosis service inspect $enclaveName $service -o json` and returns the parsed result
-func (c *client) InspectService(enclaveName, service string) (*KurtosisServiceInspectResult, error) {
+func (c *client) InspectService(ctx context.Context, enclaveName, service string) (*KurtosisServiceInspectResult, error) {
 	// Run the kurtosis service inspect command
-	cmd := exec.Command("kurtosis", "service", "inspect", enclaveName, service, "-o", "json")
+	cmd := exec.CommandContext(ctx, "kurtosis", "service", "inspect", enclaveName, service, "-o", "json")
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("failed to run kurtosis service inspect command: %w", err)
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
+			c.log.WithFields(logrus.Fields{
+				"enclave":   enclaveName,
+				"service":   service,
+				"exit_code": exitErr.ExitCode(),
+				"output":    string(output),
+				"stderr":    string(exitErr.Stderr),
+			}).Error("Kurtosis service inspect failed")
+			return nil, fmt.Errorf("failed to run kurtosis service inspect command (exit code %d): %w\nOutput: %s", exitErr.ExitCode(), err, string(output))
+		}
+		return nil, fmt.Errorf("failed to run kurtosis service inspect command: %w\nOutput: %s", err, string(output))
 	}
 
 	// Parse the JSON output
@@ -82,7 +94,8 @@ func (c *client) DoesEnclaveExist(ctx context.Context, enclaveName string) (bool
 	err := cmd.Run()
 	if err != nil {
 		// Check if it's an exit error (enclave doesn't exist)
-		if exitErr, ok := err.(*exec.ExitError); ok {
+		var exitErr *exec.ExitError
+		if errors.As(err, &exitErr) {
 			c.log.WithFields(logrus.Fields{
 				"enclave":   enclaveName,
 				"exit_code": exitErr.ExitCode(),

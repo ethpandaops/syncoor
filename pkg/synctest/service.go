@@ -313,14 +313,25 @@ func (s *service) Start(ctx context.Context) error {
 	// Create execution client fetcher
 	executionClients := s.network.ExecutionClients().All()
 	if len(executionClients) == 0 {
+		s.log.WithField("enclave", s.network.EnclaveName()).Error("No execution clients available in network")
 		return fmt.Errorf("no execution clients available")
 	}
 	s.executionClient = executionClients[0]
+	s.log.WithFields(logrus.Fields{
+		"client_name": s.executionClient.Name(),
+		"rpc_url":     s.executionClient.RPCURL(),
+		"enclave":     s.network.EnclaveName(),
+	}).Info("Using execution client")
 	s.executionClientFetcher = execution.NewClient(s.log, s.executionClient.Name(), s.executionClient.RPCURL())
 
-	elInspect, err := s.kurtosisClient.InspectService(s.network.EnclaveName(), s.executionClientFetcher.Name())
+	elInspect, err := s.kurtosisClient.InspectService(ctx, s.network.EnclaveName(), s.executionClientFetcher.Name())
 	if err != nil {
-		return fmt.Errorf("failed to inspect execution client: %w", err)
+		s.log.WithFields(logrus.Fields{
+			"enclave": s.network.EnclaveName(),
+			"service": s.executionClientFetcher.Name(),
+			"error":   err,
+		}).Error("Failed to inspect execution client service")
+		return fmt.Errorf("failed to inspect execution client '%s' in enclave '%s': %w", s.executionClientFetcher.Name(), s.network.EnclaveName(), err)
 	}
 
 	s.reportService.SetExecutionClientInfo(ctx, &report.ClientInfo{
@@ -334,14 +345,25 @@ func (s *service) Start(ctx context.Context) error {
 	// Create consensus client fetcher
 	consensusClients := s.network.ConsensusClients().All()
 	if len(consensusClients) == 0 {
+		s.log.WithField("enclave", s.network.EnclaveName()).Error("No consensus clients available in network")
 		return fmt.Errorf("no consensus clients available")
 	}
 	s.consensusClient = consensusClients[0]
+	s.log.WithFields(logrus.Fields{
+		"client_name": s.consensusClient.Name(),
+		"beacon_url":  s.consensusClient.BeaconAPIURL(),
+		"enclave":     s.network.EnclaveName(),
+	}).Info("Using consensus client")
 	s.consensusClientFetcher = consensus.NewClient(s.log, s.consensusClient.Name(), s.consensusClient.BeaconAPIURL())
 
-	clInspect, err := s.kurtosisClient.InspectService(s.network.EnclaveName(), s.consensusClientFetcher.Name())
+	clInspect, err := s.kurtosisClient.InspectService(ctx, s.network.EnclaveName(), s.consensusClientFetcher.Name())
 	if err != nil {
-		return fmt.Errorf("failed to inspect consensus client: %w", err)
+		s.log.WithFields(logrus.Fields{
+			"enclave": s.network.EnclaveName(),
+			"service": s.consensusClientFetcher.Name(),
+			"error":   err,
+		}).Error("Failed to inspect consensus client service")
+		return fmt.Errorf("failed to inspect consensus client '%s' in enclave '%s': %w", s.consensusClientFetcher.Name(), s.network.EnclaveName(), err)
 	}
 
 	s.reportService.SetConsensusClientInfo(ctx, &report.ClientInfo{
@@ -702,7 +724,7 @@ func boolPtr(b bool) *bool {
 
 func (s *service) metricsExporterServiceEndpoint() (string, error) {
 	name := fmt.Sprintf("ethereum-metrics-exporter-1-%s-%s", s.cfg.CLClient, s.cfg.ELClient)
-	kservice, err := s.kurtosisClient.InspectService(s.network.EnclaveName(), name)
+	kservice, err := s.kurtosisClient.InspectService(context.Background(), s.network.EnclaveName(), name)
 	if err != nil {
 		return "", fmt.Errorf("failed to inspect metrics exporter service: %w", err)
 	}

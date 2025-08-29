@@ -58,7 +58,7 @@ func (sv *StateValidator) CheckServiceHealth(ctx context.Context, enclaveName, s
 	}).Debug("Checking service health")
 
 	// Use existing InspectService method to validate service accessibility
-	_, err := sv.kurtosisClient.InspectService(enclaveName, serviceName)
+	_, err := sv.kurtosisClient.InspectService(ctx, enclaveName, serviceName)
 	if err != nil {
 		sv.log.WithFields(logrus.Fields{
 			"enclave": enclaveName,
