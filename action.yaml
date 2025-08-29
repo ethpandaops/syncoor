@@ -203,6 +203,11 @@ inputs:
     required: false
     default: 'latest'
 
+  kurtosis-version:
+    description: 'Kurtosis CLI version to use'
+    required: false
+    default: 'latest'
+
 outputs:
   report-path:
     description: 'Path to the generated report'
@@ -216,7 +221,9 @@ runs:
   steps:
     - name: Verify and install dependencies
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ethpandaops/syncoor/.github/actions/dependencies@b64b2368935a1a9f552efac7ed5cebd1820ddf60
+      uses: ethpandaops/syncoor/.github/actions/dependencies@ef23036cf638f02917f01a896d6d92a02242a001
+      with:
+        kurtosis-version: ${{ inputs.kurtosis-version }}
 
     - name: Build Syncoor Docker image locally
       if: inputs.image == ''
