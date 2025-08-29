@@ -125,6 +125,7 @@ runs:
         elif [ "$DESIRED_VERSION" = "latest" ]; then
           echo "Latest version requested, will upgrade if available"
           INSTALL_NEEDED=true
+          ENGINE_RESTART_NEEDED=true  # Always restart engine when latest is requested
         elif [ "$CURRENT_VERSION" != "$DESIRED_VERSION" ]; then
           echo "Version mismatch: current=$CURRENT_VERSION, desired=$DESIRED_VERSION"
           INSTALL_NEEDED=true
@@ -191,16 +192,44 @@ runs:
           echo "Installed version: $NEW_VERSION"
 
           # Check if engine restart is needed
-          if [ "$ENGINE_RESTART_NEEDED" = true ] || [ "$NEW_VERSION" != "$CURRENT_VERSION" ]; then
-            echo "Version changed from '$CURRENT_VERSION' to '$NEW_VERSION', restarting Kurtosis engine..."
+          if [ "$ENGINE_RESTART_NEEDED" = true ] || [ "$NEW_VERSION" != "$CURRENT_VERSION" ] || [ "$DESIRED_VERSION" = "latest" ]; then
+            echo "Restarting Kurtosis engine..."
+            echo "  Reason: ENGINE_RESTART_NEEDED=$ENGINE_RESTART_NEEDED, version change: '$CURRENT_VERSION' -> '$NEW_VERSION', desired: '$DESIRED_VERSION'"
 
-            # Stop the engine if it's running
+            # Stop the engine if it's running (with more aggressive cleanup)
+            echo "Stopping Kurtosis engine..."
             kurtosis engine stop 2>/dev/null || true
 
+            # Wait a moment for cleanup
+            sleep 2
+
+            # Additional cleanup: remove engine containers if they exist
+            docker rm -f $(docker ps -aq --filter "label=com.kurtosistech.app-id=kurtosis") 2>/dev/null || true
+
             # Start the engine with the new version
+            echo "Starting Kurtosis engine..."
             kurtosis engine start
 
+            # Verify engine is running and show status
+            echo "Verifying engine status..."
+            kurtosis engine status
+
+            # Check for CLI/engine version mismatch
+            CLI_VERSION=$(kurtosis version --json 2>/dev/null | jq -r '.cli_version' 2>/dev/null || echo "unknown")
+            ENGINE_VERSION=$(kurtosis version --json 2>/dev/null | jq -r '.engine_version' 2>/dev/null || echo "unknown")
+
+            if [ "$CLI_VERSION" != "unknown" ] && [ "$ENGINE_VERSION" != "unknown" ] && [ "$CLI_VERSION" != "$ENGINE_VERSION" ]; then
+              echo "WARNING: CLI version ($CLI_VERSION) != Engine version ($ENGINE_VERSION)"
+              echo "Attempting additional engine restart..."
+              kurtosis engine stop 2>/dev/null || true
+              sleep 3
+              kurtosis engine start
+              kurtosis engine status
+            fi
+
             echo "Kurtosis engine restarted successfully"
+          else
+            echo "No engine restart needed - versions match and no restart flags set"
           fi
         else
           echo "ERROR: Kurtosis CLI installation failed"
