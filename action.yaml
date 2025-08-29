@@ -73,6 +73,16 @@ inputs:
     required: false
     default: '[]'
 
+  el-env-vars:
+    description: 'Environment variables for execution layer client (array of strings). Example: ["KEY1=value1", "KEY2=value2"]'
+    required: false
+    default: '[]'
+
+  cl-env-vars:
+    description: 'Environment variables for consensus layer client (array of strings). Example: ["KEY1=value1", "KEY2=value2"]'
+    required: false
+    default: '[]'
+
   network:
     description: 'Network to connect to (e.g., hoodi, sepolia, mainnet)'
     required: false
@@ -397,6 +407,26 @@ runs:
           for arg in $(echo '${{ inputs.cl-extra-args }}' | jq -r '.[]'); do
             if [ -n "$arg" ]; then
               DOCKER_CMD="$DOCKER_CMD --cl-extra-args=\"$arg\""
+            fi
+          done
+        fi
+
+        # Handle el-env-vars array
+        if [ "${{ inputs.el-env-vars }}" != "[]" ] && [ -n "${{ inputs.el-env-vars }}" ]; then
+          # Parse JSON array and add each item as a separate --el-env-vars flag
+          for env_var in $(echo '${{ inputs.el-env-vars }}' | jq -r '.[]'); do
+            if [ -n "$env_var" ]; then
+              DOCKER_CMD="$DOCKER_CMD --el-env-vars=\"$env_var\""
+            fi
+          done
+        fi
+
+        # Handle cl-env-vars array
+        if [ "${{ inputs.cl-env-vars }}" != "[]" ] && [ -n "${{ inputs.cl-env-vars }}" ]; then
+          # Parse JSON array and add each item as a separate --cl-env-vars flag
+          for env_var in $(echo '${{ inputs.cl-env-vars }}' | jq -r '.[]'); do
+            if [ -n "$env_var" ]; then
+              DOCKER_CMD="$DOCKER_CMD --cl-env-vars=\"$env_var\""
             fi
           done
         fi

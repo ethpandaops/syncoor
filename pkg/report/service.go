@@ -54,12 +54,13 @@ type Result struct {
 }
 
 type ClientInfo struct {
-	Name       string   `json:"name"`
-	Type       string   `json:"type"`
-	Image      string   `json:"image"`
-	Entrypoint []string `json:"entrypoint"`
-	Cmd        []string `json:"cmd"`
-	Version    string   `json:"version"`
+	Name       string            `json:"name"`
+	Type       string            `json:"type"`
+	Image      string            `json:"image"`
+	Entrypoint []string          `json:"entrypoint"`
+	Cmd        []string          `json:"cmd"`
+	Version    string            `json:"version"`
+	EnvVars    map[string]string `json:"env_vars,omitempty"`
 }
 
 type SyncStatus struct {
@@ -188,6 +189,9 @@ func (s *service) SetExecutionClientInfo(ctx context.Context, info *ClientInfo) 
 	if info.Version != "" {
 		s.result.ExecutionClientInfo.Version = info.Version
 	}
+	if len(info.EnvVars) > 0 {
+		s.result.ExecutionClientInfo.EnvVars = info.EnvVars
+	}
 
 	return nil
 }
@@ -212,6 +216,9 @@ func (s *service) SetConsensusClientInfo(ctx context.Context, info *ClientInfo) 
 	}
 	if info.Version != "" {
 		s.result.ConsensusClientInfo.Version = info.Version
+	}
+	if len(info.EnvVars) > 0 {
+		s.result.ConsensusClientInfo.EnvVars = info.EnvVars
 	}
 
 	return nil

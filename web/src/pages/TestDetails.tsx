@@ -18,6 +18,8 @@ export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
   const [showExecutionDetails, setShowExecutionDetails] = useState(false);
   const [showConsensusDetails, setShowConsensusDetails] = useState(false);
+  const [showExecutionEnvVars, setShowExecutionEnvVars] = useState(false);
+  const [showConsensusEnvVars, setShowConsensusEnvVars] = useState(false);
   const { data: config, isLoading: configLoading } = useConfig();
   const { data: reports, isLoading: reportsLoading } = useReports({
     directories: config?.directories || [],
@@ -285,6 +287,37 @@ export default function TestDetails() {
                   )}
                 </div>
               )}
+              {mainReport?.execution_client_info.env_vars && Object.keys(mainReport.execution_client_info.env_vars).length > 0 && (
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowExecutionEnvVars(!showExecutionEnvVars)}
+                    className="flex items-center gap-2 h-8 px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronIcon className={`h-4 w-4 transition-transform ${showExecutionEnvVars ? 'rotate-90' : ''}`} />
+                    Environment Variables ({Object.keys(mainReport.execution_client_info.env_vars).length})
+                  </Button>
+                  {showExecutionEnvVars && (
+                    <div className="pl-6">
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {Object.entries(mainReport.execution_client_info.env_vars)
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([key, value]) => (
+                            <div key={key} className="flex items-start gap-2 text-xs">
+                              <div className="font-mono font-medium text-muted-foreground min-w-0 flex-shrink-0 w-32">
+                                {key}:
+                              </div>
+                              <div className="font-mono bg-muted p-2 rounded-sm break-all min-w-0 flex-1">
+                                {value}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -369,6 +402,37 @@ export default function TestDetails() {
                           </div>
                         </div>
                       )}
+                    </div>
+                  )}
+                </div>
+              )}
+              {mainReport?.consensus_client_info.env_vars && Object.keys(mainReport.consensus_client_info.env_vars).length > 0 && (
+                <div className="space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowConsensusEnvVars(!showConsensusEnvVars)}
+                    className="flex items-center gap-2 h-8 px-2 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    <ChevronIcon className={`h-4 w-4 transition-transform ${showConsensusEnvVars ? 'rotate-90' : ''}`} />
+                    Environment Variables ({Object.keys(mainReport.consensus_client_info.env_vars).length})
+                  </Button>
+                  {showConsensusEnvVars && (
+                    <div className="pl-6">
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {Object.entries(mainReport.consensus_client_info.env_vars)
+                          .sort(([a], [b]) => a.localeCompare(b))
+                          .map(([key, value]) => (
+                            <div key={key} className="flex items-start gap-2 text-xs">
+                              <div className="font-mono font-medium text-muted-foreground min-w-0 flex-shrink-0 w-32">
+                                {key}:
+                              </div>
+                              <div className="font-mono bg-muted p-2 rounded-sm break-all min-w-0 flex-1">
+                                {value}
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -136,6 +136,14 @@ func (s *service) Start(ctx context.Context) error {
 		participantConfig.CLExtraParams = s.cfg.CLExtraArgs
 	}
 
+	// Set extra environment variables if provided
+	if len(s.cfg.ELEnvVars) > 0 {
+		participantConfig.ELExtraEnvVars = s.cfg.ELEnvVars
+	}
+	if len(s.cfg.CLEnvVars) > 0 {
+		participantConfig.CLExtraEnvVars = s.cfg.CLEnvVars
+	}
+
 	// Set client log levels
 	if s.cfg.ClientLogsLevelEL != "" {
 		participantConfig.ELLogLevel = &s.cfg.ClientLogsLevelEL
@@ -201,6 +209,8 @@ func (s *service) Start(ctx context.Context) error {
 			CLImage:     s.cfg.CLImage,
 			ELExtraArgs: s.cfg.ELExtraArgs,
 			CLExtraArgs: s.cfg.CLExtraArgs,
+			ELEnvVars:   s.cfg.ELEnvVars,
+			CLEnvVars:   s.cfg.CLEnvVars,
 			EnclaveName: s.cfg.EnclaveName,
 		}
 
@@ -340,6 +350,7 @@ func (s *service) Start(ctx context.Context) error {
 		Cmd:        elInspect.Cmd,
 		Entrypoint: elInspect.Entrypoint,
 		Type:       s.cfg.ELClient,
+		EnvVars:    elInspect.EnvVars,
 	})
 
 	// Create consensus client fetcher
@@ -372,6 +383,7 @@ func (s *service) Start(ctx context.Context) error {
 		Cmd:        clInspect.Cmd,
 		Entrypoint: clInspect.Entrypoint,
 		Type:       s.cfg.CLClient,
+		EnvVars:    clInspect.EnvVars,
 	})
 
 	logrus.WithFields(logrus.Fields{
@@ -381,6 +393,7 @@ func (s *service) Start(ctx context.Context) error {
 		"engine_url": s.executionClient.EngineURL(),
 		"type":       s.executionClient.Type(),
 		"image":      elInspect.Image,
+		"env_vars":   len(elInspect.EnvVars),
 	}).Info("Execution client info")
 
 	logrus.WithFields(logrus.Fields{
@@ -389,6 +402,7 @@ func (s *service) Start(ctx context.Context) error {
 		"beacon_api_url": s.consensusClient.BeaconAPIURL(),
 		"metrics_url":    s.consensusClient.MetricsURL(),
 		"image":          clInspect.Image,
+		"env_vars":       len(clInspect.EnvVars),
 	}).Info("Consensus client info")
 
 	// Start client log streaming if enabled

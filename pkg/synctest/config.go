@@ -22,6 +22,8 @@ type Config struct {
 	CLImage               string
 	ELExtraArgs           []string
 	CLExtraArgs           []string
+	ELEnvVars             map[string]string // Environment variables for execution layer client
+	CLEnvVars             map[string]string // Environment variables for consensus layer client
 	Network               string
 	EnclaveName           string
 	ReportDir             string

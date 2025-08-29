@@ -191,6 +191,121 @@ function generateClientCmd(client, network) {
   return cmds[client] || cmds.geth;
 }
 
+function generateExecutionEnvVars(client, network) {
+  // Generate realistic environment variables for execution clients
+  const baseEnvVars = {
+    'NETWORK': network,
+    'DATA_DIR': `/data/${client}`,
+    'JWT_PATH': '/jwt/jwtsecret',
+    'METRICS_ENABLED': 'true',
+    'LOG_FORMAT': 'json',
+    'NODE_NAME': `el-1-${client}`,
+  };
+
+  const clientSpecificEnvVars = {
+    geth: {
+      'GETH_CACHE': '4096',
+      'GETH_MAXPEERS': '50',
+      'GETH_SYNCMODE': 'snap',
+      'GETH_LOG_LEVEL': 'info',
+      'GETH_METRICS': 'true',
+      'GETH_METRICS_EXPENSIVE': 'true',
+    },
+    nethermind: {
+      'NETHERMIND_CONFIG': network,
+      'NETHERMIND_JSONRPCCONFIG_ENABLED': 'true',
+      'NETHERMIND_METRICSCONFIG_ENABLED': 'true',
+      'NETHERMIND_SYNCCONFIG_FASTSYNC': 'true',
+      'NETHERMIND_LOG_LEVEL': 'INFO',
+      'DOTNET_BUNDLE_EXTRACT_BASE_DIR': '/tmp/.net',
+    },
+    besu: {
+      'BESU_NETWORK': network,
+      'BESU_DATA_PATH': '/data/besu',
+      'BESU_RPC_HTTP_ENABLED': 'true',
+      'BESU_RPC_WS_ENABLED': 'true',
+      'BESU_METRICS_ENABLED': 'true',
+      'JAVA_OPTS': '-Xmx8g -Xms2g',
+      'LOG4J_CONFIGURATION_FILE': '/config/log4j2.xml',
+    },
+    erigon: {
+      'ERIGON_CHAIN': network,
+      'ERIGON_DATADIR': '/data/erigon',
+      'ERIGON_METRICS': 'true',
+      'ERIGON_PRIVATE_API_ADDR': '0.0.0.0:9090',
+      'RUST_LOG': 'info',
+      'ERIGON_LOG_LEVEL': 'info',
+    },
+    reth: {
+      'RUST_LOG': 'info,reth=debug',
+      'RUST_BACKTRACE': '1',
+      'RETH_NETWORK': network,
+      'RETH_DATADIR': '/data/reth',
+      'RETH_METRICS': '0.0.0.0:9001',
+      'RETH_LOG_FORMAT': 'json',
+    }
+  };
+
+  return {
+    ...baseEnvVars,
+    ...(clientSpecificEnvVars[client] || {})
+  };
+}
+
+function generateConsensusEnvVars(client, network) {
+  // Generate realistic environment variables for consensus clients
+  const baseEnvVars = {
+    'NETWORK': network,
+    'DATA_DIR': `/data/${client}`,
+    'JWT_PATH': '/jwt/jwtsecret',
+    'METRICS_ENABLED': 'true',
+    'LOG_FORMAT': 'json',
+    'NODE_NAME': `cl-1-${client}`,
+    'CHECKPOINT_SYNC_URL': `https://checkpoint-sync.${network}.ethpandaops.io/`,
+  };
+
+  const clientSpecificEnvVars = {
+    teku: {
+      'JAVA_OPTS': '-Xmx4g -Xms2g',
+      'TEKU_LOG_LEVEL': 'INFO',
+      'TEKU_LOG_DESTINATION': 'CONSOLE',
+      'TEKU_METRICS_ENABLED': 'true',
+      'TEKU_REST_API_ENABLED': 'true',
+      'TEKU_DATA_PATH': '/data/teku',
+      'LOG4J_CONFIGURATION_FILE': '/config/log4j2.xml',
+    },
+    prysm: {
+      'PRYSM_ACCEPT_TERMS_OF_USE': 'true',
+      'PRYSM_LOG_LEVEL': 'info',
+      'PRYSM_MONITORING_HOST': '0.0.0.0',
+      'PRYSM_DATADIR': '/data/prysm',
+      'PRYSM_BEACON_RPC_PROVIDER': 'localhost:4000',
+      'GO_MAX_PROCS': '8',
+    },
+    lighthouse: {
+      'RUST_LOG': 'info,lighthouse=debug',
+      'LIGHTHOUSE_NETWORK': network,
+      'LIGHTHOUSE_DATADIR': '/data/lighthouse',
+      'LIGHTHOUSE_METRICS': 'true',
+      'LIGHTHOUSE_SPEC': network,
+      'DEBUG_LEVEL': 'info',
+    },
+    nimbus: {
+      'NIMBUS_LOG_LEVEL': 'INFO',
+      'NIMBUS_NETWORK': network,
+      'NIMBUS_DATA_DIR': '/data/nimbus',
+      'NIMBUS_WEB3_URL': 'http://172.16.0.5:8551',
+      'NIMBUS_NON_INTERACTIVE': 'true',
+      'LOG_FORMAT': 'json',
+    }
+  };
+
+  return {
+    ...baseEnvVars,
+    ...(clientSpecificEnvVars[client] || {})
+  };
+}
+
 function generateConsensusCmd(client, network) {
   const cmds = {
     teku: [
@@ -446,7 +561,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient, isTim
         image: CLIENT_IMAGES[elClient],
         entrypoint: ['sh', '-c'],
         cmd: [generateClientCmd(elClient, network)],
-        version: CLIENT_VERSIONS[elClient]
+        version: CLIENT_VERSIONS[elClient],
+        env_vars: generateExecutionEnvVars(elClient, network)
       },
       consensus_client_info: {
         name: `cl-1-${clClient}-${elClient}`,
@@ -454,7 +570,8 @@ function generateMainReport(runId, timestamp, network, elClient, clClient, isTim
         image: CLIENT_IMAGES[clClient],
         entrypoint: clClient === 'lighthouse' ? ['lighthouse'] : [`/opt/${clClient}/bin/${clClient}`],
         cmd: generateConsensusCmd(clClient, network),
-        version: CLIENT_VERSIONS[clClient]
+        version: CLIENT_VERSIONS[clClient],
+        env_vars: generateConsensusEnvVars(clClient, network)
       },
       system_info: generateSystemInfo(),
       labels: generateGitHubLabels()

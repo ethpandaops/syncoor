@@ -71,20 +71,22 @@ type MainReport struct {
 		} `json:"last_entry,omitempty"`
 	} `json:"sync_status"`
 	ExecutionClientInfo struct {
-		Name       string   `json:"name"`
-		Type       string   `json:"type"`
-		Image      string   `json:"image"`
-		Version    string   `json:"version"`
-		Entrypoint []string `json:"entrypoint,omitempty"`
-		Cmd        []string `json:"cmd,omitempty"`
+		Name       string            `json:"name"`
+		Type       string            `json:"type"`
+		Image      string            `json:"image"`
+		Version    string            `json:"version"`
+		Entrypoint []string          `json:"entrypoint,omitempty"`
+		Cmd        []string          `json:"cmd,omitempty"`
+		EnvVars    map[string]string `json:"env_vars,omitempty"`
 	} `json:"execution_client_info"`
 	ConsensusClientInfo struct {
-		Name       string   `json:"name"`
-		Type       string   `json:"type"`
-		Image      string   `json:"image"`
-		Version    string   `json:"version"`
-		Entrypoint []string `json:"entrypoint,omitempty"`
-		Cmd        []string `json:"cmd,omitempty"`
+		Name       string            `json:"name"`
+		Type       string            `json:"type"`
+		Image      string            `json:"image"`
+		Version    string            `json:"version"`
+		Entrypoint []string          `json:"entrypoint,omitempty"`
+		Cmd        []string          `json:"cmd,omitempty"`
+		EnvVars    map[string]string `json:"env_vars,omitempty"`
 	} `json:"consensus_client_info"`
 	SystemInfo *SystemInfoStruct `json:"system_info,omitempty"`
 	Labels     map[string]string `json:"labels,omitempty"`
@@ -247,6 +249,17 @@ func addClientInfo(md *strings.Builder, report *MainReport, titleCaser cases.Cas
 	}
 	md.WriteString("| **Version** | " + elVersion + " | " + clVersion + " |\n")
 	md.WriteString("\n")
+
+	// Add command details sections if they exist
+	if len(report.ExecutionClientInfo.Entrypoint) > 0 || len(report.ExecutionClientInfo.Cmd) > 0 ||
+		len(report.ConsensusClientInfo.Entrypoint) > 0 || len(report.ConsensusClientInfo.Cmd) > 0 {
+		addCommandDetails(md, report)
+	}
+
+	// Add environment variables sections if they exist
+	if len(report.ExecutionClientInfo.EnvVars) > 0 || len(report.ConsensusClientInfo.EnvVars) > 0 {
+		addEnvironmentVariables(md, report, titleCaser)
+	}
 }
 
 type SystemInfoStruct struct {
@@ -406,6 +419,77 @@ func addYAMLConfigInfo(md *strings.Builder, report *MainReport) {
 	fmt.Fprintf(md, "persistent: true\n")
 	fmt.Fprintf(md, "ethereum_metrics_exporter_enabled: true\n")
 	md.WriteString("```\n\n")
+}
+
+func addCommandDetails(md *strings.Builder, report *MainReport) {
+	md.WriteString("### Command Details\n\n")
+
+	// Execution Layer Command Details
+	addClientCommandDetails(md, "Execution Layer", report.ExecutionClientInfo.Entrypoint, report.ExecutionClientInfo.Cmd)
+
+	// Consensus Layer Command Details
+	addClientCommandDetails(md, "Consensus Layer", report.ConsensusClientInfo.Entrypoint, report.ConsensusClientInfo.Cmd)
+}
+
+func addClientCommandDetails(md *strings.Builder, clientType string, entrypoint []string, cmd []string) {
+	if len(entrypoint) == 0 && len(cmd) == 0 {
+		return
+	}
+
+	fmt.Fprintf(md, "#### %s\n\n", clientType)
+
+	if len(entrypoint) > 0 {
+		addEntrypoint(md, entrypoint)
+	}
+
+	if len(cmd) > 0 {
+		addCommand(md, cmd)
+	}
+}
+
+func addEntrypoint(md *strings.Builder, entrypoint []string) {
+	md.WriteString("**Entrypoint:**\n```bash\n")
+	for _, entry := range entrypoint {
+		fmt.Fprintf(md, "%s ", entry)
+	}
+	md.WriteString("\n```\n\n")
+}
+
+func addCommand(md *strings.Builder, cmd []string) {
+	md.WriteString("**Command:**\n```bash\n")
+	for i, command := range cmd {
+		if i > 0 {
+			md.WriteString(" ")
+		}
+		md.WriteString(command)
+	}
+	md.WriteString("\n```\n\n")
+}
+
+func addEnvironmentVariables(md *strings.Builder, report *MainReport, _ cases.Caser) {
+	md.WriteString("### Environment Variables\n\n")
+
+	// Execution Layer Environment Variables
+	if len(report.ExecutionClientInfo.EnvVars) > 0 {
+		md.WriteString("#### Execution Layer\n\n")
+		md.WriteString("| Variable | Value |\n")
+		md.WriteString("|----------|-------|\n")
+		for key, value := range report.ExecutionClientInfo.EnvVars {
+			fmt.Fprintf(md, "| `%s` | `%s` |\n", key, value)
+		}
+		md.WriteString("\n")
+	}
+
+	// Consensus Layer Environment Variables
+	if len(report.ConsensusClientInfo.EnvVars) > 0 {
+		md.WriteString("#### Consensus Layer\n\n")
+		md.WriteString("| Variable | Value |\n")
+		md.WriteString("|----------|-------|\n")
+		for key, value := range report.ConsensusClientInfo.EnvVars {
+			fmt.Fprintf(md, "| `%s` | `%s` |\n", key, value)
+		}
+		md.WriteString("\n")
+	}
 }
 
 func addFilesInfo(md *strings.Builder, report *MainReport, inputFile string) {

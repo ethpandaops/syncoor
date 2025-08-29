@@ -82,6 +82,7 @@ export interface MainReport {
     version: string;
     entrypoint?: string[];
     cmd?: string[];
+    env_vars?: Record<string, string>;
   };
   consensus_client_info: {
     name: string;
@@ -90,6 +91,7 @@ export interface MainReport {
     version: string;
     entrypoint?: string[];
     cmd?: string[];
+    env_vars?: Record<string, string>;
   };
   system_info?: SystemInfo;
   labels?: Record<string, string>;
