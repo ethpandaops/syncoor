@@ -2,6 +2,12 @@ name: 'Install and verify dependencies for the Syncoor GitHub Action'
 description: 'Install required dependencies for Syncoor tests (zip/unzip, GitHub CLI, Kurtosis CLI)'
 author: 'ethpandaops'
 
+inputs:
+  kurtosis-version:
+    description: 'Kurtosis CLI version to use'
+    required: false
+    default: 'latest'
+
 runs:
   using: 'composite'
   steps:
@@ -90,22 +96,81 @@ runs:
           gh --version
         fi
 
-    - name: Install Kurtosis CLI if not present
+    - name: Install and configure Kurtosis CLI
       shell: bash
       run: |
-        if ! command -v kurtosis &> /dev/null; then
-          echo "Kurtosis CLI not found, installing..."
+        DESIRED_VERSION="${{ inputs.kurtosis-version }}"
+        CURRENT_VERSION=""
+        VERSION_CHANGED=false
+        ENGINE_RESTART_NEEDED=false
 
-          # Detect OS
+        # Check if kurtosis is installed and get current version
+        if command -v kurtosis &> /dev/null; then
+          echo "Kurtosis CLI found, checking version..."
+          CURRENT_VERSION=$(kurtosis version --json 2>/dev/null | jq -r '.cli_version' 2>/dev/null || echo "")
+          if [ -z "$CURRENT_VERSION" ]; then
+            # Fallback to parsing text output
+            CURRENT_VERSION=$(kurtosis version 2>/dev/null | grep "CLI Version:" | awk '{print $3}' || echo "")
+          fi
+          echo "Current Kurtosis version: $CURRENT_VERSION"
+        else
+          echo "Kurtosis CLI not found"
+        fi
+
+        # Determine if we need to install/upgrade
+        INSTALL_NEEDED=false
+        if [ -z "$CURRENT_VERSION" ]; then
+          echo "Kurtosis not installed, will install version: $DESIRED_VERSION"
+          INSTALL_NEEDED=true
+        elif [ "$DESIRED_VERSION" = "latest" ]; then
+          echo "Latest version requested, will upgrade if available"
+          INSTALL_NEEDED=true
+        elif [ "$CURRENT_VERSION" != "$DESIRED_VERSION" ]; then
+          echo "Version mismatch: current=$CURRENT_VERSION, desired=$DESIRED_VERSION"
+          INSTALL_NEEDED=true
+          VERSION_CHANGED=true
+        else
+          echo "Desired version $DESIRED_VERSION already installed"
+        fi
+
+        if [ "$INSTALL_NEEDED" = true ]; then
+          echo "Installing/upgrading Kurtosis CLI..."
+
+          # If version is changing, we'll need to restart the engine
+          if [ "$VERSION_CHANGED" = true ]; then
+            ENGINE_RESTART_NEEDED=true
+          fi
+
+          # Detect OS and install
           if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             # Linux - assume Ubuntu/Debian
-            echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
-            sudo apt update
-            sudo apt install -y kurtosis-cli
+            if [ "$DESIRED_VERSION" = "latest" ]; then
+              echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+              sudo apt update
+              sudo apt install -y kurtosis-cli
+            else
+              # For specific versions, we need to download the specific package
+              echo "Installing specific version $DESIRED_VERSION on Linux..."
+              # Note: This approach may need adjustment based on Kurtosis packaging
+              # For now, we'll try the repository approach and hope the version is available
+              echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+              sudo apt update
+              # Try to install specific version
+              sudo apt install -y kurtosis-cli=$DESIRED_VERSION || sudo apt install -y kurtosis-cli
+            fi
           elif [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS
             if command -v brew &> /dev/null; then
-              brew install kurtosis-tech/tap/kurtosis-cli
+              if [ "$DESIRED_VERSION" = "latest" ]; then
+                brew install kurtosis-tech/tap/kurtosis-cli || brew upgrade kurtosis-tech/tap/kurtosis-cli
+              else
+                # For specific versions, uninstall current and install specific version
+                brew uninstall kurtosis-tech/tap/kurtosis-cli 2>/dev/null || true
+                brew install kurtosis-tech/tap/kurtosis-cli@$DESIRED_VERSION || {
+                  echo "Specific version $DESIRED_VERSION not available via brew, installing latest"
+                  brew install kurtosis-tech/tap/kurtosis-cli
+                }
+              fi
             else
               echo "Homebrew not found. Please install Kurtosis manually: https://docs.kurtosis.com/install"
               exit 1
@@ -115,8 +180,29 @@ runs:
             exit 1
           fi
 
-          echo "Kurtosis CLI installed successfully"
-        else
-          echo "Kurtosis CLI already installed"
+          echo "Kurtosis CLI installation completed"
+        fi
+
+        # Verify installation and show version
+        if command -v kurtosis &> /dev/null; then
+          echo "Kurtosis CLI verification:"
           kurtosis version
+          NEW_VERSION=$(kurtosis version --json 2>/dev/null | jq -r '.cli_version' 2>/dev/null || kurtosis version 2>/dev/null | grep "CLI Version:" | awk '{print $3}' || echo "unknown")
+          echo "Installed version: $NEW_VERSION"
+
+          # Check if engine restart is needed
+          if [ "$ENGINE_RESTART_NEEDED" = true ] || [ "$NEW_VERSION" != "$CURRENT_VERSION" ]; then
+            echo "Version changed from '$CURRENT_VERSION' to '$NEW_VERSION', restarting Kurtosis engine..."
+
+            # Stop the engine if it's running
+            kurtosis engine stop 2>/dev/null || true
+
+            # Start the engine with the new version
+            kurtosis engine start
+
+            echo "Kurtosis engine restarted successfully"
+          fi
+        else
+          echo "ERROR: Kurtosis CLI installation failed"
+          exit 1
         fi
