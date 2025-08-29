@@ -206,7 +206,7 @@ inputs:
   kurtosis-version:
     description: 'Kurtosis CLI version to use'
     required: false
-    default: 'latest'
+    default: '1.11.1'
 
 outputs:
   report-path:
@@ -243,7 +243,7 @@ runs:
 
         # Build the Docker image
         echo "Building Docker image..."
-        docker build -t syncoor:local .
+        docker build -t syncoor:local --build-arg KURTOSIS_VERSION=${{ inputs.kurtosis-version }} .
         cd ..
 
         # Clean up
