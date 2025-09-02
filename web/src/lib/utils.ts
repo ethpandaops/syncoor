@@ -524,7 +524,7 @@ export function calculateClientGroupStats(reports: any[]) {
  * @returns Object with variant and display text
  */
 export function getStatusBadgeInfo(status?: string): { 
-  variant: 'default' | 'secondary' | 'destructive' | 'success' | 'outline';
+  variant: 'default' | 'secondary' | 'destructive' | 'success' | 'outline' | 'warning';
   text: string;
 } {
   if (!status) {
@@ -535,7 +535,7 @@ export function getStatusBadgeInfo(status?: string): {
     case 'success':
       return { variant: 'success', text: 'Success' };
     case 'timeout':
-      return { variant: 'destructive', text: 'Timeout' };
+      return { variant: 'warning', text: 'Timeout' };
     case 'cancelled':
       return { variant: 'secondary', text: 'Cancelled' };
     case 'error':
