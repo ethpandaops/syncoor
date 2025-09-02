@@ -53,7 +53,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   });
 
   // Handle click on data point
-  const handleDataPointClick = (data: any) => {
+  const handleDataPointClick = (data: { activePayload?: Array<{ payload: ChartDataPoint }> }) => {
     if (data && data.activePayload && data.activePayload[0]) {
       const payload = data.activePayload[0].payload as ChartDataPoint;
       navigate(`/test/${payload.runId}`);
@@ -61,11 +61,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   };
 
   // Handle legend click to toggle line visibility
-  const handleLegendClick = (entry: any) => {
+  const handleLegendClick = (data: unknown) => {
+    const entry = data as { dataKey?: string | number };
     const { dataKey } = entry;
+    if (!dataKey) return;
+    const stringKey = String(dataKey);
     setVisibleLines(prev => ({
       ...prev,
-      [dataKey]: !prev[dataKey as keyof typeof prev]
+      [stringKey]: !prev[stringKey as keyof typeof prev]
     }));
   };
 
@@ -96,7 +99,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   }, [data]);
 
   // Custom tooltip component
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
       return (

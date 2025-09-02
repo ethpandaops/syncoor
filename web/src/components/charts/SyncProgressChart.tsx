@@ -57,14 +57,14 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
   }, [data]);
 
   // Custom tooltip component
-  const CustomTooltip = ({ active, payload }: any) => {
+  const CustomTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: ChartDataPoint; dataKey: string; value: number; color: string }> }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload as ChartDataPoint;
       return (
         <div className="bg-white p-3 border rounded-lg shadow-lg">
           <p className="font-semibold text-gray-800 mb-2">{data.formattedTime}</p>
           <div className="space-y-1">
-            {payload.map((entry: any, index: number) => (
+            {payload.map((entry: { dataKey: string; value: number; color: string; name?: string }, index: number) => (
               <div key={index} className="flex items-center gap-2 text-sm">
                 <div
                   className="w-3 h-3 rounded-full"

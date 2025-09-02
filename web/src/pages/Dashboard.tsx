@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useConfig } from '../hooks/useConfig';
 import { useReports } from '../hooks/useReports';
 import { Card } from '../components/ui/card';
@@ -33,7 +33,7 @@ export default function Dashboard() {
   }, [reports, config]);
 
   // Get networks for the active directory
-  const getNetworksForDirectory = (directory: string) => {
+  const getNetworksForDirectory = useCallback((directory: string) => {
     const directoryReports = reports.filter(r => r.source_directory === directory);
     const networks = new Set(directoryReports.map(report => report.network));
     const networkArray = Array.from(networks);
@@ -44,7 +44,7 @@ export default function Dashboard() {
       if (b === 'mainnet') return 1;
       return a.localeCompare(b);
     });
-  };
+  }, [reports]);
 
   // Initialize state from URL params or defaults
   const [activeDirectory, setActiveDirectory] = useState<string | null>(() => {
@@ -125,7 +125,7 @@ export default function Dashboard() {
       setActiveNetworks({ [defaultDirectory]: defaultNetwork });
       setSearchParams({ directory: defaultDirectory, network: defaultNetwork });
     }
-  }, [availableDirectories, activeDirectory]);
+  }, [availableDirectories, activeDirectory, getNetworksForDirectory, setSearchParams]);
 
   if (configLoading || reportsLoading) {
     return (
