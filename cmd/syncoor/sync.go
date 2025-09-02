@@ -57,7 +57,8 @@ func NewSyncCommand() *cobra.Command {
 Exit codes:
   0   - Success (sync completed successfully)
   1   - General error
-  124 - Timeout (sync operation timed out)`,
+  124 - Timeout (sync operation timed out)
+  125 - Container crash (EL or CL container crashed)`,
 		Run: func(cmd *cobra.Command, args []string) {
 			// Create cancellable context for signal handling
 			ctx, cancel := context.WithCancel(context.Background())
@@ -175,8 +176,15 @@ Exit codes:
 					logger.Errorf("Sync operation timed out: %v", err)
 					os.Exit(ExitCodeTimeout)
 				} else {
-					logger.Errorf("Sync failed: %v", err)
-					os.Exit(ExitCodeError)
+					// Check if it's a container crash error
+					var crashErr *synctest.ContainerCrashError
+					if errors.As(err, &crashErr) {
+						logger.Errorf("Container crashed: %v", crashErr)
+						os.Exit(ExitCodeContainerCrash)
+					} else {
+						logger.Errorf("Sync failed: %v", err)
+						os.Exit(ExitCodeError)
+					}
 				}
 			}
 		},

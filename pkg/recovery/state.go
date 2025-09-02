@@ -2,10 +2,17 @@ package recovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 
 	"github.com/ethpandaops/syncoor/pkg/kurtosis"
 	"github.com/sirupsen/logrus"
+)
+
+// Static errors for better error handling
+var (
+	ErrContainerNotRunning = errors.New("container is not running")
 )
 
 // StateValidator handles enclave state validation for recovery operations
@@ -57,8 +64,37 @@ func (sv *StateValidator) CheckServiceHealth(ctx context.Context, enclaveName, s
 		"service": serviceName,
 	}).Debug("Checking service health")
 
-	// Use existing InspectService method to validate service accessibility
-	_, err := sv.kurtosisClient.InspectService(ctx, enclaveName, serviceName)
+	// First check container status to detect crashes
+	status, err := sv.kurtosisClient.GetServiceStatus(ctx, enclaveName, serviceName)
+	if err != nil {
+		sv.log.WithFields(logrus.Fields{
+			"enclave": enclaveName,
+			"service": serviceName,
+			"error":   err.Error(),
+		}).Error("Failed to get service status")
+		return fmt.Errorf("failed to get service %s status: %w", serviceName, err)
+	}
+
+	// Return error if container is not running to prevent recovery attempts
+	if !status.IsRunning {
+		sv.log.WithFields(logrus.Fields{
+			"enclave":   enclaveName,
+			"service":   serviceName,
+			"state":     status.State,
+			"exit_code": status.ExitCode,
+			"error":     status.Error,
+		}).Error("Service container is not running")
+
+		errorMsg := "service " + serviceName + " container is not running (state: " + status.State +
+			", exit code: " + strconv.Itoa(status.ExitCode) + ")"
+		if status.Error != "" {
+			errorMsg += ", error: " + status.Error
+		}
+		return fmt.Errorf("%w: %s", ErrContainerNotRunning, errorMsg)
+	}
+
+	// Also check service accessibility via RPC
+	_, err = sv.kurtosisClient.InspectService(ctx, enclaveName, serviceName)
 	if err != nil {
 		sv.log.WithFields(logrus.Fields{
 			"enclave": enclaveName,

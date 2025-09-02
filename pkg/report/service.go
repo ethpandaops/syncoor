@@ -64,16 +64,17 @@ type ClientInfo struct {
 }
 
 type SyncStatus struct {
-	Start            int64               `json:"start"`
-	End              int64               `json:"end"`
-	Status           string              `json:"status"`                   // "success", "timeout", "cancelled", "error"
-	StatusMessage    string              `json:"status_message,omitempty"` // Detailed message about the status
-	Block            uint64              `json:"block"`
-	Slot             uint64              `json:"slot"`
-	SyncProgress     []SyncProgressEntry `json:"sync_progress,omitempty"`
-	SyncProgressFile string              `json:"sync_progress_file,omitempty"`
-	LastEntry        *SyncProgressEntry  `json:"last_entry,omitempty"`
-	EntriesCount     int                 `json:"entries_count"`
+	Start            int64                  `json:"start"`
+	End              int64                  `json:"end"`
+	Status           string                 `json:"status"`                   // "success", "timeout", "cancelled", "error"
+	StatusMessage    string                 `json:"status_message,omitempty"` // Detailed message about the status
+	Block            uint64                 `json:"block"`
+	Slot             uint64                 `json:"slot"`
+	SyncProgress     []SyncProgressEntry    `json:"sync_progress,omitempty"`
+	SyncProgressFile string                 `json:"sync_progress_file,omitempty"`
+	LastEntry        *SyncProgressEntry     `json:"last_entry,omitempty"`
+	EntriesCount     int                    `json:"entries_count"`
+	ErrorDetails     map[string]interface{} `json:"error_details,omitempty"`
 }
 
 // SyncProgressEntry represents the progress data at a specific timestamp
@@ -140,6 +141,16 @@ func (s *service) SetSyncStatus(ctx context.Context, status string, message stri
 	}).Debug("Setting sync status")
 	s.result.SyncStatus.Status = status
 	s.result.SyncStatus.StatusMessage = message
+
+	// Populate error details when status is "error" and message is provided
+	if status == "error" && message != "" {
+		if s.result.SyncStatus.ErrorDetails == nil {
+			s.result.SyncStatus.ErrorDetails = make(map[string]interface{})
+		}
+		s.result.SyncStatus.ErrorDetails["message"] = message
+		s.result.SyncStatus.ErrorDetails["timestamp"] = time.Now().Unix()
+	}
+
 	return nil
 }
 
@@ -620,6 +631,7 @@ func (s *service) GetCurrentReport(ctx context.Context) (*Result, error) {
 			Block:         s.result.SyncStatus.Block,
 			Slot:          s.result.SyncStatus.Slot,
 			SyncProgress:  make([]SyncProgressEntry, len(s.result.SyncStatus.SyncProgress)),
+			ErrorDetails:  make(map[string]interface{}),
 		},
 		ExecutionClientInfo: s.result.ExecutionClientInfo,
 		ConsensusClientInfo: s.result.ConsensusClientInfo,
@@ -633,6 +645,11 @@ func (s *service) GetCurrentReport(ctx context.Context) (*Result, error) {
 
 	// Copy sync progress entries
 	copy(reportCopy.SyncStatus.SyncProgress, s.result.SyncStatus.SyncProgress)
+
+	// Copy error details
+	for k, v := range s.result.SyncStatus.ErrorDetails {
+		reportCopy.SyncStatus.ErrorDetails[k] = v
+	}
 
 	return reportCopy, nil
 }

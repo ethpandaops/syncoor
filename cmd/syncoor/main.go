@@ -25,6 +25,8 @@ const (
 	ExitCodeError = 1
 	// ExitCodeTimeout indicates the operation timed out
 	ExitCodeTimeout = 124
+	// ExitCodeContainerCrash indicates a container crashed
+	ExitCodeContainerCrash = 125
 )
 
 var rootCmd = &cobra.Command{

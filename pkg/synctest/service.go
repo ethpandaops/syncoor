@@ -464,49 +464,11 @@ func (s *service) WaitForSync(ctx context.Context) error {
 		case <-timeoutCtx.Done():
 			// Check if it was a timeout or regular cancellation
 			if errors.Is(timeoutCtx.Err(), context.DeadlineExceeded) {
-				s.log.WithField("timeout", s.cfg.RunTimeout).Warn("Sync operation timed out, generating report with timeout status")
-
-				// Mark test as completed to prevent further progress reports
-				s.testCompleted = true
-
-				// Set timeout status in report
 				timeoutMessage := fmt.Sprintf("Sync operation timed out after %v", s.cfg.RunTimeout)
-				if err := s.reportService.SetSyncStatus(ctx, "timeout", timeoutMessage); err != nil {
-					s.log.WithError(err).Warn("Failed to set timeout status in report")
-				}
+				logMessage := "Sync operation timed out, generating report with timeout status"
 
-				// Report timeout to centralized server if configured
-				if s.reportingClient != nil {
-					completeReq := reporting.TestCompleteRequest{
-						Timestamp: time.Now().Unix(),
-						Success:   false,
-						Error:     "sync operation timed out",
-					}
-
-					if err := s.reportingClient.ReportTestComplete(ctx, completeReq); err != nil {
-						s.log.WithError(err).Warn("Failed to report test timeout")
-					}
-				}
-
-				// Stop report service and save report with timeout status
-				if err := s.reportService.Stop(ctx); err != nil {
-					s.log.WithError(err).Error("Failed to stop report service")
-				}
-
-				// Save report even though it timed out
-				baseName := fmt.Sprintf("%s_%s_%s", s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
-				if err := s.reportService.SaveReportToFiles(ctx, baseName, s.cfg.ReportDir); err != nil {
-					s.log.WithError(err).Error("Failed to save timeout report")
-				} else {
-					s.log.Info("Timeout report saved successfully")
-				}
-
-				// Clean up temporary reports
-				if s.recoveryService != nil {
-					if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
-						s.log.WithError(err).Warn("Failed to clean up temporary reports")
-					}
-				}
+				// Use common finalization logic
+				s.finalizeSyncTest(ctx, "timeout", timeoutMessage, logMessage)
 
 				return fmt.Errorf("%w after %v", ErrSyncTimeout, s.cfg.RunTimeout)
 			}
@@ -516,6 +478,21 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 		gotExecutionSync := false
 		gotConsensusSync := false
+
+		// Check container health before checking sync status
+		elServiceName := s.executionClientFetcher.Name()
+		clServiceName := s.consensusClientFetcher.Name()
+		enclaveName := s.network.EnclaveName()
+
+		// Check EL container status
+		if crashErr := s.checkContainerHealth(ctx, enclaveName, elServiceName, "execution"); crashErr != nil {
+			return crashErr
+		}
+
+		// Check CL container status
+		if crashErr := s.checkContainerHealth(ctx, enclaveName, clServiceName, "consensus"); crashErr != nil {
+			return crashErr
+		}
 
 		// Check execution client sync status
 		execSyncStatus, err := s.executionClientFetcher.GetSyncStatus(ctx)
@@ -830,6 +807,83 @@ func (s *service) startClientLogStreaming(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// checkContainerHealth checks if a container is running and returns ContainerCrashError if not
+func (s *service) checkContainerHealth(ctx context.Context, enclaveName, serviceName, serviceType string) *ContainerCrashError {
+	status, err := s.kurtosisClient.GetServiceStatus(ctx, enclaveName, serviceName)
+	if err != nil {
+		s.log.WithError(err).WithFields(logrus.Fields{
+			"service": serviceName,
+			"enclave": enclaveName,
+		}).Warn("Failed to check container status")
+		return nil // Don't fail on status check errors, only on actual crashes
+	}
+
+	if !status.IsRunning {
+		crashErr := &ContainerCrashError{
+			ServiceName: serviceName,
+			ServiceType: serviceType,
+			State:       status.State,
+			ExitCode:    status.ExitCode,
+			Timestamp:   time.Now(),
+		}
+
+		// Use common finalization logic
+		errorMessage := serviceType + " client container crashed: " + crashErr.Error()
+		logMessage := serviceType + " client container crashed, finalizing test"
+		s.finalizeSyncTest(ctx, "error", errorMessage, logMessage)
+
+		return crashErr
+	}
+
+	return nil
+}
+
+// finalizeSyncTest handles the common finalization steps for failed sync tests
+func (s *service) finalizeSyncTest(ctx context.Context, status, errorMessage, logMessage string) {
+	s.log.Warn(logMessage)
+
+	// Mark test as completed to prevent further progress reports
+	s.testCompleted = true
+
+	// Set status in report
+	if err := s.reportService.SetSyncStatus(ctx, status, errorMessage); err != nil {
+		s.log.WithError(err).Warn("Failed to set status in report")
+	}
+
+	// Report to centralized server if configured
+	if s.reportingClient != nil {
+		completeReq := reporting.TestCompleteRequest{
+			Timestamp: time.Now().Unix(),
+			Success:   false,
+			Error:     errorMessage,
+		}
+
+		if err := s.reportingClient.ReportTestComplete(ctx, completeReq); err != nil {
+			s.log.WithError(err).Warn("Failed to report test failure")
+		}
+	}
+
+	// Stop report service and save report
+	if err := s.reportService.Stop(ctx); err != nil {
+		s.log.WithError(err).Error("Failed to stop report service")
+	}
+
+	// Save report with failure status
+	baseName := fmt.Sprintf("%s_%s_%s", s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
+	if err := s.reportService.SaveReportToFiles(ctx, baseName, s.cfg.ReportDir); err != nil {
+		s.log.WithError(err).Error("Failed to save failure report")
+	} else {
+		s.log.Info("Failure report saved successfully")
+	}
+
+	// Clean up temporary reports
+	if s.recoveryService != nil {
+		if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
+			s.log.WithError(err).Warn("Failed to clean up temporary reports")
+		}
+	}
 }
 
 // Interface compliance check

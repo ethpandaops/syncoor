@@ -497,7 +497,7 @@ function generateGitHubLabels() {
   };
 }
 
-function generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout = false) {
+function generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout = false, isCrash = false) {
   const duration = generateRealisticDuration(elClient, network);
   const startTime = timestamp;
   let endTime = startTime + duration;
@@ -520,12 +520,49 @@ function generateMainReport(runId, timestamp, network, elClient, clClient, isTim
     statusMessage = `Sync operation timed out after ${timeoutDuration}`;
   }
   
-  // Generate realistic block/slot ranges
-  const finalBlock = isTimeout ? randomInt(400000, 700000) : randomInt(800000, 900000);
-  const finalSlot = isTimeout ? randomInt(500000, 800000) : randomInt(950000, 1000000);
+  // For container crash tests, simulate crashes at various points
+  if (isCrash) {
+    // Crash at different points in the sync process (10% to 80% completion)
+    const crashPoint = randomFloat(0.1, 0.8);
+    const crashTime = startTime + Math.floor(duration * crashPoint);
+    endTime = crashTime;
+    status = "error";
+    
+    // Generate different types of container crashes
+    const crashTypes = [
+      { client: 'execution', reason: 'out of memory (OOM)', exitCode: 137 },
+      { client: 'execution', reason: 'segmentation fault', exitCode: 139 },
+      { client: 'execution', reason: 'disk space full', exitCode: 1 },
+      { client: 'consensus', reason: 'out of memory (OOM)', exitCode: 137 },
+      { client: 'consensus', reason: 'connection refused to execution client', exitCode: 1 },
+      { client: 'execution', reason: 'database corruption', exitCode: 1 },
+      { client: 'consensus', reason: 'failed to start beacon chain', exitCode: 1 }
+    ];
+    
+    const crashType = crashTypes[randomInt(0, crashTypes.length - 1)];
+    const clientName = crashType.client === 'execution' ? elClient : clClient;
+    statusMessage = `${crashType.client} client container crashed: Container ${clientName} (${crashType.client}) crashed with exit code ${crashType.exitCode} at ${new Date(crashTime * 1000).toISOString()}`;
+  }
   
-  // Generate progress entries up to timeout or completion
-  const numEntries = isTimeout ? randomInt(10, 50) : randomInt(15, 80);
+  // Generate realistic block/slot ranges
+  let finalBlock, finalSlot, numEntries;
+  
+  if (isTimeout) {
+    finalBlock = randomInt(400000, 700000);
+    finalSlot = randomInt(500000, 800000);
+    numEntries = randomInt(10, 50);
+  } else if (isCrash) {
+    // Crash scenarios: lower progress ranges
+    finalBlock = randomInt(200000, 600000);
+    finalSlot = randomInt(300000, 700000);
+    numEntries = randomInt(5, 30);
+  } else {
+    finalBlock = randomInt(800000, 900000);
+    finalSlot = randomInt(950000, 1000000);
+    numEntries = randomInt(15, 80);
+  }
+  
+  // Generate progress entries up to timeout, crash, or completion
   const actualDuration = endTime - startTime;
   const progressEntries = [];
   
@@ -603,9 +640,12 @@ function generateMockReports() {
           const daysAgo = randomInt(0, 30);
           const timestamp = Math.floor((Date.now() - (daysAgo * 24 * 60 * 60 * 1000)) / 1000);
           
-          // 10% chance of generating a timeout test  
-          const isTimeout = Math.random() < 0.1;
-          const report = generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout);
+          // Generate different test scenarios
+          const rand = Math.random();
+          const isTimeout = rand < 0.1;          // 10% chance of timeout
+          const isCrash = !isTimeout && rand < 0.15; // 5% chance of container crash (total 15% failures)
+          
+          const report = generateMainReport(runId, timestamp, network, elClient, clClient, isTimeout, isCrash);
           
           // Write main.json file
           const mainFilename = `${runId}-${network}_${elClient}_${clClient}.main.json`;
