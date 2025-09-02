@@ -517,6 +517,21 @@ func (s *service) WaitForSync(ctx context.Context) error {
 		gotExecutionSync := false
 		gotConsensusSync := false
 
+		// Check container health before checking sync status
+		elServiceName := s.executionClientFetcher.Name()
+		clServiceName := s.consensusClientFetcher.Name()
+		enclaveName := s.network.EnclaveName()
+
+		// Check EL container status
+		if crashErr := s.checkContainerHealth(ctx, enclaveName, elServiceName, "execution"); crashErr != nil {
+			return crashErr
+		}
+
+		// Check CL container status
+		if crashErr := s.checkContainerHealth(ctx, enclaveName, clServiceName, "consensus"); crashErr != nil {
+			return crashErr
+		}
+
 		// Check execution client sync status
 		execSyncStatus, err := s.executionClientFetcher.GetSyncStatus(ctx)
 		if err != nil {
@@ -827,6 +842,51 @@ func (s *service) startClientLogStreaming(ctx context.Context) error {
 	// Stream execution client logs
 	if err := streamer.StreamLogs(ctx, s.executionClient.Name(), s.cfg.ELClient, s.executionClient); err != nil {
 		return fmt.Errorf("failed to start execution client log streaming: %w", err)
+	}
+
+	return nil
+}
+
+// checkContainerHealth checks if a container is running and returns ContainerCrashError if not
+func (s *service) checkContainerHealth(ctx context.Context, enclaveName, serviceName, serviceType string) *ContainerCrashError {
+	status, err := s.kurtosisClient.GetServiceStatus(ctx, enclaveName, serviceName)
+	if err != nil {
+		s.log.WithError(err).WithFields(logrus.Fields{
+			"service": serviceName,
+			"enclave": enclaveName,
+		}).Warn("Failed to check container status")
+		return nil // Don't fail on status check errors, only on actual crashes
+	}
+
+	if !status.IsRunning {
+		crashErr := &ContainerCrashError{
+			ServiceName: serviceName,
+			ServiceType: serviceType,
+			State:       status.State,
+			ExitCode:    status.ExitCode,
+			Timestamp:   time.Now(),
+		}
+
+		// Set error status in report
+		errorMessage := serviceType + " client container crashed: " + crashErr.Error()
+		if err := s.reportService.SetSyncStatus(ctx, "error", errorMessage); err != nil {
+			s.log.WithError(err).Warn("Failed to set error status in report")
+		}
+
+		// Report error to centralized server if configured
+		if s.reportingClient != nil {
+			completeReq := reporting.TestCompleteRequest{
+				Timestamp: time.Now().Unix(),
+				Success:   false,
+				Error:     crashErr.Error(),
+			}
+
+			if err := s.reportingClient.ReportTestComplete(ctx, completeReq); err != nil {
+				s.log.WithError(err).Warn("Failed to report container crash")
+			}
+		}
+
+		return crashErr
 	}
 
 	return nil
