@@ -68,8 +68,11 @@ export interface TestSummary {
   is_complete: boolean;
   el_client: string;
   cl_client: string;
+  el_client_config: ClientConfig;
+  cl_client_config: ClientConfig;
   current_metrics?: ProgressMetrics;
   system_info?: SystemInfo;
+  run_timeout?: number;
   error?: string;
 }
 
@@ -88,6 +91,7 @@ export interface ClientConfig {
   type: string;
   image: string;
   extra_args?: string[];
+  env_vars?: Record<string, string>;
 }
 
 /**
@@ -108,6 +112,7 @@ export interface TestDetail {
   el_client_config: ClientConfig;
   cl_client_config: ClientConfig;
   enclave_name: string;
+  run_timeout?: number;
   end_time?: string;
   error?: string;
 }

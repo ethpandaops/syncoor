@@ -132,17 +132,33 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return `${gb.toFixed(1)} GB`;
   };
 
-  const formatDuration = (startTime: string, endTime?: string): string => {
+  const formatDuration = (startTime: string, endTime?: string, timeout?: number): string => {
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
     const diffMs = end.getTime() - start.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
+    let duration = '';
     if (hours > 0) {
-      return `${hours}h ${minutes}m`;
+      duration = `${hours}h ${minutes}m`;
+    } else {
+      duration = `${minutes}m`;
     }
-    return `${minutes}m`;
+
+    // Add timeout information if available
+    if (timeout && timeout > 0) {
+      const timeoutHours = Math.floor(timeout / 3600);
+      const timeoutMinutes = Math.floor((timeout % 3600) / 60);
+      let timeoutStr = '';
+      if (timeoutHours > 0) {
+        timeoutStr = `${timeoutHours}h${timeoutMinutes > 0 ? ` ${timeoutMinutes}m` : ''}`;
+      } else {
+        timeoutStr = `${timeoutMinutes}m`;
+      }
+      return `${duration} / ${timeoutStr}`;
+    }
+    return duration;
   };
 
   const formatTimeAgo = (timestamp: string): string => {
@@ -626,10 +642,39 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                           )}
                         </td>
                         <td className="py-2">
-                          <span className="flex items-center gap-1">
-                            <ClockIcon className="h-3 w-3" />
-                            {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}
-                          </span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="flex items-center gap-1 cursor-help">
+                                <ClockIcon className="h-3 w-3" />
+                                {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined, test.run_timeout)}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-gray-900 text-white border-gray-800">
+                              <div className="text-xs">
+                                <div>Running time: {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}</div>
+                                {test.run_timeout && test.run_timeout > 0 && (
+                                  <div>Timeout: {Math.floor(test.run_timeout / 3600)}h {Math.floor((test.run_timeout % 3600) / 60)}m</div>
+                                )}
+                                {test.run_timeout && !test.is_complete && test.is_running && (() => {
+                                  const start = new Date(test.start_time);
+                                  const now = new Date();
+                                  const elapsedSec = Math.floor((now.getTime() - start.getTime()) / 1000);
+                                  const remainingSec = test.run_timeout - elapsedSec;
+                                  if (remainingSec > 0) {
+                                    const remainingHours = Math.floor(remainingSec / 3600);
+                                    const remainingMinutes = Math.floor((remainingSec % 3600) / 60);
+                                    return (
+                                      <div className="text-yellow-400">
+                                        Time remaining: {remainingHours > 0 ? `${remainingHours}h ` : ''}{remainingMinutes}m
+                                      </div>
+                                    );
+                                  } else {
+                                    return <div className="text-red-400">Test may timeout soon</div>;
+                                  }
+                                })()}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
                         </td>
                       </tr>
                     ))}
