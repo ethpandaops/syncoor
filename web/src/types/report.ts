@@ -129,7 +129,7 @@ export interface TestReport {
   /** Test metadata */
   metadata?: {
     /** Test configuration parameters */
-    config?: Record<string, any>;
+    config?: Record<string, string | number | boolean>;
     /** Environment variables */
     environment?: Record<string, string>;
     /** Additional notes */

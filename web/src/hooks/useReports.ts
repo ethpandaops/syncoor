@@ -95,8 +95,8 @@ function paginateReports(reports: ReportEntry[], pagination: PaginationParams): 
  */
 function sortReports(reports: ReportEntry[], sortBy: string, sortOrder: 'asc' | 'desc'): ReportEntry[] {
   return [...reports].sort((a, b) => {
-    let aValue: any;
-    let bValue: any;
+    let aValue: string | number;
+    let bValue: string | number;
     
     switch (sortBy) {
       case 'timestamp':

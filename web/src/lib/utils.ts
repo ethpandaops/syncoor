@@ -353,7 +353,7 @@ export function getOptimalMovingAverageWindow(dataLength: number): number {
  * @param confidenceLevel - Confidence level (default: 0.95 for 95%)
  * @returns Array of data points with confidence bands
  */
-export function calculateConfidenceBands<T extends Record<string, any>>(
+export function calculateConfidenceBands<T extends Record<string, string | number>>(
   data: T[],
   valueKey: keyof T,
   windowSize?: number,
@@ -421,7 +421,7 @@ export function calculateConfidenceBands<T extends Record<string, any>>(
  * @param windowSize - Number of points to include in moving average (default: auto-calculated)
  * @returns Array of data points with moving average values
  */
-export function calculateMovingAverage<T extends Record<string, any>>(
+export function calculateMovingAverage<T extends Record<string, string | number>>(
   data: T[],
   valueKey: keyof T,
   windowSize?: number
@@ -457,7 +457,7 @@ export function calculateMovingAverage<T extends Record<string, any>>(
  * @param reports - Array of IndexEntry reports
  * @returns Object with last runtime, trend duration (last moving average), and most recent disk usage
  */
-export function calculateClientGroupStats(reports: any[]) {
+export function calculateClientGroupStats(reports: { timestamp: string | number; sync_info: { status?: string; duration: number; last_entry?: { de?: number } } }[]) {
   if (!reports || reports.length === 0) {
     return {
       lastRuntime: null,

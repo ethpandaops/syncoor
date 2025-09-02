@@ -168,7 +168,7 @@ export interface WebSocketMessage {
   /** Message type */
   type: 'test_update' | 'test_started' | 'test_completed' | 'test_failed' | 'ping';
   /** Message payload */
-  payload?: any;
+  payload?: Record<string, unknown>;
   /** Message timestamp */
   timestamp: string;
 }
@@ -182,7 +182,7 @@ export interface ApiError {
   /** Error message */
   message: string;
   /** Additional error details */
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
   /** Request ID for tracking */
   request_id?: string;
 }

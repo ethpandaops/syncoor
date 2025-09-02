@@ -96,7 +96,7 @@ export interface MainReport {
   system_info?: SystemInfo;
   labels?: Record<string, string>;
   metadata?: {
-    config?: Record<string, any>;
+    config?: Record<string, string | number | boolean>;
     environment?: Record<string, string>;
     notes?: string;
   };
