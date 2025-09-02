@@ -9,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/filters"
+	dockerclient "github.com/moby/moby/client"
 	"github.com/sirupsen/logrus"
 )
 
@@ -24,6 +27,9 @@ type ServiceStatus struct {
 type dockerState struct {
 	Running    bool   `json:"Running"`
 	Status     string `json:"Status"`
+	Paused     bool   `json:"Paused"`
+	Restarting bool   `json:"Restarting"`
+	Dead       bool   `json:"Dead"`
 	ExitCode   int    `json:"ExitCode"`
 	OOMKilled  bool   `json:"OOMKilled"`
 	Error      string `json:"Error"`
@@ -45,7 +51,8 @@ type Client interface {
 }
 
 type client struct {
-	log logrus.FieldLogger
+	log          logrus.FieldLogger
+	dockerClient dockerclient.APIClient
 }
 
 // TransportProtocol represents the transport protocol type
@@ -79,8 +86,14 @@ type KurtosisServiceInspectResult struct {
 
 // NewClient creates a new kurtosis client
 func NewClient(log logrus.FieldLogger) Client {
+	dockerCli, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv, dockerclient.WithAPIVersionNegotiation())
+	if err != nil {
+		log.WithError(err).Fatal("Failed to create Docker client")
+	}
+
 	return &client{
-		log: log.WithField("package", "kurtosis"),
+		log:          log.WithField("package", "kurtosis"),
+		dockerClient: dockerCli,
 	}
 }
 
@@ -239,38 +252,47 @@ func (c *client) getEnclaveUUID(ctx context.Context, enclaveName string) (string
 	return "", fmt.Errorf("%w: %s", ErrUUIDNotFound, enclaveName)
 }
 
-// findContainer finds the container ID for a service
+// findContainer finds the container ID for a service using Docker SDK
 func (c *client) findContainer(ctx context.Context, enclaveUUID, serviceName string) (string, error) {
-	// enclaveUUID and serviceName are from kurtosis output, so they're safe to use
-	cmd := exec.CommandContext(ctx, "docker", "ps", "-a", // #nosec G204
-		"--filter", "label=com.kurtosistech.enclave-id="+enclaveUUID,
-		"--filter", "label=com.kurtosistech.id="+serviceName,
-		"--format", "{{.ID}}")
+	filterArgs := filters.NewArgs()
+	filterArgs.Add("label", "com.kurtosistech.enclave-id="+enclaveUUID)
+	filterArgs.Add("label", "com.kurtosistech.id="+serviceName)
 
-	output, err := cmd.CombinedOutput()
+	containers, err := c.dockerClient.ContainerList(ctx, container.ListOptions{
+		All:     true,
+		Filters: filterArgs,
+	})
 	if err != nil {
-		return "", fmt.Errorf("failed to find container for service '%s': %w", serviceName, err)
+		return "", fmt.Errorf("failed to list containers for service '%s': %w", serviceName, err)
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	if len(containers) == 0 {
+		return "", nil // No container found
+	}
+
+	return containers[0].ID, nil
 }
 
-// inspectContainerState inspects the container state using Docker
+// inspectContainerState inspects the container state using Docker SDK
 func (c *client) inspectContainerState(ctx context.Context, containerID string) (*dockerState, error) {
-	// Use static args to avoid G204 linting issue - containerID is from docker ps output so it's safe
-	cmd := exec.CommandContext(ctx, "docker", "inspect", "--format", "{{json .State}}", containerID) // #nosec G204
-	output, err := cmd.CombinedOutput()
+	containerJSON, err := c.dockerClient.ContainerInspect(ctx, containerID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to inspect container '%s': %w", containerID, err)
 	}
 
-	// Parse the Docker state
-	var state dockerState
-	if err := json.Unmarshal(output, &state); err != nil {
-		return nil, fmt.Errorf("failed to parse container state JSON: %w", err)
+	// Convert Docker API state to our dockerState struct
+	state := &dockerState{
+		Status:     containerJSON.State.Status,
+		Running:    containerJSON.State.Running,
+		Paused:     containerJSON.State.Paused,
+		Restarting: containerJSON.State.Restarting,
+		Dead:       containerJSON.State.Dead,
+		ExitCode:   containerJSON.State.ExitCode,
+		Error:      containerJSON.State.Error,
+		OOMKilled:  containerJSON.State.OOMKilled,
 	}
 
-	return &state, nil
+	return state, nil
 }
 
 // buildErrorMessage builds appropriate error message based on container state
