@@ -24,6 +24,7 @@ export default function TestList() {
   // Legacy client filter (now split into elClient and clClient)
   const elClientFilter = searchParams.get('elClient') || '';
   const clClientFilter = searchParams.get('clClient') || '';
+  const statusFilter = searchParams.get('status') || '';
   const minDuration = searchParams.get('minDuration') || '';
   const maxDuration = searchParams.get('maxDuration') || '';
   
@@ -73,13 +74,14 @@ export default function TestList() {
   
   // Get unique values for filter dropdowns
   const uniqueValues = useMemo(() => {
-    if (!allReports) return { directories: [], networks: [], elClients: [], clClients: [] };
+    if (!allReports) return { directories: [], networks: [], elClients: [], clClients: [], statuses: [] };
     
     return {
       directories: [...new Set(allReports.map(r => r.source_directory))].sort(),
       networks: [...new Set(allReports.map(r => r.network))].sort(),
       elClients: [...new Set(allReports.map(r => r.execution_client_info.type))].sort(),
-      clClients: [...new Set(allReports.map(r => r.consensus_client_info.type))].sort()
+      clClients: [...new Set(allReports.map(r => r.consensus_client_info.type))].sort(),
+      statuses: [...new Set(allReports.map(r => r.sync_info.status || 'success'))].sort()
     };
   }, [allReports]);
   
@@ -92,6 +94,7 @@ export default function TestList() {
       if (networkFilter && report.network !== networkFilter) return false;
       if (elClientFilter && report.execution_client_info.type !== elClientFilter) return false;
       if (clClientFilter && report.consensus_client_info.type !== clClientFilter) return false;
+      if (statusFilter && (report.sync_info.status || 'success') !== statusFilter) return false;
       if (minDuration && report.sync_info.duration < parseInt(minDuration)) return false;
       if (maxDuration && report.sync_info.duration > parseInt(maxDuration)) return false;
       return true;
@@ -163,7 +166,7 @@ export default function TestList() {
     });
     
     return filtered;
-  }, [allReports, directoryFilter, networkFilter, elClientFilter, clClientFilter, minDuration, maxDuration, sortBy, sortOrder]);
+  }, [allReports, directoryFilter, networkFilter, elClientFilter, clClientFilter, statusFilter, minDuration, maxDuration, sortBy, sortOrder]);
   
   // Paginate results
   const total = filteredAndSortedReports.length;
@@ -215,13 +218,14 @@ export default function TestList() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Test Results</h1>
-          {(directoryFilter || networkFilter || elClientFilter || clClientFilter || minDuration || maxDuration) && (
+          {(directoryFilter || networkFilter || elClientFilter || clClientFilter || statusFilter || minDuration || maxDuration) && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-sm text-muted-foreground">Filtered by:</span>
               {directoryFilter && <Badge variant="outline">{directoryFilter}</Badge>}
               {networkFilter && <Badge variant="secondary">{networkFilter}</Badge>}
               {elClientFilter && <Badge variant="default">EL: {elClientFilter}</Badge>}
               {clClientFilter && <Badge variant="default">CL: {clClientFilter}</Badge>}
+              {statusFilter && <Badge variant={getStatusBadgeInfo(statusFilter).variant}>{getStatusBadgeInfo(statusFilter).text}</Badge>}
               {minDuration && <Badge variant="outline">Min: {formatDuration(parseInt(minDuration))}</Badge>}
               {maxDuration && <Badge variant="outline">Max: {formatDuration(parseInt(maxDuration))}</Badge>}
             </div>
@@ -232,7 +236,7 @@ export default function TestList() {
 
       <Card className="p-6">
         {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-6">
           <div className="space-y-2">
             <label className="text-sm font-medium">Directory</label>
             <Select value={directoryFilter || "__all__"} onValueChange={(value) => updateUrlParams({ directory: value === "__all__" ? "" : value })}>
@@ -296,6 +300,26 @@ export default function TestList() {
               </SelectContent>
             </Select>
           </div>
+          
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Status</label>
+            <Select value={statusFilter || "__all__"} onValueChange={(value) => updateUrlParams({ status: value === "__all__" ? "" : value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All Statuses</SelectItem>
+                {uniqueValues.statuses.map(status => (
+                  <SelectItem key={status} value={status}>
+                    <div className="flex items-center gap-2">
+                      {getStatusIcon(status)}
+                      <span className="capitalize">{getStatusBadgeInfo(status).text}</span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         
         {/* Duration filters */}
@@ -338,7 +362,7 @@ export default function TestList() {
         </div>
         
         {/* Clear filters button */}
-        {(directoryFilter || networkFilter || elClientFilter || clClientFilter || minDuration || maxDuration) && (
+        {(directoryFilter || networkFilter || elClientFilter || clClientFilter || statusFilter || minDuration || maxDuration) && (
           <div className="mb-6">
             <Button
               variant="outline"
