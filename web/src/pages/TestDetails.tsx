@@ -166,6 +166,57 @@ export default function TestDetails() {
         </Link>
       </div>
 
+      {/* Status Banner for Timeout/Error */}
+      {(() => {
+        const status = mainReport?.sync_status?.status || testReport.sync_info.status;
+        const statusMessage = mainReport?.sync_status?.status_message || testReport.sync_info.status_message;
+        
+        if (status === 'timeout' || status === 'error') {
+          return (
+            <div className={`p-4 rounded-lg border-l-4 ${
+              status === 'timeout' 
+                ? 'bg-yellow-50 border-l-yellow-400 dark:bg-yellow-900/20 dark:border-l-yellow-400' 
+                : 'bg-red-50 border-l-red-400 dark:bg-red-900/20 dark:border-l-red-400'
+            }`}>
+              <div className="flex items-start">
+                <div className={`flex-shrink-0 ${
+                  status === 'timeout' ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {status === 'timeout' ? (
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                    </svg>
+                  ) : (
+                    <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zM10 13a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className={`text-sm font-medium ${
+                    status === 'timeout' 
+                      ? 'text-yellow-800 dark:text-yellow-200' 
+                      : 'text-red-800 dark:text-red-200'
+                  }`}>
+                    {status === 'timeout' ? 'Test Timed Out' : 'Test Failed'}
+                  </h3>
+                  {statusMessage && (
+                    <p className={`mt-1 text-sm ${
+                      status === 'timeout' 
+                        ? 'text-yellow-700 dark:text-yellow-300' 
+                        : 'text-red-700 dark:text-red-300'
+                    }`}>
+                      {statusMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
+
       {/* Test Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4">
