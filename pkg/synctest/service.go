@@ -66,6 +66,9 @@ type service struct {
 	// Version information
 	syncoorVersion string
 
+	// Run identification
+	runID string
+
 	cancel context.CancelFunc
 }
 
@@ -294,9 +297,9 @@ func (s *service) Start(ctx context.Context) error {
 
 	// Report test start if reporting client is configured
 	if s.reportingClient != nil {
-		runID := fmt.Sprintf("sync-test-%d-%s_%s_%s", time.Now().UnixNano(), s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
+		s.runID = fmt.Sprintf("sync-test-%d-%s_%s_%s", time.Now().UnixNano(), s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
 		startReq := reporting.TestKeepaliveRequest{
-			RunID:     runID,
+			RunID:     s.runID,
 			Timestamp: time.Now().Unix(),
 			Network:   s.cfg.Network,
 			Labels:    s.cfg.Labels,
@@ -407,6 +410,73 @@ func (s *service) Start(ctx context.Context) error {
 		"image":          clInspect.Image,
 		"env_vars":       len(clInspect.EnvVars),
 	}).Info("Consensus client info")
+
+	// Send updated keepalive with actual container details after inspection
+	if s.reportingClient != nil && s.runID != "" {
+		// Extract command line arguments from Cmd and Entrypoint
+		elArgs := make([]string, 0, len(elInspect.Entrypoint)+len(elInspect.Cmd))
+		elArgs = append(elArgs, elInspect.Entrypoint...)
+		elArgs = append(elArgs, elInspect.Cmd...)
+
+		clArgs := make([]string, 0, len(clInspect.Entrypoint)+len(clInspect.Cmd))
+		clArgs = append(clArgs, clInspect.Entrypoint...)
+		clArgs = append(clArgs, clInspect.Cmd...)
+
+		// Create updated client configurations with actual container details
+		elClientConfig := reporting.ClientConfig{
+			Type:      s.cfg.ELClient,
+			Image:     elInspect.Image,
+			ExtraArgs: elArgs,
+			EnvVars:   elInspect.EnvVars,
+		}
+
+		clClientConfig := reporting.ClientConfig{
+			Type:      s.cfg.CLClient,
+			Image:     clInspect.Image,
+			ExtraArgs: clArgs,
+			EnvVars:   clInspect.EnvVars,
+		}
+
+		// Add user-provided extra args to the actual container args
+		if len(s.cfg.ELExtraArgs) > 0 {
+			elClientConfig.ExtraArgs = append(elClientConfig.ExtraArgs, s.cfg.ELExtraArgs...)
+		}
+		if len(s.cfg.CLExtraArgs) > 0 {
+			clClientConfig.ExtraArgs = append(clClientConfig.ExtraArgs, s.cfg.CLExtraArgs...)
+		}
+
+		// Merge user-provided env vars with container env vars
+		for key, value := range s.cfg.ELEnvVars {
+			if elClientConfig.EnvVars == nil {
+				elClientConfig.EnvVars = make(map[string]string)
+			}
+			elClientConfig.EnvVars[key] = value
+		}
+		for key, value := range s.cfg.CLEnvVars {
+			if clClientConfig.EnvVars == nil {
+				clClientConfig.EnvVars = make(map[string]string)
+			}
+			clClientConfig.EnvVars[key] = value
+		}
+
+		updatedReq := reporting.TestKeepaliveRequest{
+			RunID:       s.runID,
+			Timestamp:   time.Now().Unix(),
+			Network:     s.cfg.Network,
+			Labels:      s.cfg.Labels,
+			ELClient:    elClientConfig,
+			CLClient:    clClientConfig,
+			EnclaveName: s.cfg.EnclaveName,
+			SystemInfo:  systemInfo,
+			RunTimeout:  int64(s.cfg.RunTimeout.Seconds()),
+		}
+
+		if err := s.reportingClient.ReportTestKeepAlive(ctx, updatedReq); err != nil {
+			s.log.WithError(err).Warn("Failed to send updated keepalive with container details")
+		} else {
+			s.log.Debug("Sent updated keepalive with actual container details")
+		}
+	}
 
 	// Start client log streaming if enabled
 	if s.cfg.ClientLogs {
