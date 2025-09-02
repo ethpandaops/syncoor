@@ -28,8 +28,11 @@ type TestSummary struct {
 	IsComplete     bool                       `json:"is_complete"`
 	ELClient       string                     `json:"el_client"`
 	CLClient       string                     `json:"cl_client"`
+	ELClientConfig reporting.ClientConfig     `json:"el_client_config"`
+	CLClientConfig reporting.ClientConfig     `json:"cl_client_config"`
 	CurrentMetrics *reporting.ProgressMetrics `json:"current_metrics,omitempty"`
 	SystemInfo     *sysinfo.SystemInfo        `json:"system_info,omitempty"`
+	RunTimeout     int64                      `json:"run_timeout,omitempty"`
 	Error          string                     `json:"error,omitempty"`
 }
 

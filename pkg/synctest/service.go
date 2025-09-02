@@ -304,14 +304,17 @@ func (s *service) Start(ctx context.Context) error {
 				Type:      s.cfg.ELClient,
 				Image:     s.cfg.ELImage,
 				ExtraArgs: s.cfg.ELExtraArgs,
+				EnvVars:   s.cfg.ELEnvVars,
 			},
 			CLClient: reporting.ClientConfig{
 				Type:      s.cfg.CLClient,
 				Image:     s.cfg.CLImage,
 				ExtraArgs: s.cfg.CLExtraArgs,
+				EnvVars:   s.cfg.CLEnvVars,
 			},
 			EnclaveName: s.cfg.EnclaveName,
 			SystemInfo:  systemInfo,
+			RunTimeout:  int64(s.cfg.RunTimeout.Seconds()),
 		}
 
 		if err := s.reportingClient.ReportTestKeepAlive(ctx, startReq); err != nil {

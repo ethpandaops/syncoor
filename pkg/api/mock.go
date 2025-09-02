@@ -9,6 +9,14 @@ import (
 	"github.com/ethpandaops/syncoor/pkg/reporting"
 )
 
+// Network constants
+const (
+	networkMainnet = "mainnet"
+	networkHolesky = "holesky"
+	networkSepolia = "sepolia"
+	networkHoodi   = "hoodi"
+)
+
 // generateMockData creates sample test data for demonstration
 func (s *Server) generateMockData() {
 	s.log.Info("Generating mock test data")
@@ -22,29 +30,29 @@ func (s *Server) generateMockData() {
 		status  string
 	}{
 		// Running tests (more of these for better demo)
-		{"mock-test-001", "mainnet", "geth", "lighthouse", "running"},
-		{"mock-test-002", "mainnet", "besu", "prysm", "running"},
-		{"mock-test-003", "sepolia", "nethermind", "teku", "running"},
-		{"mock-test-004", "holesky", "reth", "nimbus", "running"},
-		{"mock-test-005", "mainnet", "erigon", "lighthouse", "running"},
-		{"mock-test-006", "sepolia", "geth", "prysm", "running"},
-		{"mock-test-007", "holesky", "besu", "teku", "running"},
-		{"mock-test-008", "mainnet", "nethermind", "nimbus", "running"},
-		{"mock-test-009", "sepolia", "reth", "lighthouse", "running"},
-		{"mock-test-010", "holesky", "erigon", "prysm", "running"},
+		{"mock-test-001", networkMainnet, "geth", "lighthouse", "running"},
+		{"mock-test-002", networkMainnet, "besu", "prysm", "running"},
+		{"mock-test-003", networkSepolia, "nethermind", "teku", "running"},
+		{"mock-test-004", networkHolesky, "reth", "nimbus", "running"},
+		{"mock-test-005", networkMainnet, "erigon", "lighthouse", "running"},
+		{"mock-test-006", networkSepolia, "geth", "prysm", "running"},
+		{"mock-test-007", networkHolesky, "besu", "teku", "running"},
+		{"mock-test-008", networkMainnet, "nethermind", "nimbus", "running"},
+		{"mock-test-009", networkSepolia, "reth", "lighthouse", "running"},
+		{"mock-test-010", networkHolesky, "erigon", "prysm", "running"},
 
 		// Some completed tests for variety
-		{"mock-test-011", "mainnet", "geth", "teku", "completed"},
-		{"mock-test-012", "sepolia", "besu", "nimbus", "completed"},
-		{"mock-test-013", "holesky", "nethermind", "lighthouse", "completed"},
-		{"mock-test-014", "mainnet", "reth", "prysm", "completed"},
-		{"mock-test-015", "sepolia", "erigon", "teku", "completed"},
+		{"mock-test-011", networkMainnet, "geth", "teku", "completed"},
+		{"mock-test-012", networkSepolia, "besu", "nimbus", "completed"},
+		{"mock-test-013", networkHolesky, "nethermind", "lighthouse", "completed"},
+		{"mock-test-014", networkMainnet, "reth", "prysm", "completed"},
+		{"mock-test-015", networkSepolia, "erigon", "teku", "completed"},
 
 		// Some timeout tests for variety
-		{"mock-test-016", "mainnet", "geth", "nimbus", "timeout"},
-		{"mock-test-017", "sepolia", "besu", "lighthouse", "timeout"},
-		{"mock-test-018", "holesky", "nethermind", "prysm", "timeout"},
-		{"mock-test-019", "mainnet", "reth", "teku", "timeout"},
+		{"mock-test-016", networkMainnet, "geth", "nimbus", "timeout"},
+		{"mock-test-017", networkSepolia, "besu", "lighthouse", "timeout"},
+		{"mock-test-018", networkHolesky, "nethermind", "prysm", "timeout"},
+		{"mock-test-019", networkMainnet, "reth", "teku", "timeout"},
 	}
 
 	for _, test := range mockTests {
@@ -105,15 +113,20 @@ func (s *Server) buildMockTestRequest(runID, network, elType, clType string) rep
 		Network:   network,
 		Labels:    labels,
 		ELClient: reporting.ClientConfig{
-			Type:  elType,
-			Image: elType + ":latest",
+			Type:      elType,
+			Image:     elType + ":latest",
+			ExtraArgs: generateMockExtraArgs(elType, network),
+			EnvVars:   generateMockEnvVars(elType, network),
 		},
 		CLClient: reporting.ClientConfig{
-			Type:  clType,
-			Image: clType + ":latest",
+			Type:      clType,
+			Image:     clType + ":latest",
+			ExtraArgs: generateMockExtraArgs(clType, network),
+			EnvVars:   generateMockEnvVars(clType, network),
 		},
 		EnclaveName: "mock-enclave",
 		SystemInfo:  nil,
+		RunTimeout:  generateMockTimeout(network),
 	}
 }
 
@@ -306,4 +319,162 @@ func generateRandomActor() string {
 	actors := []string{"alice-dev", "bob-tester", "charlie-ops", "diana-ci", "evan-qa"}
 	n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(actors))))
 	return actors[n.Int64()]
+}
+
+// getClientExtraArgs returns argument configurations for different client types
+func getClientExtraArgs() map[string]func(network string) []string {
+	return map[string]func(network string) []string{
+		"geth": func(network string) []string {
+			args := []string{"--syncmode=snap", "--cache=4096"}
+			if network == networkMainnet {
+				args = append(args, "--maxpeers=50")
+			}
+			return args
+		},
+		"besu": func(network string) []string {
+			args := []string{"--sync-mode=SNAP", "--Xplugin-rocksdb-high-spec-enabled"}
+			if network != networkMainnet {
+				args = append(args, "--network="+network)
+			}
+			return args
+		},
+		"nethermind": func(network string) []string {
+			return []string{"--config=" + network, "--Sync.FastSync=true"}
+		},
+		"erigon": func(network string) []string {
+			return []string{"--chain=" + network, "--prune=hrtc"}
+		},
+		"reth": func(network string) []string {
+			return []string{"--chain=" + network, "--debug.continuous"}
+		},
+		"lighthouse": func(network string) []string {
+			args := []string{"--network=" + network}
+			if network == networkMainnet {
+				args = append(args, "--checkpoint-sync-url=https://mainnet.checkpoint.sigp.io")
+			}
+			return args
+		},
+		"prysm": func(network string) []string {
+			return []string{"--" + network, "--accept-terms-of-use"}
+		},
+		"teku": func(network string) []string {
+			return []string{"--network=" + network, "--data-storage-mode=prune"}
+		},
+		"nimbus": func(network string) []string {
+			return []string{"--network=" + network, "--web3-url=http://127.0.0.1:8551"}
+		},
+	}
+}
+
+// generateMockExtraArgs generates realistic extra arguments for clients
+func generateMockExtraArgs(clientType, network string) []string {
+	clientArgs := getClientExtraArgs()
+	if argFunc, exists := clientArgs[clientType]; exists {
+		return argFunc(network)
+	}
+	return []string{}
+}
+
+// getClientEnvVars returns environment variable configurations for different client types
+func getClientEnvVars() map[string]func(network string) map[string]string {
+	return map[string]func(network string) map[string]string{
+		"geth": func(network string) map[string]string {
+			envVars := map[string]string{
+				"GETH_CACHE":    "4096",
+				"GETH_MAXPEERS": "50",
+			}
+			if network == networkSepolia {
+				envVars["GETH_TESTNET"] = networkSepolia
+			}
+			return envVars
+		},
+		"besu": func(_ string) map[string]string {
+			return map[string]string{
+				"BESU_OPTS":           "-Xmx8g",
+				"BESU_RPC_HTTP_APIS":  "ETH,NET,WEB3",
+				"BESU_STORAGE_ENGINE": "BONSAI",
+			}
+		},
+		"nethermind": func(_ string) map[string]string {
+			return map[string]string{
+				"NETHERMIND_PRUNING_CACHESIZERESTART": "2048",
+				"NETHERMIND_DISCOVERY_BOOTNODES":      "auto",
+				"ASPNETCORE_ENVIRONMENT":              "Production",
+			}
+		},
+		"erigon": func(network string) map[string]string {
+			return map[string]string{
+				"ERIGON_DATADIR": "/data",
+				"ERIGON_CHAIN":   network,
+				"GOMAXPROCS":     "8",
+			}
+		},
+		"reth": func(network string) map[string]string {
+			return map[string]string{
+				"RUST_LOG":     "info",
+				"RETH_DATADIR": "/data",
+				"RETH_NETWORK": network,
+			}
+		},
+		"lighthouse": func(network string) map[string]string {
+			envVars := map[string]string{
+				"RUST_LOG":           "info",
+				"LIGHTHOUSE_NETWORK": network,
+				"LIGHTHOUSE_DATADIR": "/data",
+			}
+			if network == networkMainnet {
+				envVars["LIGHTHOUSE_CHECKPOINT_SYNC"] = "true"
+			}
+			return envVars
+		},
+		"prysm": func(_ string) map[string]string {
+			return map[string]string{
+				"PRYSM_WEB3PROVIDER": "http://127.0.0.1:8551",
+				"PRYSM_DATADIR":      "/data",
+				"GOMAXPROCS":         "4",
+			}
+		},
+		"teku": func(network string) map[string]string {
+			return map[string]string{
+				"JAVA_OPTS":      "-Xmx4g -XX:+UseG1GC",
+				"TEKU_NETWORK":   network,
+				"TEKU_DATA_PATH": "/data",
+			}
+		},
+		"nimbus": func(network string) map[string]string {
+			return map[string]string{
+				"NIMBUS_NETWORK":  network,
+				"NIMBUS_DATA_DIR": "/data",
+				"NIMBUS_WEB3_URL": "http://127.0.0.1:8551",
+			}
+		},
+	}
+}
+
+// generateMockEnvVars generates realistic environment variables for clients
+func generateMockEnvVars(clientType, network string) map[string]string {
+	clientEnvs := getClientEnvVars()
+	if envFunc, exists := clientEnvs[clientType]; exists {
+		return envFunc(network)
+	}
+	return map[string]string{}
+}
+
+// getNetworkTimeouts returns timeout configurations in seconds for different networks
+func getNetworkTimeouts() map[string]int64 {
+	return map[string]int64{
+		networkMainnet: 7200, // 2 hours
+		networkHolesky: 3600, // 1 hour
+		networkSepolia: 2700, // 45 minutes
+		networkHoodi:   1800, // 30 minutes
+	}
+}
+
+// generateMockTimeout generates realistic timeout values based on network
+func generateMockTimeout(network string) int64 {
+	timeouts := getNetworkTimeouts()
+	if timeout, exists := timeouts[network]; exists {
+		return timeout
+	}
+	return 3600 // Default to 1 hour
 }

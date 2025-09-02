@@ -44,6 +44,7 @@ type TestData struct {
 	CLClient    reporting.ClientConfig
 	EnclaveName string
 	SystemInfo  *sysinfo.SystemInfo
+	RunTimeout  int64
 
 	CurrentMetrics *reporting.ProgressMetrics
 	History        []ProgressPoint
@@ -92,6 +93,7 @@ func (s *Store) CreateTest(req reporting.TestKeepaliveRequest) error {
 		CLClient:    req.CLClient,
 		EnclaveName: req.EnclaveName,
 		SystemInfo:  req.SystemInfo,
+		RunTimeout:  req.RunTimeout,
 		History:     make([]ProgressPoint, 0),
 	}
 
@@ -200,8 +202,11 @@ func (s *Store) ListTests(activeOnly bool) []TestSummary {
 			IsComplete:     test.IsComplete,
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
+			ELClientConfig: test.ELClient,
+			CLClientConfig: test.CLClient,
 			CurrentMetrics: test.CurrentMetrics,
 			SystemInfo:     test.SystemInfo,
+			RunTimeout:     test.RunTimeout,
 			Error:          test.Error,
 		}
 
@@ -231,8 +236,11 @@ func (s *Store) GetTestDetail(runID string) (*TestDetail, error) {
 			IsComplete:     test.IsComplete,
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
+			ELClientConfig: test.ELClient,
+			CLClientConfig: test.CLClient,
 			CurrentMetrics: test.CurrentMetrics,
 			SystemInfo:     test.SystemInfo,
+			RunTimeout:     test.RunTimeout,
 		},
 		ProgressHistory: make([]ProgressPoint, len(test.History)),
 		ELClientConfig:  test.ELClient,

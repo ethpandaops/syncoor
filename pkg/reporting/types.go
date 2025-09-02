@@ -12,12 +12,14 @@ type TestKeepaliveRequest struct {
 	CLClient    ClientConfig        `json:"cl_client"`
 	EnclaveName string              `json:"enclave_name"`
 	SystemInfo  *sysinfo.SystemInfo `json:"system_info,omitempty"`
+	RunTimeout  int64               `json:"run_timeout,omitempty"`
 }
 
 type ClientConfig struct {
-	Type      string   `json:"type"`
-	Image     string   `json:"image"`
-	ExtraArgs []string `json:"extra_args,omitempty"`
+	Type      string            `json:"type"`
+	Image     string            `json:"image"`
+	ExtraArgs []string          `json:"extra_args,omitempty"`
+	EnvVars   map[string]string `json:"env_vars,omitempty"`
 }
 
 type ProgressUpdateRequest struct {
