@@ -112,6 +112,7 @@ export interface TestDetail {
   el_client_config: ClientConfig;
   cl_client_config: ClientConfig;
   enclave_name: string;
+  system_info?: SystemInfo;
   run_timeout?: number;
   end_time?: string;
   error?: string;
