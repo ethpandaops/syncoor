@@ -557,7 +557,8 @@ func (s *Server) startPeriodicMockUpdates(mockTests []struct {
 	elType  string
 	clType  string
 	status  string
-}) {
+},
+) {
 	go func() {
 		ticker := time.NewTicker(20 * time.Second)
 		defer ticker.Stop()
@@ -575,7 +576,8 @@ func (s *Server) updateRunningMockTests(mockTests []struct {
 	elType  string
 	clType  string
 	status  string
-}) {
+},
+) {
 	for _, test := range mockTests {
 		if test.status != "running" {
 			continue
