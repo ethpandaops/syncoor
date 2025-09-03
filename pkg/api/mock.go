@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
 )
 
 // Network constants
@@ -125,7 +126,7 @@ func (s *Server) buildMockTestRequest(runID, network, elType, clType string) rep
 			EnvVars:   generateMockEnvVars(clType, network),
 		},
 		EnclaveName: "mock-enclave",
-		SystemInfo:  nil,
+		SystemInfo:  generateMockSystemInfo(runID, elType, clType, network),
 		RunTimeout:  generateMockTimeout(network),
 	}
 }
@@ -477,4 +478,71 @@ func generateMockTimeout(network string) int64 {
 		return timeout
 	}
 	return 3600 // Default to 1 hour
+}
+
+// getSystemSpecs returns CPU cores and memory GB based on network
+func getSystemSpecs(network string) (int, int) {
+	specs := map[string][2]int{
+		networkMainnet: {16, 64},
+		networkHolesky: {8, 32},
+	}
+	if spec, exists := specs[network]; exists {
+		return spec[0], spec[1]
+	}
+	return 4, 16 // default for sepolia, hoodi, etc.
+}
+
+// adjustSpecsForClients adds variation based on client types
+func adjustSpecsForClients(cpuCores, memoryGB int, elType, clType string) (int, int) {
+	if elType == "erigon" || elType == "besu" {
+		cpuCores += 4
+		memoryGB += 16
+	}
+	if clType == "prysm" || clType == "teku" {
+		memoryGB += 8
+	}
+	return cpuCores, memoryGB
+}
+
+// getOSVariant returns OS variant based on runID
+func getOSVariant(runID string) string {
+	osOptions := []string{
+		"Ubuntu 22.04.3 LTS",
+		"Ubuntu 20.04.6 LTS",
+		"Debian GNU/Linux 12 (bookworm)",
+		"CentOS Linux 8",
+	}
+	osIndex := len(runID) % len(osOptions)
+	return osOptions[osIndex]
+}
+
+// generateMockSystemInfo generates realistic system information for mock tests
+func generateMockSystemInfo(runID, elType, clType, network string) *sysinfo.SystemInfo {
+	cpuCores, memoryGB := getSystemSpecs(network)
+	cpuCores, memoryGB = adjustSpecsForClients(cpuCores, memoryGB, elType, clType)
+	osVariant := getOSVariant(runID)
+
+	// Ensure safe values for conversions
+	safeCPUCores := uint(4)
+	safeMemoryGB := uint64(16)
+
+	if cpuCores > 0 && cpuCores < 1000 {
+		safeCPUCores = uint(cpuCores)
+	}
+	if memoryGB > 0 && memoryGB < 1024 {
+		safeMemoryGB = uint64(memoryGB)
+	}
+
+	return &sysinfo.SystemInfo{
+		Hostname:       "mock-runner-" + runID[len(runID)-3:],
+		GoVersion:      "go1.21.1",
+		OSName:         osVariant,
+		OSArchitecture: "x86_64",
+		CPUCores:       safeCPUCores,
+		TotalMemory:    safeMemoryGB * 1024 * 1024 * 1024,
+		KernelVersion:  "5.15.0-78-generic",
+		CPUVendor:      "Intel",
+		CPUModel:       "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
+		Hypervisor:     "xen",
+	}
 }
