@@ -59,6 +59,9 @@ func (s *Server) generateMockData() {
 	for _, test := range mockTests {
 		s.createMockTest(test.runID, test.network, test.elType, test.clType, test.status)
 	}
+
+	// Start periodic updates for running tests
+	s.startPeriodicMockUpdates(mockTests)
 }
 
 // createMockTest creates a single mock test entry
@@ -544,5 +547,103 @@ func generateMockSystemInfo(runID, elType, clType, network string) *sysinfo.Syst
 		CPUVendor:      "Intel",
 		CPUModel:       "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
 		Hypervisor:     "xen",
+	}
+}
+
+// startPeriodicMockUpdates starts a background goroutine to periodically update running tests
+func (s *Server) startPeriodicMockUpdates(mockTests []struct {
+	runID   string
+	network string
+	elType  string
+	clType  string
+	status  string
+}) {
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			s.updateRunningMockTests(mockTests)
+		}
+	}()
+}
+
+// updateRunningMockTests updates progress for running mock tests
+func (s *Server) updateRunningMockTests(mockTests []struct {
+	runID   string
+	network string
+	elType  string
+	clType  string
+	status  string
+}) {
+	for _, test := range mockTests {
+		if test.status != "running" {
+			continue
+		}
+
+		// Check if test still exists and is running
+		testData, err := s.store.GetTest(test.runID)
+		if err != nil || !testData.IsRunning {
+			continue
+		}
+
+		// Generate updated metrics with some progression
+		s.updateMockTestProgress(test.runID, test.elType, test.clType)
+
+		// Update keepalive timestamp
+		keepaliveReq := s.buildMockTestRequest(test.runID, test.network, test.elType, test.clType)
+		if err := s.store.UpdateTestKeepalive(keepaliveReq); err != nil {
+			s.log.WithFields(map[string]interface{}{
+				"run_id": test.runID,
+				"error":  err.Error(),
+			}).Debug("Failed to update mock test keepalive")
+		}
+	}
+}
+
+// updateMockTestProgress updates progress metrics for a running mock test
+func (s *Server) updateMockTestProgress(runID, elType, clType string) {
+	now := time.Now().Unix()
+	var timeOffset uint64
+	if now > 0 {
+		timeOffset = uint64(now) % 10000 // Use larger offset for more realistic progression
+	}
+
+	// Get current metrics to build upon them
+	currentTest, err := s.store.GetTest(runID)
+	if err != nil {
+		return
+	}
+
+	// Start with base values and add progression
+	baseBlock := uint64(19500000)
+	baseSlot := uint64(62400000)
+	if currentTest.CurrentMetrics != nil {
+		baseBlock = currentTest.CurrentMetrics.Block
+		baseSlot = currentTest.CurrentMetrics.Slot
+	}
+
+	// Add realistic progression (blocks and slots increase over time)
+	blockIncrement := 50 + timeOffset%100 // 50-150 blocks
+	slotIncrement := 150 + timeOffset%300 // 150-450 slots
+
+	mockMetrics := reporting.ProgressMetrics{
+		Block:           baseBlock + blockIncrement,
+		Slot:            baseSlot + slotIncrement,
+		ExecDiskUsage:   uint64(450*1024*1024*1024) + timeOffset*1024*1024, // Gradually increasing disk usage
+		ConsDiskUsage:   uint64(120*1024*1024*1024) + timeOffset*512*1024,  // Gradually increasing disk usage
+		ExecPeers:       25 + timeOffset%10,                                // 25-35 peers
+		ConsPeers:       50 + timeOffset%20,                                // 50-70 peers
+		ExecSyncPercent: 85.5 + float64(timeOffset%100)/10,                 // Gradually increasing sync %
+		ConsSyncPercent: 92.3 + float64(timeOffset%80)/10,                  // Gradually increasing sync %
+		ExecVersion:     elType + "/v1.0.0",
+		ConsVersion:     clType + "/v2.1.0",
+	}
+
+	if err := s.store.UpdateProgress(runID, mockMetrics); err != nil {
+		s.log.WithFields(map[string]interface{}{
+			"run_id": runID,
+			"error":  err.Error(),
+		}).Debug("Failed to update mock progress")
 	}
 }
