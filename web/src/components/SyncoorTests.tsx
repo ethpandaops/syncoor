@@ -1228,14 +1228,14 @@ const ExpandedTestDetail: React.FC<ExpandedTestDetailProps> = ({
                 <div className="flex items-center gap-2 flex-1">
                   <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                   <span className="text-sm text-blue-700 dark:text-blue-300">
-                    Live data - Charts update automatically every 15 seconds
+                    Live data - Charts update automatically
                   </span>
                 </div>
                 <span className="text-xs text-blue-600 dark:text-blue-400">
                   Last updated: {secondsSinceLastFetch}s ago
                   {testDetail.progress_history && (
                     <span className="ml-2 opacity-75">
-                      ({testDetail.progress_history.length} points)
+                      ({testDetail.progress_history.length} data points)
                     </span>
                   )}
                 </span>
