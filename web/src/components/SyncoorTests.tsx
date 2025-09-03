@@ -152,33 +152,28 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
     return `${gb.toFixed(1)} GB`;
   };
 
-  const formatDuration = (startTime: string, endTime?: string, timeout?: number): string => {
+  const formatDuration = (startTime: string, endTime?: string): string => {
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
     const diffMs = end.getTime() - start.getTime();
     const hours = Math.floor(diffMs / (1000 * 60 * 60));
     const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-    let duration = '';
     if (hours > 0) {
-      duration = `${hours}h ${minutes}m`;
+      return `${hours}h ${minutes}m`;
     } else {
-      duration = `${minutes}m`;
+      return `${minutes}m`;
     }
+  };
 
-    // Add timeout information if available
-    if (timeout && timeout > 0) {
-      const timeoutHours = Math.floor(timeout / 3600);
-      const timeoutMinutes = Math.floor((timeout % 3600) / 60);
-      let timeoutStr = '';
-      if (timeoutHours > 0) {
-        timeoutStr = `${timeoutHours}h${timeoutMinutes > 0 ? ` ${timeoutMinutes}m` : ''}`;
-      } else {
-        timeoutStr = `${timeoutMinutes}m`;
-      }
-      return `${duration} / ${timeoutStr}`;
+  const formatTimeout = (timeout: number): string => {
+    const timeoutHours = Math.floor(timeout / 3600);
+    const timeoutMinutes = Math.floor((timeout % 3600) / 60);
+    if (timeoutHours > 0) {
+      return `${timeoutHours}h${timeoutMinutes > 0 ? ` ${timeoutMinutes}m` : ''}`;
+    } else {
+      return `${timeoutMinutes}m`;
     }
-    return duration;
   };
 
   const formatTimeAgo = (timestamp: string): string => {
@@ -761,16 +756,18 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                         <td className="py-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <span className="flex items-center gap-1 cursor-help">
-                                <ClockIcon className="h-3 w-3" />
-                                {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined, test.run_timeout)}
-                              </span>
+                              <div className="cursor-help">
+                                <div>{formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}</div>
+                                {test.run_timeout && test.run_timeout > 0 && (
+                                  <div className="text-xs text-muted-foreground">Timeout: {formatTimeout(test.run_timeout)}</div>
+                                )}
+                              </div>
                             </TooltipTrigger>
                             <TooltipContent className="bg-gray-900 text-white border-gray-800">
                               <div className="text-xs">
                                 <div>Running time: {formatDuration(test.start_time, test.is_complete ? test.last_update : undefined)}</div>
                                 {test.run_timeout && test.run_timeout > 0 && (
-                                  <div>Timeout: {Math.floor(test.run_timeout / 3600)}h {Math.floor((test.run_timeout % 3600) / 60)}m</div>
+                                  <div>Timeout: {formatTimeout(test.run_timeout)}</div>
                                 )}
                                 {test.run_timeout && !test.is_complete && test.is_running && (() => {
                                   const start = new Date(test.start_time);
