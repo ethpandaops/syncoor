@@ -18,6 +18,7 @@ interface SlotProgressChartProps {
   height?: number;
   showLegend?: boolean;
   showGrid?: boolean;
+  showPercentageAxis?: boolean;
   color?: string;
 }
 
@@ -33,6 +34,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
   height = 400,
   showLegend = true,
   showGrid = true,
+  showPercentageAxis = true,
   color = '#10b981',
 }) => {
   // Transform data for the chart
@@ -149,7 +151,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
             tickLine={{ stroke: '#d1d5db' }}
           />
           
-          {chartData && chartData.length > 0 && (() => {
+          {showPercentageAxis && chartData && chartData.length > 0 && (() => {
             const firstValue = chartData[0].slots;
             const lastValue = chartData[chartData.length - 1].slots;
             const range = lastValue - firstValue;

@@ -6,6 +6,7 @@ import { SyncoorApiEndpoint } from '../types/config';
 import { TestSummary, TestDetail, HealthResponse } from '../types/syncoor';
 import { fetchSyncoorTests, fetchSyncoorHealth, fetchSyncoorTestDetail } from '../lib/syncoorApi';
 import { useSearchParams } from 'react-router-dom';
+import ProgressCharts from './ProgressCharts';
 
 interface SyncoorTestsProps {
   endpoints: SyncoorApiEndpoint[];
@@ -205,25 +206,25 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
       const diffMinutes = Math.floor((now.getTime() - lastUpdate.getTime()) / (1000 * 60));
       
       if (diffMinutes >= 3) {
-        return <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">Unknown</Badge>;
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 w-20 justify-center">Unknown</Badge>;
       }
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Running</Badge>;
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 w-20 justify-center">Running</Badge>;
     }
     if (test.is_complete) {
       if (test.error) {
         return (
           <Badge 
             variant="destructive" 
-            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-help"
+            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 cursor-help w-20 justify-center"
             title={test.error}
           >
             Failed
           </Badge>
         );
       }
-      return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Complete</Badge>;
+      return <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 w-20 justify-center">Complete</Badge>;
     }
-    return <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200">Unknown</Badge>;
+    return <Badge variant="secondary" className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 w-20 justify-center">Unknown</Badge>;
   };
 
   const getTestSource = (test: TestSummary): { source: string; icon?: JSX.Element; url?: string; jobId?: string; repository?: string; repositoryUrl?: string } => {
@@ -266,6 +267,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   const capitalizeClient = (clientType: string): string => {
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
   };
+
 
   const trimClientVersion = (version: string, clientType: string): string => {
     // Remove client name prefix from version string (case-insensitive)
@@ -456,6 +458,11 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                           <div className="flex items-center gap-2">
                             {getStatusBadge(test)}
                             {(() => {
+                              // Only show indicator for running tests
+                              if (!test.is_running) {
+                                return null;
+                              }
+                              
                               const now = new Date();
                               const lastUpdate = new Date(test.last_update);
                               const diffSeconds = Math.floor((now.getTime() - lastUpdate.getTime()) / 1000);
@@ -1105,6 +1112,17 @@ const ExpandedTestDetail: React.FC<ExpandedTestDetailProps> = ({
           </div>
         </div>
       </div>
+      
+      {/* Progress Charts */}
+      {testDetail.progress_history && testDetail.progress_history.length > 0 && (
+        <ProgressCharts 
+          progressHistory={testDetail.progress_history}
+          title="Progress Over Time"
+          showTitle={true}
+          compact={true}
+          className="border-t pt-4"
+        />
+      )}
     </div>
   );
 };
