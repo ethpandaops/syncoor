@@ -127,8 +127,8 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
           margin={{
             top: 20,
             right: 30,
-            left: 20,
-            bottom: 60,
+            left: 5,
+            bottom: 10,
           }}
         >
           {showGrid && (

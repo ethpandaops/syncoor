@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -267,6 +267,68 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
   const capitalizeClient = (clientType: string): string => {
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
   };
+
+  const updateTestDetail = useCallback(async (testKey: string) => {
+    // The testKey format is: {endpointUrl}_{runId}
+    // But the runId itself may contain underscores, so we need to find the endpoint URL first
+    // Endpoint URLs start with http:// or https://
+    const endpointMatch = testKey.match(/^(https?:\/\/[^_]+)/);
+    if (!endpointMatch) {
+      return;
+    }
+    const endpointUrl = endpointMatch[1];
+    const runId = testKey.substring(endpointUrl.length + 1); // +1 for the underscore
+    const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
+    
+    if (!endpoint) {
+      return;
+    }
+
+    try {
+      const detail = await fetchSyncoorTestDetail(endpoint.endpoint, runId);
+      
+      // Update state with new data
+      setTestDetails(prev => {
+        const existing = prev[testKey]?.data;
+        
+        // Always create a completely new object structure for React to detect changes
+        const newData = { ...detail };
+        
+        if (existing && existing.progress_history && detail.progress_history) {
+          // Create a map of existing timestamps for deduplication
+          const existingTimestamps = new Set(
+            existing.progress_history.map(p => p.timestamp)
+          );
+          
+          // Add only new progress points
+          const newProgressPoints = detail.progress_history.filter(
+            p => !existingTimestamps.has(p.timestamp)
+          );
+          
+          if (newProgressPoints.length > 0) {
+            // Merge and sort by timestamp - create completely new array
+            newData.progress_history = [
+              ...existing.progress_history,
+              ...newProgressPoints
+            ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          } else {
+            // No new points, keep existing history but still create new reference
+            newData.progress_history = [...existing.progress_history];
+          }
+        }
+        
+        return {
+          ...prev,
+          [testKey]: {
+            loading: false,
+            data: newData
+          }
+        };
+      });
+    } catch (error) {
+      // Don't update the error state to avoid disrupting the user experience
+    }
+  }, [endpointData]);
 
 
   const trimClientVersion = (version: string, clientType: string): string => {
@@ -741,6 +803,7 @@ const SyncoorTests: React.FC<SyncoorTestsProps> = ({ endpoints, className }) => 
                                         detail={testDetails[testKey]}
                                         getClientLogo={getClientLogo}
                                         capitalizeClient={capitalizeClient}
+                                        onUpdateDetail={updateTestDetail}
                                       />
                                     </td>
                                   </tr>
@@ -797,14 +860,59 @@ interface ExpandedTestDetailProps {
   detail?: { loading: boolean; data?: TestDetail; error?: string };
   getClientLogo: (clientType: string) => string;
   capitalizeClient: (clientType: string) => string;
+  onUpdateDetail: (testKey: string) => void;
 }
 
 const ExpandedTestDetail: React.FC<ExpandedTestDetailProps> = ({ 
+  testKey,
   test, 
   detail, 
   getClientLogo, 
-  capitalizeClient 
+  capitalizeClient,
+  onUpdateDetail
 }) => {
+  const [lastFetch, setLastFetch] = useState<Date>(new Date());
+  const [secondsSinceLastFetch, setSecondsSinceLastFetch] = useState(0);
+
+  // Auto-update for running tests
+  useEffect(() => {
+    if (!test.is_running) {
+      return;
+    }
+
+    // Only set up updates if we have initial data
+    if (!detail?.data) {
+      return;
+    }
+
+    // Initial fetch on mount
+    const fetchData = () => {
+      onUpdateDetail(testKey);
+      setLastFetch(new Date());
+    };
+    
+    // Fetch immediately
+    fetchData();
+
+    // Set up periodic updates every 30 seconds for running tests
+    const interval = setInterval(fetchData, 30000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [test.is_running, testKey, onUpdateDetail]); // Remove detail?.data to prevent constant re-running
+
+  // Update seconds since last fetch
+  useEffect(() => {
+    if (!test.is_running) return;
+
+    const timer = setInterval(() => {
+      setSecondsSinceLastFetch(Math.floor((new Date().getTime() - lastFetch.getTime()) / 1000));
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [lastFetch, test.is_running]);
+
   if (detail?.loading) {
     return (
       <div className="flex items-center justify-center py-4">
@@ -1115,13 +1223,34 @@ const ExpandedTestDetail: React.FC<ExpandedTestDetailProps> = ({
       
       {/* Progress Charts */}
       {testDetail.progress_history && testDetail.progress_history.length > 0 && (
-        <ProgressCharts 
-          progressHistory={testDetail.progress_history}
-          title="Progress Over Time"
-          showTitle={true}
-          compact={true}
-          className="border-t pt-4"
-        />
+        <div className="border-t pt-4">
+          <div className="space-y-2 mb-4">
+            <h3 className="text-lg font-semibold">Progress Over Time</h3>
+            {test.is_running && (
+              <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm text-blue-700 dark:text-blue-300">
+                    Live data - Charts update automatically every 15 seconds
+                  </span>
+                </div>
+                <span className="text-xs text-blue-600 dark:text-blue-400">
+                  Last updated: {secondsSinceLastFetch}s ago
+                  {testDetail.progress_history && (
+                    <span className="ml-2 opacity-75">
+                      ({testDetail.progress_history.length} points)
+                    </span>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+          <ProgressCharts 
+            progressHistory={testDetail.progress_history}
+            showTitle={false}
+            compact={true}
+          />
+        </div>
       )}
     </div>
   );

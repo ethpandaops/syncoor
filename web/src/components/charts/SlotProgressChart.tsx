@@ -123,9 +123,9 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
           data={chartData}
           margin={{
             top: 20,
-            right: -20,
-            left: 20,
-            bottom: 60,
+            right: showPercentageAxis ? -20 : 20,
+            left: 5,
+            bottom: 10,
           }}
         >
           {showGrid && (
