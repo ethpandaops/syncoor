@@ -272,8 +272,38 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
             )}
             {test.labels && test.labels['github.run_number'] && (
               <div>
-                <span className="text-xs text-muted-foreground">Run Number:</span>
-                <div className="text-xs break-all overflow-hidden">#{test.labels['github.run_number']}</div>
+                <span className="text-xs text-muted-foreground">Run:</span>
+                <div className="text-xs break-all overflow-hidden">
+                  {(() => {
+                    const runNumber = test.labels['github.run_number'];
+                    const runId = test.labels['github.run_id'];
+                    const jobId = test.labels['github.job_id'];
+                    const jobName = test.labels['github.job'] || '';
+                    const repository = test.labels['github.repository'];
+                    const jobIdSuffix = jobId ? jobId.slice(-3) : '';
+                    
+                    const displayText = `#${runNumber}${jobIdSuffix ? `(${jobIdSuffix})` : ''}${jobName ? ` - ${jobName}` : ''}`;
+                    
+                    if (repository && runId) {
+                      const jobUrl = jobId 
+                        ? `https://github.com/${repository}/actions/runs/${runId}/job/${jobId}`
+                        : `https://github.com/${repository}/actions/runs/${runId}`;
+                      
+                      return (
+                        <a 
+                          href={jobUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          {displayText}
+                        </a>
+                      );
+                    }
+                    
+                    return displayText;
+                  })()}
+                </div>
               </div>
             )}
           </div>
