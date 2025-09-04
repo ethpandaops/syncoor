@@ -9,10 +9,10 @@ import { useProgressData } from '../hooks/useProgressData';
 import { useMainReport } from '../hooks/useMainReport';
 import { formatDuration, formatTimestamp, getStatusBadgeInfo, getStatusIcon, formatBytes } from '../lib/utils';
 import { extractFileFromDump } from '../lib/api';
-import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from '../components/charts';
 import { SystemInformation } from '../components/SystemInformation';
 import { GithubActionsInfo } from '../components/GithubActionsInfo';
 import { useDumpFileInfo } from '../hooks/useDumpFile';
+import ProgressCharts from '../components/ProgressCharts';
 
 export default function TestDetails() {
   const { id } = useParams<{ id: string }>();
@@ -547,88 +547,38 @@ export default function TestDetails() {
       </Card>
 
       {/* Progress Charts */}
-      <div className="space-y-6">
-        <h2 className="text-xl font-semibold">Progress Over Time</h2>
-        
-        {progressLoading ? (
+      {progressLoading ? (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Progress Over Time</h2>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="p-6">
-                  <div className="animate-pulse space-y-4">
-                    <div className="h-4 bg-muted rounded w-1/3"></div>
-                    <div className="h-64 bg-muted rounded"></div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-        ) : progressError ? (
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="p-6">
+                <div className="animate-pulse space-y-4">
+                  <div className="h-4 bg-muted rounded w-1/3"></div>
+                  <div className="h-64 bg-muted rounded"></div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ) : progressError ? (
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold">Progress Over Time</h2>
           <Card className="p-6">
             <div className="text-center text-muted-foreground">
               <p className="text-lg font-medium">Unable to load progress data</p>
               <p className="text-sm">{progressError.message}</p>
             </div>
           </Card>
-        ) : progressData && progressData.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Execution Block Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <BlockProgressChart 
-                      data={progressData} 
-                      color="#3b82f6"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Consensus Slot Progress</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <SlotProgressChart 
-                      data={progressData} 
-                      color="#10b981"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Disk Usage</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <DiskUsageChart data={progressData} />
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Peer Connections</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <PeerCountChart data={progressData} />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-        ) : (
-          <Card className="p-6">
-            <div className="text-center text-muted-foreground">
-              <p className="text-lg font-medium">No progress data available</p>
-              <p className="text-sm">This test may not have recorded detailed progress information</p>
-            </div>
-          </Card>
-        )}
-      </div>
+        </div>
+      ) : (
+        <ProgressCharts 
+          progressData={progressData}
+          title="Progress Over Time" 
+          showTitle={true}
+          compact={false}
+        />
+      )}
 
       {/* File Information */}
       <Card>

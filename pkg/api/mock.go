@@ -7,6 +7,15 @@ import (
 	"time"
 
 	"github.com/ethpandaops/syncoor/pkg/reporting"
+	"github.com/ethpandaops/syncoor/pkg/sysinfo"
+)
+
+// Network constants
+const (
+	networkMainnet = "mainnet"
+	networkHolesky = "holesky"
+	networkSepolia = "sepolia"
+	networkHoodi   = "hoodi"
 )
 
 // generateMockData creates sample test data for demonstration
@@ -22,34 +31,37 @@ func (s *Server) generateMockData() {
 		status  string
 	}{
 		// Running tests (more of these for better demo)
-		{"mock-test-001", "mainnet", "geth", "lighthouse", "running"},
-		{"mock-test-002", "mainnet", "besu", "prysm", "running"},
-		{"mock-test-003", "sepolia", "nethermind", "teku", "running"},
-		{"mock-test-004", "holesky", "reth", "nimbus", "running"},
-		{"mock-test-005", "mainnet", "erigon", "lighthouse", "running"},
-		{"mock-test-006", "sepolia", "geth", "prysm", "running"},
-		{"mock-test-007", "holesky", "besu", "teku", "running"},
-		{"mock-test-008", "mainnet", "nethermind", "nimbus", "running"},
-		{"mock-test-009", "sepolia", "reth", "lighthouse", "running"},
-		{"mock-test-010", "holesky", "erigon", "prysm", "running"},
+		{"mock-test-001", networkMainnet, "geth", "lighthouse", "running"},
+		{"mock-test-002", networkMainnet, "besu", "prysm", "running"},
+		{"mock-test-003", networkSepolia, "nethermind", "teku", "running"},
+		{"mock-test-004", networkHolesky, "reth", "nimbus", "running"},
+		{"mock-test-005", networkMainnet, "erigon", "lighthouse", "running"},
+		{"mock-test-006", networkSepolia, "geth", "prysm", "running"},
+		{"mock-test-007", networkHolesky, "besu", "teku", "running"},
+		{"mock-test-008", networkMainnet, "nethermind", "nimbus", "running"},
+		{"mock-test-009", networkSepolia, "reth", "lighthouse", "running"},
+		{"mock-test-010", networkHolesky, "erigon", "prysm", "running"},
 
 		// Some completed tests for variety
-		{"mock-test-011", "mainnet", "geth", "teku", "completed"},
-		{"mock-test-012", "sepolia", "besu", "nimbus", "completed"},
-		{"mock-test-013", "holesky", "nethermind", "lighthouse", "completed"},
-		{"mock-test-014", "mainnet", "reth", "prysm", "completed"},
-		{"mock-test-015", "sepolia", "erigon", "teku", "completed"},
+		{"mock-test-011", networkMainnet, "geth", "teku", "completed"},
+		{"mock-test-012", networkSepolia, "besu", "nimbus", "completed"},
+		{"mock-test-013", networkHolesky, "nethermind", "lighthouse", "completed"},
+		{"mock-test-014", networkMainnet, "reth", "prysm", "completed"},
+		{"mock-test-015", networkSepolia, "erigon", "teku", "completed"},
 
 		// Some timeout tests for variety
-		{"mock-test-016", "mainnet", "geth", "nimbus", "timeout"},
-		{"mock-test-017", "sepolia", "besu", "lighthouse", "timeout"},
-		{"mock-test-018", "holesky", "nethermind", "prysm", "timeout"},
-		{"mock-test-019", "mainnet", "reth", "teku", "timeout"},
+		{"mock-test-016", networkMainnet, "geth", "nimbus", "timeout"},
+		{"mock-test-017", networkSepolia, "besu", "lighthouse", "timeout"},
+		{"mock-test-018", networkHolesky, "nethermind", "prysm", "timeout"},
+		{"mock-test-019", networkMainnet, "reth", "teku", "timeout"},
 	}
 
 	for _, test := range mockTests {
 		s.createMockTest(test.runID, test.network, test.elType, test.clType, test.status)
 	}
+
+	// Start periodic updates for running tests
+	s.startPeriodicMockUpdates(mockTests)
 }
 
 // createMockTest creates a single mock test entry
@@ -105,15 +117,20 @@ func (s *Server) buildMockTestRequest(runID, network, elType, clType string) rep
 		Network:   network,
 		Labels:    labels,
 		ELClient: reporting.ClientConfig{
-			Type:  elType,
-			Image: elType + ":latest",
+			Type:      elType,
+			Image:     elType + ":latest",
+			ExtraArgs: generateMockExtraArgs(elType, network),
+			EnvVars:   generateMockEnvVars(elType, network),
 		},
 		CLClient: reporting.ClientConfig{
-			Type:  clType,
-			Image: clType + ":latest",
+			Type:      clType,
+			Image:     clType + ":latest",
+			ExtraArgs: generateMockExtraArgs(clType, network),
+			EnvVars:   generateMockEnvVars(clType, network),
 		},
 		EnclaveName: "mock-enclave",
-		SystemInfo:  nil,
+		SystemInfo:  generateMockSystemInfo(runID, elType, clType, network),
+		RunTimeout:  generateMockTimeout(network),
 	}
 }
 
@@ -306,4 +323,329 @@ func generateRandomActor() string {
 	actors := []string{"alice-dev", "bob-tester", "charlie-ops", "diana-ci", "evan-qa"}
 	n, _ := rand.Int(rand.Reader, big.NewInt(int64(len(actors))))
 	return actors[n.Int64()]
+}
+
+// getClientExtraArgs returns argument configurations for different client types
+func getClientExtraArgs() map[string]func(network string) []string {
+	return map[string]func(network string) []string{
+		"geth": func(network string) []string {
+			args := []string{"--syncmode=snap", "--cache=4096"}
+			if network == networkMainnet {
+				args = append(args, "--maxpeers=50")
+			}
+			return args
+		},
+		"besu": func(network string) []string {
+			args := []string{"--sync-mode=SNAP", "--Xplugin-rocksdb-high-spec-enabled"}
+			if network != networkMainnet {
+				args = append(args, "--network="+network)
+			}
+			return args
+		},
+		"nethermind": func(network string) []string {
+			return []string{"--config=" + network, "--Sync.FastSync=true"}
+		},
+		"erigon": func(network string) []string {
+			return []string{"--chain=" + network, "--prune=hrtc"}
+		},
+		"reth": func(network string) []string {
+			return []string{"--chain=" + network, "--debug.continuous"}
+		},
+		"lighthouse": func(network string) []string {
+			args := []string{"--network=" + network}
+			if network == networkMainnet {
+				args = append(args, "--checkpoint-sync-url=https://mainnet.checkpoint.sigp.io")
+			}
+			return args
+		},
+		"prysm": func(network string) []string {
+			return []string{"--" + network, "--accept-terms-of-use"}
+		},
+		"teku": func(network string) []string {
+			return []string{"--network=" + network, "--data-storage-mode=prune"}
+		},
+		"nimbus": func(network string) []string {
+			return []string{"--network=" + network, "--web3-url=http://127.0.0.1:8551"}
+		},
+	}
+}
+
+// generateMockExtraArgs generates realistic extra arguments for clients
+func generateMockExtraArgs(clientType, network string) []string {
+	clientArgs := getClientExtraArgs()
+	if argFunc, exists := clientArgs[clientType]; exists {
+		return argFunc(network)
+	}
+	return []string{}
+}
+
+// getClientEnvVars returns environment variable configurations for different client types
+func getClientEnvVars() map[string]func(network string) map[string]string {
+	return map[string]func(network string) map[string]string{
+		"geth": func(network string) map[string]string {
+			envVars := map[string]string{
+				"GETH_CACHE":    "4096",
+				"GETH_MAXPEERS": "50",
+			}
+			if network == networkSepolia {
+				envVars["GETH_TESTNET"] = networkSepolia
+			}
+			return envVars
+		},
+		"besu": func(_ string) map[string]string {
+			return map[string]string{
+				"BESU_OPTS":           "-Xmx8g",
+				"BESU_RPC_HTTP_APIS":  "ETH,NET,WEB3",
+				"BESU_STORAGE_ENGINE": "BONSAI",
+			}
+		},
+		"nethermind": func(_ string) map[string]string {
+			return map[string]string{
+				"NETHERMIND_PRUNING_CACHESIZERESTART": "2048",
+				"NETHERMIND_DISCOVERY_BOOTNODES":      "auto",
+				"ASPNETCORE_ENVIRONMENT":              "Production",
+			}
+		},
+		"erigon": func(network string) map[string]string {
+			return map[string]string{
+				"ERIGON_DATADIR": "/data",
+				"ERIGON_CHAIN":   network,
+				"GOMAXPROCS":     "8",
+			}
+		},
+		"reth": func(network string) map[string]string {
+			return map[string]string{
+				"RUST_LOG":     "info",
+				"RETH_DATADIR": "/data",
+				"RETH_NETWORK": network,
+			}
+		},
+		"lighthouse": func(network string) map[string]string {
+			envVars := map[string]string{
+				"RUST_LOG":           "info",
+				"LIGHTHOUSE_NETWORK": network,
+				"LIGHTHOUSE_DATADIR": "/data",
+			}
+			if network == networkMainnet {
+				envVars["LIGHTHOUSE_CHECKPOINT_SYNC"] = "true"
+			}
+			return envVars
+		},
+		"prysm": func(_ string) map[string]string {
+			return map[string]string{
+				"PRYSM_WEB3PROVIDER": "http://127.0.0.1:8551",
+				"PRYSM_DATADIR":      "/data",
+				"GOMAXPROCS":         "4",
+			}
+		},
+		"teku": func(network string) map[string]string {
+			return map[string]string{
+				"JAVA_OPTS":      "-Xmx4g -XX:+UseG1GC",
+				"TEKU_NETWORK":   network,
+				"TEKU_DATA_PATH": "/data",
+			}
+		},
+		"nimbus": func(network string) map[string]string {
+			return map[string]string{
+				"NIMBUS_NETWORK":  network,
+				"NIMBUS_DATA_DIR": "/data",
+				"NIMBUS_WEB3_URL": "http://127.0.0.1:8551",
+			}
+		},
+	}
+}
+
+// generateMockEnvVars generates realistic environment variables for clients
+func generateMockEnvVars(clientType, network string) map[string]string {
+	clientEnvs := getClientEnvVars()
+	if envFunc, exists := clientEnvs[clientType]; exists {
+		return envFunc(network)
+	}
+	return map[string]string{}
+}
+
+// getNetworkTimeouts returns timeout configurations in seconds for different networks
+func getNetworkTimeouts() map[string]int64 {
+	return map[string]int64{
+		networkMainnet: 7200, // 2 hours
+		networkHolesky: 3600, // 1 hour
+		networkSepolia: 2700, // 45 minutes
+		networkHoodi:   1800, // 30 minutes
+	}
+}
+
+// generateMockTimeout generates realistic timeout values based on network
+func generateMockTimeout(network string) int64 {
+	timeouts := getNetworkTimeouts()
+	if timeout, exists := timeouts[network]; exists {
+		return timeout
+	}
+	return 3600 // Default to 1 hour
+}
+
+// getSystemSpecs returns CPU cores and memory GB based on network
+func getSystemSpecs(network string) (int, int) {
+	specs := map[string][2]int{
+		networkMainnet: {16, 64},
+		networkHolesky: {8, 32},
+	}
+	if spec, exists := specs[network]; exists {
+		return spec[0], spec[1]
+	}
+	return 4, 16 // default for sepolia, hoodi, etc.
+}
+
+// adjustSpecsForClients adds variation based on client types
+func adjustSpecsForClients(cpuCores, memoryGB int, elType, clType string) (int, int) {
+	if elType == "erigon" || elType == "besu" {
+		cpuCores += 4
+		memoryGB += 16
+	}
+	if clType == "prysm" || clType == "teku" {
+		memoryGB += 8
+	}
+	return cpuCores, memoryGB
+}
+
+// getOSVariant returns OS variant based on runID
+func getOSVariant(runID string) string {
+	osOptions := []string{
+		"Ubuntu 22.04.3 LTS",
+		"Ubuntu 20.04.6 LTS",
+		"Debian GNU/Linux 12 (bookworm)",
+		"CentOS Linux 8",
+	}
+	osIndex := len(runID) % len(osOptions)
+	return osOptions[osIndex]
+}
+
+// generateMockSystemInfo generates realistic system information for mock tests
+func generateMockSystemInfo(runID, elType, clType, network string) *sysinfo.SystemInfo {
+	cpuCores, memoryGB := getSystemSpecs(network)
+	cpuCores, memoryGB = adjustSpecsForClients(cpuCores, memoryGB, elType, clType)
+	osVariant := getOSVariant(runID)
+
+	// Ensure safe values for conversions
+	safeCPUCores := uint(4)
+	safeMemoryGB := uint64(16)
+
+	if cpuCores > 0 && cpuCores < 1000 {
+		safeCPUCores = uint(cpuCores)
+	}
+	if memoryGB > 0 && memoryGB < 1024 {
+		safeMemoryGB = uint64(memoryGB)
+	}
+
+	return &sysinfo.SystemInfo{
+		Hostname:       "mock-runner-" + runID[len(runID)-3:],
+		GoVersion:      "go1.21.1",
+		OSName:         osVariant,
+		OSArchitecture: "x86_64",
+		CPUCores:       safeCPUCores,
+		TotalMemory:    safeMemoryGB * 1024 * 1024 * 1024,
+		KernelVersion:  "5.15.0-78-generic",
+		CPUVendor:      "Intel",
+		CPUModel:       "Intel(R) Xeon(R) CPU E5-2686 v4 @ 2.30GHz",
+		Hypervisor:     "xen",
+	}
+}
+
+// startPeriodicMockUpdates starts a background goroutine to periodically update running tests
+func (s *Server) startPeriodicMockUpdates(mockTests []struct {
+	runID   string
+	network string
+	elType  string
+	clType  string
+	status  string
+},
+) {
+	go func() {
+		ticker := time.NewTicker(20 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			s.updateRunningMockTests(mockTests)
+		}
+	}()
+}
+
+// updateRunningMockTests updates progress for running mock tests
+func (s *Server) updateRunningMockTests(mockTests []struct {
+	runID   string
+	network string
+	elType  string
+	clType  string
+	status  string
+},
+) {
+	for _, test := range mockTests {
+		if test.status != "running" {
+			continue
+		}
+
+		// Check if test still exists and is running
+		testData, err := s.store.GetTest(test.runID)
+		if err != nil || !testData.IsRunning {
+			continue
+		}
+
+		// Generate updated metrics with some progression
+		s.updateMockTestProgress(test.runID, test.elType, test.clType)
+
+		// Update keepalive timestamp
+		keepaliveReq := s.buildMockTestRequest(test.runID, test.network, test.elType, test.clType)
+		if err := s.store.UpdateTestKeepalive(keepaliveReq); err != nil {
+			s.log.WithFields(map[string]interface{}{
+				"run_id": test.runID,
+				"error":  err.Error(),
+			}).Debug("Failed to update mock test keepalive")
+		}
+	}
+}
+
+// updateMockTestProgress updates progress metrics for a running mock test
+func (s *Server) updateMockTestProgress(runID, elType, clType string) {
+	now := time.Now().Unix()
+	var timeOffset uint64
+	if now > 0 {
+		timeOffset = uint64(now) % 10000 // Use larger offset for more realistic progression
+	}
+
+	// Get current metrics to build upon them
+	currentTest, err := s.store.GetTest(runID)
+	if err != nil {
+		return
+	}
+
+	// Start with base values and add progression
+	baseBlock := uint64(19500000)
+	baseSlot := uint64(62400000)
+	if currentTest.CurrentMetrics != nil {
+		baseBlock = currentTest.CurrentMetrics.Block
+		baseSlot = currentTest.CurrentMetrics.Slot
+	}
+
+	// Add realistic progression (blocks and slots increase over time)
+	blockIncrement := 50 + timeOffset%100 // 50-150 blocks
+	slotIncrement := 150 + timeOffset%300 // 150-450 slots
+
+	mockMetrics := reporting.ProgressMetrics{
+		Block:           baseBlock + blockIncrement,
+		Slot:            baseSlot + slotIncrement,
+		ExecDiskUsage:   uint64(450*1024*1024*1024) + timeOffset*1024*1024, // Gradually increasing disk usage
+		ConsDiskUsage:   uint64(120*1024*1024*1024) + timeOffset*512*1024,  // Gradually increasing disk usage
+		ExecPeers:       25 + timeOffset%10,                                // 25-35 peers
+		ConsPeers:       50 + timeOffset%20,                                // 50-70 peers
+		ExecSyncPercent: 85.5 + float64(timeOffset%100)/10,                 // Gradually increasing sync %
+		ConsSyncPercent: 92.3 + float64(timeOffset%80)/10,                  // Gradually increasing sync %
+		ExecVersion:     elType + "/v1.0.0",
+		ConsVersion:     clType + "/v2.1.0",
+	}
+
+	if err := s.store.UpdateProgress(runID, mockMetrics); err != nil {
+		s.log.WithFields(map[string]interface{}{
+			"run_id": runID,
+			"error":  err.Error(),
+		}).Debug("Failed to update mock progress")
+	}
 }

@@ -18,6 +18,7 @@ interface BlockProgressChartProps {
   height?: number;
   showLegend?: boolean;
   showGrid?: boolean;
+  showPercentageAxis?: boolean;
   color?: string;
 }
 
@@ -33,6 +34,7 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
   height = 400,
   showLegend = true,
   showGrid = true,
+  showPercentageAxis = true,
   color = '#3b82f6',
 }) => {
   // Transform data for the chart
@@ -120,9 +122,9 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
           data={chartData}
           margin={{
             top: 20,
-            right: -20,
-            left: 20,
-            bottom: 60,
+            right: showPercentageAxis ? -20 : 20,
+            left: 5,
+            bottom: 10,
           }}
         >
           {showGrid && (
@@ -148,7 +150,7 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
             tickLine={{ stroke: '#d1d5db' }}
           />
           
-          {chartData && chartData.length > 0 && (() => {
+          {showPercentageAxis && chartData && chartData.length > 0 && (() => {
             const firstValue = chartData[0].blocks;
             const lastValue = chartData[chartData.length - 1].blocks;
             const range = lastValue - firstValue;

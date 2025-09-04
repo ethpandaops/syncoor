@@ -44,6 +44,7 @@ type TestData struct {
 	CLClient    reporting.ClientConfig
 	EnclaveName string
 	SystemInfo  *sysinfo.SystemInfo
+	RunTimeout  int64
 
 	CurrentMetrics *reporting.ProgressMetrics
 	History        []ProgressPoint
@@ -92,6 +93,7 @@ func (s *Store) CreateTest(req reporting.TestKeepaliveRequest) error {
 		CLClient:    req.CLClient,
 		EnclaveName: req.EnclaveName,
 		SystemInfo:  req.SystemInfo,
+		RunTimeout:  req.RunTimeout,
 		History:     make([]ProgressPoint, 0),
 	}
 
@@ -142,6 +144,22 @@ func (s *Store) UpdateTestKeepalive(req reporting.TestKeepaliveRequest) error {
 
 	// Update last keepalive timestamp
 	test.LastUpdate = time.Unix(req.Timestamp, 0)
+
+	// Update client configurations if provided (allows for updates after container inspection)
+	if req.ELClient.Image != "" || len(req.ELClient.ExtraArgs) > 0 || len(req.ELClient.EnvVars) > 0 {
+		test.ELClient = req.ELClient
+	}
+	if req.CLClient.Image != "" || len(req.CLClient.ExtraArgs) > 0 || len(req.CLClient.EnvVars) > 0 {
+		test.CLClient = req.CLClient
+	}
+
+	// Update other fields if provided
+	if req.SystemInfo != nil {
+		test.SystemInfo = req.SystemInfo
+	}
+	if req.RunTimeout > 0 {
+		test.RunTimeout = req.RunTimeout
+	}
 
 	return nil
 }
@@ -200,8 +218,11 @@ func (s *Store) ListTests(activeOnly bool) []TestSummary {
 			IsComplete:     test.IsComplete,
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
+			ELClientConfig: test.ELClient,
+			CLClientConfig: test.CLClient,
 			CurrentMetrics: test.CurrentMetrics,
 			SystemInfo:     test.SystemInfo,
+			RunTimeout:     test.RunTimeout,
 			Error:          test.Error,
 		}
 
@@ -231,8 +252,11 @@ func (s *Store) GetTestDetail(runID string) (*TestDetail, error) {
 			IsComplete:     test.IsComplete,
 			ELClient:       test.ELClient.Type,
 			CLClient:       test.CLClient.Type,
+			ELClientConfig: test.ELClient,
+			CLClientConfig: test.CLClient,
 			CurrentMetrics: test.CurrentMetrics,
 			SystemInfo:     test.SystemInfo,
+			RunTimeout:     test.RunTimeout,
 		},
 		ProgressHistory: make([]ProgressPoint, len(test.History)),
 		ELClientConfig:  test.ELClient,
