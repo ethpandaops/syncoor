@@ -8,6 +8,7 @@ import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNe
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import LiveTests from '../components/LiveTests';
+import ClientCompatibilityMatrix from '../components/ClientCompatibilityMatrix';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -169,6 +170,19 @@ export default function Dashboard() {
       {config?.syncoorApiEndpoints && config.syncoorApiEndpoints.length > 0 && (
         <LiveTests endpoints={config.syncoorApiEndpoints} />
       )}
+
+      {/* Client Compatibility Matrix */}
+      {reports && reports.length > 0 && activeDirectory && (
+        <ClientCompatibilityMatrix 
+          reports={reports}
+          directory={activeDirectory}
+          network={(() => {
+            const networksForDirectory = getNetworksForDirectory(activeDirectory);
+            return activeNetworks[activeDirectory] || networksForDirectory[0];
+          })()}
+        />
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Finished test runs</h2>
         <Badge variant="outline">{total} total tests</Badge>
