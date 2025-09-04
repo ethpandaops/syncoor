@@ -1,20 +1,20 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
-import { SyncReport } from '../types/report';
+import { IndexEntry } from '../types/report';
 import { formatDuration } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface ClientMatrixProps {
-  reports: SyncReport[];
+  reports: IndexEntry[];
   directory: string;
   network: string;
   className?: string;
 }
 
 interface ReportData {
-  report: SyncReport;
+  report: IndexEntry;
   status: 'success' | 'failed' | 'timeout' | 'error';
   duration: number;
 }
