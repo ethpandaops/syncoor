@@ -6,7 +6,7 @@ import { SyncReport } from '../types/report';
 import { formatDuration, formatTimestamp } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
 
-interface ClientCompatibilityMatrixProps {
+interface ClientMatrixProps {
   reports: SyncReport[];
   directory: string;
   network: string;
@@ -26,7 +26,7 @@ interface MatrixCell {
   averageDuration?: number;
 }
 
-const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
+const ClientMatrix: React.FC<ClientMatrixProps> = ({
   reports,
   directory,
   network,
@@ -321,4 +321,4 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
   );
 };
 
-export default ClientCompatibilityMatrix;
+export default ClientMatrix;

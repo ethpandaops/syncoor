@@ -8,7 +8,7 @@ import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNe
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import LiveTests from '../components/LiveTests';
-import ClientCompatibilityMatrix from '../components/ClientCompatibilityMatrix';
+import ClientMatrix from '../components/ClientMatrix';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -227,9 +227,9 @@ export default function Dashboard() {
 
                       return (
                         <TabsContent key={network} value={network} className="space-y-4">
-                          {/* Client Compatibility Matrix */}
+                          {/* Client Matrix */}
                           {filteredReports.length > 0 && (
-                            <ClientCompatibilityMatrix
+                            <ClientMatrix
                               reports={reports}
                               directory={directory}
                               network={network}
