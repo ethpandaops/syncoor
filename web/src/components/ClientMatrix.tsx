@@ -4,7 +4,7 @@ import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncReport } from '../types/report';
 import { formatDuration, formatTimestamp } from '../lib/utils';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface ClientMatrixProps {
@@ -35,7 +35,6 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
   network,
   className
 }) => {
-  const navigate = useNavigate();
   const [boxCount, setBoxCount] = useState<number>(5);
 
   const matrixData = useMemo(() => {
@@ -336,12 +335,9 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                         return (
                                           <Tooltip key={colIdx}>
                                             <TooltipTrigger asChild>
-                                              <div
-                                                className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status, report.duration, cell)}`}
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  navigate(`/test/${report.report.run_id}`);
-                                                }}
+                                              <Link
+                                                to={`/test/${report.report.run_id}`}
+                                                className={`block w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status, report.duration, cell)}`}
                                               />
                                             </TooltipTrigger>
                                             <TooltipContent>
