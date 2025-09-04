@@ -406,8 +406,9 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
               
               // Sort tests: 
               // 1. Running tests first
-              // 2. Then by duration (lowest first)
-              // 3. Completed/Failed tests last
+              // 2. Then by start time (newest first)
+              // 3. If same start time, sort by EL and CL client types
+              // 4. Completed/Failed tests last
               const sortedTests = [...filteredTests].sort((a, b) => {
                 // First sort by status: running tests come first
                 if (a.is_running && !b.is_running) return -1;
@@ -421,14 +422,22 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                   if (!aIsDone && bIsDone) return -1;
                 }
                 
-                // Then sort by duration (calculated from start_time and last_update)
-                const aDuration = a.start_time && a.last_update 
-                  ? (new Date(a.last_update).getTime() - new Date(a.start_time).getTime()) 
-                  : Number.MAX_VALUE;
-                const bDuration = b.start_time && b.last_update 
-                  ? (new Date(b.last_update).getTime() - new Date(b.start_time).getTime()) 
-                  : Number.MAX_VALUE;
-                return aDuration - bDuration;
+                // Then sort by start time (newest first - reverse chronological order)
+                const aStartTime = a.start_time ? new Date(a.start_time).getTime() : 0;
+                const bStartTime = b.start_time ? new Date(b.start_time).getTime() : 0;
+                
+                if (bStartTime !== aStartTime) {
+                  return bStartTime - aStartTime;
+                }
+                
+                // If start times are equal, sort by EL client type
+                const elComparison = a.el_client.localeCompare(b.el_client);
+                if (elComparison !== 0) {
+                  return elComparison;
+                }
+                
+                // If EL clients are the same, sort by CL client type
+                return a.cl_client.localeCompare(b.cl_client);
               });
               
               const paginatedTests = sortedTests.slice(0, 50); // Show max 50 tests
@@ -521,7 +530,9 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                   </div>
                                 </td>
                                 <td className="py-2">
-                                  <span className="capitalize text-sm">{test.network}</span>
+                                  <div className="inline-flex items-center rounded-sm border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-hidden focus:ring-3 focus:ring-ring text-foreground">
+                                    {test.network}
+                                  </div>
                                 </td>
                                 <td className="py-2">
                                   <div className="flex items-center gap-2">
@@ -568,8 +579,14 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                 <td className="py-2">
                                   {test.current_metrics ? (
                                     <div className="text-sm">
-                                      <div>{test.current_metrics.block.toLocaleString()}</div>
-                                      <div className="text-muted-foreground">{test.current_metrics.slot.toLocaleString()}</div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">B:</span>
+                                        <span>{test.current_metrics.block.toLocaleString()}</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-muted-foreground">S:</span>
+                                        <span>{test.current_metrics.slot.toLocaleString()}</span>
+                                      </div>
                                     </div>
                                   ) : (
                                     <span className="text-muted-foreground">-</span>
