@@ -26,6 +26,7 @@ interface MatrixCell {
   recentReports: ReportData[];
   averageDuration?: number;
   fastestDuration?: number;
+  slowestDuration?: number;
 }
 
 const ClientMatrix: React.FC<ClientMatrixProps> = ({
@@ -75,7 +76,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
             duration: report.sync_info.duration
           }));
 
-          // Calculate average and fastest duration for successful runs
+          // Calculate average, fastest, and slowest duration for successful runs
           const successfulRuns = recentReports.filter(r => r.status === 'success');
           const averageDuration = successfulRuns.length > 0
             ? successfulRuns.reduce((sum, r) => sum + r.duration, 0) / successfulRuns.length
@@ -83,13 +84,17 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
           const fastestDuration = successfulRuns.length > 0
             ? Math.min(...successfulRuns.map(r => r.duration))
             : undefined;
+          const slowestDuration = successfulRuns.length > 0
+            ? Math.max(...successfulRuns.map(r => r.duration))
+            : undefined;
 
           row.push({
             elClient,
             clClient,
             recentReports,
             averageDuration,
-            fastestDuration
+            fastestDuration,
+            slowestDuration
           });
         } else {
           row.push({
@@ -97,7 +102,8 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
             clClient,
             recentReports: [],
             averageDuration: undefined,
-            fastestDuration: undefined
+            fastestDuration: undefined,
+            slowestDuration: undefined
           });
         }
       });
@@ -108,9 +114,40 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     return { matrix, elClients, clClients };
   }, [reports, directory, network, boxCount]);
 
-  const getStatusColor = (status: 'success' | 'failed' | 'timeout' | 'error' | null): string => {
+  const getSuccessGreenShade = (duration: number, fastestDuration: number | undefined, slowestDuration: number | undefined): string => {
+    // If we don't have range data, return default green
+    if (fastestDuration === undefined || slowestDuration === undefined) {
+      return 'bg-green-500';
+    }
+
+    // If all runs have the same duration
+    if (fastestDuration === slowestDuration) {
+      return 'bg-green-500';
+    }
+
+    // Calculate position in range (0 = fastest, 1 = slowest)
+    const range = slowestDuration - fastestDuration;
+    const position = (duration - fastestDuration) / range;
+
+    // Map to green shades (400 = brightest, 700 = darkest)
+    // We use 400-700 range for better visibility
+    if (position <= 0.25) {
+      return 'bg-green-400'; // Brightest for fastest 25%
+    } else if (position <= 0.5) {
+      return 'bg-green-500'; // Medium-bright for next 25%
+    } else if (position <= 0.75) {
+      return 'bg-green-600'; // Medium-dark for next 25%
+    } else {
+      return 'bg-green-700'; // Darkest for slowest 25%
+    }
+  };
+
+  const getStatusColor = (status: 'success' | 'failed' | 'timeout' | 'error' | null, duration?: number, cell?: MatrixCell): string => {
     switch (status) {
       case 'success':
+        if (duration !== undefined && cell) {
+          return getSuccessGreenShade(duration, cell.fastestDuration, cell.slowestDuration);
+        }
         return 'bg-green-500';
       case 'failed':
       case 'error':
@@ -300,7 +337,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                           <Tooltip key={colIdx}>
                                             <TooltipTrigger asChild>
                                               <div
-                                                className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status)}`}
+                                                className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status, report.duration, cell)}`}
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   navigate(`/test/${report.report.run_id}`);
@@ -361,8 +398,13 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
               <span className="text-sm font-medium">Status Legend:</span>
               <div className="flex items-center gap-4 text-xs">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-sm bg-green-500"></div>
-                  <span>Success</span>
+                  <div className="flex gap-0.5">
+                    <div className="w-3 h-3 rounded-sm bg-green-400" title="Fastest"></div>
+                    <div className="w-3 h-3 rounded-sm bg-green-500" title="Medium"></div>
+                    <div className="w-3 h-3 rounded-sm bg-green-600" title="Slower"></div>
+                    <div className="w-3 h-3 rounded-sm bg-green-700" title="Slowest"></div>
+                  </div>
+                  <span>Success (fast→slow)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-red-500"></div>
