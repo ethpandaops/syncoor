@@ -8,6 +8,7 @@ import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNe
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import LiveTests from '../components/LiveTests';
+import ClientMatrix from '../components/ClientMatrix';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -169,6 +170,7 @@ export default function Dashboard() {
       {config?.syncoorApiEndpoints && config.syncoorApiEndpoints.length > 0 && (
         <LiveTests endpoints={config.syncoorApiEndpoints} />
       )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Finished test runs</h2>
         <Badge variant="outline">{total} total tests</Badge>
@@ -225,6 +227,15 @@ export default function Dashboard() {
 
                       return (
                         <TabsContent key={network} value={network} className="space-y-4">
+                          {/* Client Matrix */}
+                          {filteredReports.length > 0 && (
+                            <ClientMatrix
+                              reports={reports}
+                              directory={directory}
+                              network={network}
+                            />
+                          )}
+                          
                           <div className="grid gap-4">
                             {Object.entries(clientGroups)
                               .sort(([a], [b]) => a.localeCompare(b))
