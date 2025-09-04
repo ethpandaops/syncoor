@@ -15,7 +15,7 @@ interface ClientMatrixProps {
 
 interface ReportData {
   report: SyncReport;
-  status: 'success' | 'failed' | 'timeout';
+  status: 'success' | 'failed' | 'timeout' | 'error';
   duration: number;
 }
 
@@ -68,7 +68,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
           // Take up to 5 most recent reports
           const recentReports = sortedReports.slice(0, 5).map(report => ({
             report,
-            status: (report.sync_info.status || 'success') as 'success' | 'failed' | 'timeout',
+            status: (report.sync_info.status || 'success') as 'success' | 'failed' | 'timeout' | 'error',
             duration: report.sync_info.duration
           }));
 
@@ -100,11 +100,12 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     return { matrix, elClients, clClients };
   }, [reports, directory, network]);
 
-  const getStatusColor = (status: 'success' | 'failed' | 'timeout' | null): string => {
+  const getStatusColor = (status: 'success' | 'failed' | 'timeout' | 'error' | null): string => {
     switch (status) {
       case 'success':
         return 'bg-green-500';
       case 'failed':
+      case 'error':
         return 'bg-red-500';
       case 'timeout':
         return 'bg-yellow-500';
@@ -113,12 +114,14 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     }
   };
 
-  const getStatusText = (status: 'success' | 'failed' | 'timeout' | null): string => {
+  const getStatusText = (status: 'success' | 'failed' | 'timeout' | 'error' | null): string => {
     switch (status) {
       case 'success':
         return 'Success';
       case 'failed':
         return 'Failed';
+      case 'error':
+        return 'Error';
       case 'timeout':
         return 'Timeout';
       default:
@@ -128,6 +131,40 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
 
   const capitalizeClient = (clientType: string): string => {
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
+  };
+
+  const formatAverageDuration = (seconds: number): string => {
+    if (seconds < 0) {
+      return 'Invalid duration';
+    }
+
+    if (seconds === 0) {
+      return '0s';
+    }
+
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = Math.floor(seconds % 60);
+
+    const parts: string[] = [];
+
+    if (days > 0) {
+      parts.push(`${days}d`);
+    }
+    if (hours > 0) {
+      parts.push(`${hours}h`);
+    }
+    if (minutes > 0) {
+      parts.push(`${minutes}m`);
+    }
+
+    // Only include seconds if total duration is less than 60 seconds
+    if (seconds < 60 && secs > 0) {
+      parts.push(`${secs}s`);
+    }
+
+    return parts.join(' ') || '0s';
   };
 
   if (matrixData.matrix.length === 0) {
@@ -214,7 +251,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                             <div className="flex flex-col items-center gap-1.5">
                               {/* Average duration display */}
                               <div className="text-sm font-medium">
-                                {cell.averageDuration ? formatDuration(cell.averageDuration) : 'N/A'}
+                                {cell.averageDuration ? `⌀ ${formatAverageDuration(cell.averageDuration)}` : '⌀ N/A'}
                               </div>
                               {/* Last 5 runs as small boxes */}
                               <div className="flex gap-1 justify-center">
@@ -299,7 +336,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-red-500"></div>
-                  <span>Failed</span>
+                  <span>Failed/Error</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-sm bg-yellow-500"></div>
