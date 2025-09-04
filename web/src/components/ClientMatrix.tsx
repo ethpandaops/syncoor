@@ -270,25 +270,8 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                             }}
                                           />
                                         </TooltipTrigger>
-                                        <TooltipContent className="max-w-xs">
-                                          <div className="space-y-1 text-xs">
-                                            <div className="font-medium">
-                                              {capitalizeClient(cell.elClient)} + {capitalizeClient(cell.clClient)}
-                                            </div>
-                                            <div>Status: {getStatusText(report.status)}</div>
-                                            <div>Duration: {formatDuration(report.duration)}</div>
-                                            <div>Block: {report.report.sync_info.block.toLocaleString()}</div>
-                                            <div>Slot: {report.report.sync_info.slot.toLocaleString()}</div>
-                                            {report.report.sync_info.last_entry && (
-                                              <>
-                                                <div>EL Peers: {report.report.sync_info.last_entry.pe}</div>
-                                                <div>CL Peers: {report.report.sync_info.last_entry.pc}</div>
-                                              </>
-                                            )}
-                                            <div>Time: {formatTimestamp(Number(report.report.timestamp))}</div>
-                                            <div className="text-xs opacity-70">Run ID: {report.report.run_id}</div>
-                                            <div className="mt-1 text-xs font-medium text-blue-400">Click to view details</div>
-                                          </div>
+                                        <TooltipContent>
+                                          <span>{formatDuration(report.duration)}</span>
                                         </TooltipContent>
                                       </Tooltip>
                                     );
@@ -349,7 +332,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Shows last 5 test runs (newest on the left). Average duration is calculated from successful runs only. Click any box to view test details.
+              Shows last 5 test runs (newest on the left). Average duration is calculated from successful runs only. Click to view details.
             </div>
           </div>
         </CardContent>
