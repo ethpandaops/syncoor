@@ -7,7 +7,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats, getUniqueConsensusClients, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import SyncoorTests from '../components/SyncoorTests';
+import LiveTests from '../components/LiveTests';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -167,7 +167,7 @@ export default function Dashboard() {
 
       {/* Syncoor Live Tests */}
       {config?.syncoorApiEndpoints && config.syncoorApiEndpoints.length > 0 && (
-        <SyncoorTests endpoints={config.syncoorApiEndpoints} />
+        <LiveTests endpoints={config.syncoorApiEndpoints} />
       )}
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Finished test runs:</h2>

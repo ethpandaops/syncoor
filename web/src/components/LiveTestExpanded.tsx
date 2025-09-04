@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TestSummary, TestDetail } from '../types/syncoor';
 import ProgressCharts from './ProgressCharts';
 
-interface ExpandedTestDetailProps {
+interface LiveTestExpandedProps {
   testKey: string;
   test: TestSummary;
   detail?: { loading: boolean; data?: TestDetail; error?: string };
@@ -11,7 +11,7 @@ interface ExpandedTestDetailProps {
   onUpdateDetail: (testKey: string) => void;
 }
 
-const ExpandedTestDetail: React.FC<ExpandedTestDetailProps> = ({ 
+const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({ 
   testKey,
   test, 
   detail, 
@@ -436,5 +436,5 @@ function AlertCircleIcon({ className }: { className?: string }) {
   );
 }
 
-export default ExpandedTestDetail;
-export type { ExpandedTestDetailProps };
+export default LiveTestExpanded;
+export type { LiveTestExpandedProps };
