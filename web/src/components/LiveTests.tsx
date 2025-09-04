@@ -329,12 +329,36 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
   };
 
   const getStatusColor = (test: TestSummary): string => {
-    if (test.is_running) {
+    const now = new Date().getTime();
+    const lastUpdate = new Date(test.last_update).getTime();
+    const timeSinceUpdate = now - lastUpdate;
+    const threeMinutesInMs = 3 * 60 * 1000;
+
+    if (timeSinceUpdate > threeMinutesInMs) {
+      return 'bg-yellow-500';
+    } else if (test.is_running) {
       return 'bg-blue-500';
     } else if (test.is_complete && !test.error) {
       return 'bg-green-500';
     } else {
       return 'bg-red-500';
+    }
+  };
+
+  const getTestStatus = (test: TestSummary): string => {
+    const now = new Date().getTime();
+    const lastUpdate = new Date(test.last_update).getTime();
+    const timeSinceUpdate = now - lastUpdate;
+    const threeMinutesInMs = 3 * 60 * 1000;
+
+    if (timeSinceUpdate > threeMinutesInMs) {
+      return 'Unknown';
+    } else if (test.is_running) {
+      return 'Running';
+    } else if (test.is_complete && !test.error) {
+      return 'Complete';
+    } else {
+      return 'Failed';
     }
   };
 
@@ -507,31 +531,55 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                 <td className="py-2">
                                   <div className="flex items-center gap-2">
                                     <Badge
-                                      variant={test.is_running ? "default" : test.is_complete && !test.error ? "success" : "destructive"}
-                                      className="w-20 justify-center text-xs"
+                                      variant={(() => {
+                                        const status = getTestStatus(test);
+                                        if (status === 'Unknown') return "outline";
+                                        if (status === 'Running') return "default";
+                                        if (status === 'Complete') return "success";
+                                        return "destructive";
+                                      })()}
+                                      className={`w-20 justify-center text-xs ${getTestStatus(test) === 'Unknown' ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' : ''}`}
                                     >
-                                      {test.is_running ? 'Running' : test.is_complete && !test.error ? 'Complete' : 'Failed'}
+                                      {getTestStatus(test)}
                                     </Badge>
-                                    {test.is_running && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className={`w-2 h-2 rounded-full ${getStatusColor(test)} animate-pulse cursor-pointer`} />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="text-xs">Last updated {formatTimeAgo(test.last_update)}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
-                                    {!test.is_running && !test.is_complete && (
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <div className={`w-2 h-2 rounded-full ${getStatusColor(test)} cursor-pointer`} />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p className="text-xs">Last updated {formatTimeAgo(test.last_update)}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    )}
+                                    {(() => {
+                                      const status = getTestStatus(test);
+                                      if (status === 'Running') {
+                                        return (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className={`w-2 h-2 rounded-full ${getStatusColor(test)} animate-pulse cursor-pointer`} />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">Last updated {formatTimeAgo(test.last_update)}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      } else if (status === 'Unknown') {
+                                        return (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className={`w-2 h-2 rounded-full ${getStatusColor(test)} cursor-pointer`} />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">Last updated {formatTimeAgo(test.last_update)} ({'>'}3min ago)</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      } else if (!test.is_running && !test.is_complete) {
+                                        return (
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className={`w-2 h-2 rounded-full ${getStatusColor(test)} cursor-pointer`} />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">Last updated {formatTimeAgo(test.last_update)}</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      }
+                                      return null;
+                                    })()}
                                   </div>
                                 </td>
                                 <td className="py-2">
