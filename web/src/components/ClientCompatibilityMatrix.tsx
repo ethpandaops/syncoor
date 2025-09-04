@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncReport } from '../types/report';
-import { formatDuration } from '../lib/utils';
+import { formatDuration, formatTimestamp } from '../lib/utils';
+import { useNavigate } from 'react-router-dom';
 
 interface ClientCompatibilityMatrixProps {
   reports: SyncReport[];
@@ -12,12 +13,17 @@ interface ClientCompatibilityMatrixProps {
   className?: string;
 }
 
+interface ReportData {
+  report: SyncReport;
+  status: 'success' | 'failed' | 'timeout';
+  duration: number;
+}
+
 interface MatrixCell {
   elClient: string;
   clClient: string;
-  report?: SyncReport;
-  status?: 'success' | 'failed' | 'timeout' | null;
-  duration?: number;
+  recentReports: ReportData[];
+  averageDuration?: number;
 }
 
 const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
@@ -26,6 +32,8 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
   network,
   className
 }) => {
+  const navigate = useNavigate();
+
   const matrixData = useMemo(() => {
     // Filter reports by directory and network
     const filteredReports = reports.filter(
@@ -38,50 +46,61 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
     const elClients = [...new Set(filteredReports.map(r => r.execution_client_info.type))].sort();
     const clClients = [...new Set(filteredReports.map(r => r.consensus_client_info.type))].sort();
 
-    // Create matrix with most recent report for each combination
+    // Create matrix with last 5 reports for each combination
     const matrix: MatrixCell[][] = [];
-    
+
     elClients.forEach(elClient => {
       const row: MatrixCell[] = [];
-      
+
       clClients.forEach(clClient => {
-        // Find the most recent report for this combination
+        // Find reports for this combination
         const combinationReports = filteredReports.filter(
-          r => r.execution_client_info.type === elClient && 
+          r => r.execution_client_info.type === elClient &&
                r.consensus_client_info.type === clClient
         );
 
         if (combinationReports.length > 0) {
-          // Sort by timestamp to get the most recent
-          const mostRecentReport = combinationReports.sort((a, b) => 
+          // Sort by timestamp to get the most recent ones
+          const sortedReports = combinationReports.sort((a, b) =>
             Number(b.timestamp) - Number(a.timestamp)
-          )[0];
+          );
+
+          // Take up to 5 most recent reports
+          const recentReports = sortedReports.slice(0, 5).map(report => ({
+            report,
+            status: (report.sync_info.status || 'success') as 'success' | 'failed' | 'timeout',
+            duration: report.sync_info.duration
+          }));
+
+          // Calculate average duration for successful runs
+          const successfulRuns = recentReports.filter(r => r.status === 'success');
+          const averageDuration = successfulRuns.length > 0
+            ? successfulRuns.reduce((sum, r) => sum + r.duration, 0) / successfulRuns.length
+            : undefined;
 
           row.push({
             elClient,
             clClient,
-            report: mostRecentReport,
-            status: mostRecentReport.sync_info.status || 'success',
-            duration: mostRecentReport.sync_info.duration
+            recentReports,
+            averageDuration
           });
         } else {
           row.push({
             elClient,
             clClient,
-            report: undefined,
-            status: null,
-            duration: undefined
+            recentReports: [],
+            averageDuration: undefined
           });
         }
       });
-      
+
       matrix.push(row);
     });
 
     return { matrix, elClients, clClients };
   }, [reports, directory, network]);
 
-  const getStatusColor = (status: MatrixCell['status']): string => {
+  const getStatusColor = (status: 'success' | 'failed' | 'timeout' | null): string => {
     switch (status) {
       case 'success':
         return 'bg-green-500';
@@ -94,7 +113,7 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
     }
   };
 
-  const getStatusText = (status: MatrixCell['status']): string => {
+  const getStatusText = (status: 'success' | 'failed' | 'timeout' | null): string => {
     switch (status) {
       case 'success':
         return 'Success';
@@ -115,7 +134,15 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
     return (
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-lg">Client Compatibility Matrix</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            Client Matrix
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">No test data available for the selected directory and network.</p>
@@ -128,7 +155,15 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
     <TooltipProvider>
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-lg">Client Compatibility Matrix</CardTitle>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="7" height="7" />
+            </svg>
+            Client Matrix
+          </CardTitle>
           <p className="text-sm text-muted-foreground">
             Most recent test results for {directory} / {network} ({matrixData.elClients.length} EL × {matrixData.clClients.length} CL clients)
           </p>
@@ -174,37 +209,74 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
                         </div>
                       </td>
                       {row.map((cell, cellIndex) => (
-                        <td key={`${cell.elClient}-${cell.clClient}`} className="py-3 px-2 text-center">
-                          {cell.report ? (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <div className="cursor-pointer">
-                                  <div className={`w-full h-12 rounded flex flex-col items-center justify-center text-white text-xs font-medium ${getStatusColor(cell.status)}`}>
-                                    <div>{cell.duration ? formatDuration(cell.duration) : 'N/A'}</div>
-                                    <div className="text-xs opacity-80">{getStatusText(cell.status)}</div>
-                                  </div>
-                                </div>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                <div className="space-y-1 text-xs">
-                                  <div className="font-medium">{capitalizeClient(cell.elClient)} + {capitalizeClient(cell.clClient)}</div>
-                                  <div>Status: {getStatusText(cell.status)}</div>
-                                  <div>Duration: {cell.duration ? formatDuration(cell.duration) : 'N/A'}</div>
-                                  <div>Block: {cell.report.sync_info.block.toLocaleString()}</div>
-                                  <div>Slot: {cell.report.sync_info.slot.toLocaleString()}</div>
-                                  {cell.report.sync_info.last_entry && (
-                                    <>
-                                      <div>EL Peers: {cell.report.sync_info.last_entry.pe}</div>
-                                      <div>CL Peers: {cell.report.sync_info.last_entry.pc}</div>
-                                    </>
-                                  )}
-                                  <div>Run ID: {cell.report.run_id}</div>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
+                        <td key={`${cell.elClient}-${cell.clClient}`} className="py-3 px-2">
+                          {cell.recentReports.length > 0 ? (
+                            <div className="flex flex-col items-center gap-1.5">
+                              {/* Average duration display */}
+                              <div className="text-sm font-medium">
+                                {cell.averageDuration ? formatDuration(cell.averageDuration) : 'N/A'}
+                              </div>
+                              {/* Last 5 runs as small boxes */}
+                              <div className="flex gap-1 justify-center">
+                                {/* Show up to 5 boxes, fill with empty if less than 5 */}
+                                {[...Array(5)].map((_, idx) => {
+                                  const report = cell.recentReports[idx];
+                                  if (report) {
+                                    return (
+                                      <Tooltip key={idx}>
+                                        <TooltipTrigger asChild>
+                                          <div
+                                            className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status)}`}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              navigate(`/test/${report.report.run_id}`);
+                                            }}
+                                          />
+                                        </TooltipTrigger>
+                                        <TooltipContent className="max-w-xs">
+                                          <div className="space-y-1 text-xs">
+                                            <div className="font-medium">
+                                              {capitalizeClient(cell.elClient)} + {capitalizeClient(cell.clClient)}
+                                            </div>
+                                            <div>Status: {getStatusText(report.status)}</div>
+                                            <div>Duration: {formatDuration(report.duration)}</div>
+                                            <div>Block: {report.report.sync_info.block.toLocaleString()}</div>
+                                            <div>Slot: {report.report.sync_info.slot.toLocaleString()}</div>
+                                            {report.report.sync_info.last_entry && (
+                                              <>
+                                                <div>EL Peers: {report.report.sync_info.last_entry.pe}</div>
+                                                <div>CL Peers: {report.report.sync_info.last_entry.pc}</div>
+                                              </>
+                                            )}
+                                            <div>Time: {formatTimestamp(Number(report.report.timestamp))}</div>
+                                            <div className="text-xs opacity-70">Run ID: {report.report.run_id}</div>
+                                            <div className="mt-1 text-xs font-medium text-blue-400">Click to view details</div>
+                                          </div>
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    );
+                                  } else {
+                                    return (
+                                      <div
+                                        key={idx}
+                                        className="w-3 h-3 rounded-sm border border-muted-foreground/20"
+                                      />
+                                    );
+                                  }
+                                })}
+                              </div>
+                            </div>
                           ) : (
-                            <div className="w-full h-12 rounded bg-muted flex items-center justify-center text-xs text-muted-foreground">
-                              No Data
+                            <div className="flex flex-col items-center gap-1.5">
+                              <div className="text-sm text-muted-foreground">No Data</div>
+                              <div className="flex gap-1">
+                                {[...Array(5)].map((_, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="w-3 h-3 rounded-sm border border-muted-foreground/20"
+                                  />
+                                ))}
+                              </div>
                             </div>
                           )}
                         </td>
@@ -215,27 +287,32 @@ const ClientCompatibilityMatrix: React.FC<ClientCompatibilityMatrixProps> = ({
               </table>
             </div>
           </div>
-          
+
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-4 border-t">
-            <span className="text-sm font-medium">Status Legend:</span>
-            <div className="flex items-center gap-4 text-xs">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-green-500"></div>
-                <span>Success</span>
+          <div className="mt-4 pt-4 border-t space-y-2">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">Status Legend:</span>
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-green-500"></div>
+                  <span>Success</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-red-500"></div>
+                  <span>Failed</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm bg-yellow-500"></div>
+                  <span>Timeout</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-sm border border-muted-foreground/20"></div>
+                  <span>No Run</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-red-500"></div>
-                <span>Failed</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-yellow-500"></div>
-                <span>Timeout</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded bg-muted"></div>
-                <span>No Data</span>
-              </div>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Shows last 5 test runs (newest on the left). Average duration is calculated from successful runs only. Click any box to view test details.
             </div>
           </div>
         </CardContent>

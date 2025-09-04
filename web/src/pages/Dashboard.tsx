@@ -171,18 +171,6 @@ export default function Dashboard() {
         <LiveTests endpoints={config.syncoorApiEndpoints} />
       )}
 
-      {/* Client Compatibility Matrix */}
-      {reports && reports.length > 0 && activeDirectory && (
-        <ClientCompatibilityMatrix 
-          reports={reports}
-          directory={activeDirectory}
-          network={(() => {
-            const networksForDirectory = getNetworksForDirectory(activeDirectory);
-            return activeNetworks[activeDirectory] || networksForDirectory[0];
-          })()}
-        />
-      )}
-
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold">Finished test runs</h2>
         <Badge variant="outline">{total} total tests</Badge>
@@ -239,6 +227,15 @@ export default function Dashboard() {
 
                       return (
                         <TabsContent key={network} value={network} className="space-y-4">
+                          {/* Client Compatibility Matrix */}
+                          {filteredReports.length > 0 && (
+                            <ClientCompatibilityMatrix
+                              reports={reports}
+                              directory={directory}
+                              network={network}
+                            />
+                          )}
+                          
                           <div className="grid gap-4">
                             {Object.entries(clientGroups)
                               .sort(([a], [b]) => a.localeCompare(b))
