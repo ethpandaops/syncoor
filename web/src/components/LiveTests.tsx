@@ -134,7 +134,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
 
   const toggleTestExpansion = async (testKey: string) => {
     const isCurrentlyExpanded = expandedTests.has(testKey);
-    
+
     if (isCurrentlyExpanded) {
       // Collapse
       setExpandedTests(prev => {
@@ -145,7 +145,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     } else {
       // Expand
       setExpandedTests(prev => new Set(prev).add(testKey));
-      
+
       // If not already loading or loaded, fetch details
       if (!testDetails[testKey]) {
         // Set loading state
@@ -170,7 +170,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
         const endpointUrl = parts[0];
         const runId = parts[1];
         const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
-        
+
         if (endpoint) {
           try {
             const detail = await fetchSyncoorTestDetail(endpoint.endpoint, runId);
@@ -224,15 +224,15 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     const then = new Date(timestamp);
     const diffMs = now.getTime() - then.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
-    
+
     if (diffMinutes < 1) return 'Just now';
     if (diffMinutes === 1) return '1 minute ago';
     if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
-    
+
     const diffHours = Math.floor(diffMinutes / 60);
     if (diffHours === 1) return '1 hour ago';
     if (diffHours < 24) return `${diffHours} hours ago`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays === 1) return '1 day ago';
     return `${diffDays} days ago`;
@@ -254,32 +254,32 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     const endpointUrl = parts[0];
     const runId = parts[1];
     const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
-    
+
     if (!endpoint) {
       return;
     }
 
     try {
       const detail = await fetchSyncoorTestDetail(endpoint.endpoint, runId);
-      
+
       // Update state with new data
       setTestDetails(prev => {
         const existing = prev[testKey]?.data;
-        
+
         // Always create a completely new object structure for React to detect changes
         const newData = { ...detail };
-        
+
         if (existing && existing.progress_history && detail.progress_history) {
           // Create a map of existing timestamps for deduplication
           const existingTimestamps = new Set(
             existing.progress_history.map(p => p.timestamp)
           );
-          
+
           // Add only new progress points
           const newProgressPoints = detail.progress_history.filter(
             p => !existingTimestamps.has(p.timestamp)
           );
-          
+
           if (newProgressPoints.length > 0) {
             // Merge and sort by timestamp - create completely new array
             newData.progress_history = [
@@ -291,7 +291,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
             newData.progress_history = [...existing.progress_history];
           }
         }
-        
+
         return {
           ...prev,
           [testKey]: {
@@ -319,7 +319,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
   const getTestSource = (test: TestSummary) => {
     const githubUrl = test.labels?.['github.repository'];
     const githubRunNumber = test.labels?.['github.run_number'];
-    
+
     return {
       type: githubUrl ? 'github' : 'unknown',
       url: githubUrl,
@@ -360,11 +360,8 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg flex items-center gap-2">
-                <ServerIcon className="h-5 w-5" />
-                {data.endpoint.name}
-                <span className="font-mono text-sm text-muted-foreground">
-                  {data.endpoint.url}
-                </span>
+                <DashboardIcon className="h-5 w-5" />
+                Live Tests - {data.endpoint.name}
               </CardTitle>
               <div className="flex items-center gap-3">
                 {!data.loading && !data.error && (
@@ -405,15 +402,14 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
               </div>
             ) : data.tests.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                <p className="text-lg font-medium">No tests found</p>
                 <p className="text-sm">Tests will appear here when they're running or have been completed recently</p>
               </div>
             ) : (() => {
-              const filteredTests = showActiveOnly 
-                ? data.tests.filter(test => test.is_running) 
+              const filteredTests = showActiveOnly
+                ? data.tests.filter(test => test.is_running)
                 : data.tests;
-              
-              // Sort tests: 
+
+              // Sort tests:
               // 1. Running tests first
               // 2. Then by start time (newest first)
               // 3. If same start time, sort by EL and CL client types
@@ -422,7 +418,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                 // First sort by status: running tests come first
                 if (a.is_running && !b.is_running) return -1;
                 if (!a.is_running && b.is_running) return 1;
-                
+
                 // For non-running tests, put completed/failed at the end
                 if (!a.is_running && !b.is_running) {
                   const aIsDone = a.is_complete || a.error;
@@ -430,25 +426,25 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                   if (aIsDone && !bIsDone) return 1;
                   if (!aIsDone && bIsDone) return -1;
                 }
-                
+
                 // Then sort by start time (newest first - reverse chronological order)
                 const aStartTime = a.start_time ? new Date(a.start_time).getTime() : 0;
                 const bStartTime = b.start_time ? new Date(b.start_time).getTime() : 0;
-                
+
                 if (bStartTime !== aStartTime) {
                   return bStartTime - aStartTime;
                 }
-                
+
                 // If start times are equal, sort by EL client type
                 const elComparison = a.el_client.localeCompare(b.el_client);
                 if (elComparison !== 0) {
                   return elComparison;
                 }
-                
+
                 // If EL clients are the same, sort by CL client type
                 return a.cl_client.localeCompare(b.cl_client);
               });
-              
+
               const paginatedTests = sortedTests.slice(0, 50); // Show max 50 tests
 
               return (
@@ -456,7 +452,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                   {/* Summary info */}
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <span>
-                      {filteredTests.length} test{filteredTests.length !== 1 ? 's' : ''} 
+                      {filteredTests.length} test{filteredTests.length !== 1 ? 's' : ''}
                       {showActiveOnly && ' (active only)'}
                     </span>
                     {filteredTests.length > 50 && (
@@ -487,7 +483,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                           const testKey = `${data.endpoint.url}|||${test.run_id}`;
                           const isExpanded = expandedTests.has(testKey);
                           const shouldAutoExpand = autoExpand && test.is_running && !expandedTests.has(testKey);
-                          
+
                           // Auto-expand if needed
                           if (shouldAutoExpand) {
                             toggleTestExpansion(testKey);
@@ -495,7 +491,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
 
                           return (
                             <React.Fragment key={testIndex}>
-                              <tr 
+                              <tr
                                 className="border-t hover:bg-muted/30 cursor-pointer"
                                 onClick={() => toggleTestExpansion(testKey)}
                               >
@@ -510,7 +506,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                 </td>
                                 <td className="py-2">
                                   <div className="flex items-center gap-2">
-                                    <Badge 
+                                    <Badge
                                       variant={test.is_running ? "default" : test.is_complete && !test.error ? "success" : "destructive"}
                                       className="w-20 justify-center text-xs"
                                     >
@@ -635,7 +631,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                     const jobId = test.labels?.['github.job_id'];
                                     const runId = test.labels?.['github.run_id'];
                                     const jobIdSuffix = jobId ? jobId.slice(-3) : '';
-                                    
+
                                     return (
                                       <div className="flex items-center gap-1">
                                         <div className="flex-shrink-0">
@@ -649,12 +645,12 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                         </div>
                                         <span className="text-xs truncate">
                                           {sourceInfo.url && runId ? (
-                                            <a 
-                                              href={jobId 
+                                            <a
+                                              href={jobId
                                                 ? `https://github.com/${sourceInfo.url}/actions/runs/${runId}/job/${jobId}`
                                                 : `https://github.com/${sourceInfo.url}/actions/runs/${runId}`
-                                              } 
-                                              target="_blank" 
+                                              }
+                                              target="_blank"
                                               rel="noopener noreferrer"
                                               className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
                                               onClick={(e) => e.stopPropagation()}
@@ -685,7 +681,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                       <div className="flex items-center gap-1">
                                         <span className="text-muted-foreground">RAM:</span>
                                         <span>
-                                          {test.system_info.total_memory 
+                                          {test.system_info.total_memory
                                             ? `${(test.system_info.total_memory / (1024 * 1024 * 1024)).toFixed(0)} GB`
                                             : 'N/A'
                                           }
@@ -732,7 +728,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                               {isExpanded && (
                                 <tr className="bg-muted/30">
                                   <td colSpan={11} className="p-4 overflow-hidden">
-                                    <LiveTestExpanded 
+                                    <LiveTestExpanded
                                       testKey={testKey}
                                       test={test}
                                       detail={testDetails[testKey]}
@@ -761,7 +757,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
 };
 
 // SVG Icon Components
-function ServerIcon({ className }: { className?: string }) {
+function DashboardIcon({ className }: { className?: string }) {
   return (
     <svg
       className={className}
@@ -770,12 +766,9 @@ function ServerIcon({ className }: { className?: string }) {
       stroke="currentColor"
       strokeWidth={2}
     >
-      <rect x="2" y="3" width="20" height="4" rx="1" ry="1" />
-      <rect x="2" y="9" width="20" height="4" rx="1" ry="1" />
-      <rect x="2" y="15" width="20" height="4" rx="1" ry="1" />
-      <circle cx="7" cy="5" r=".5" />
-      <circle cx="7" cy="11" r=".5" />
-      <circle cx="7" cy="17" r=".5" />
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+      <line x1="8" y1="21" x2="16" y2="21" />
+      <line x1="12" y1="17" x2="12" y2="21" />
     </svg>
   );
 }
