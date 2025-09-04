@@ -22,10 +22,10 @@ export default function Dashboard() {
   const availableDirectories = useMemo(() => {
     if (!reports || reports.length === 0) return [];
     if (!config?.directories) return [];
-    
+
     // Get directories that have reports
     const directoriesWithReports = new Set(reports.map(report => report.source_directory));
-    
+
     // Return directories in config order, filtering to only those with reports
     return config.directories
       .map(dir => dir.name)
@@ -87,7 +87,7 @@ export default function Dashboard() {
         }
       }
     }));
-    
+
     // Update URL with CL client filter info (basic implementation)
     const params = new URLSearchParams(searchParams);
     params.set('directory', directory);
@@ -107,7 +107,7 @@ export default function Dashboard() {
     if (urlCLClient && availableClients.includes(urlCLClient)) {
       return urlCLClient;
     }
-    
+
     // Check state
     const stored = activeCLClients[directory]?.[network]?.[elClient];
     if (stored && availableClients.includes(stored)) {
@@ -170,7 +170,7 @@ export default function Dashboard() {
         <LiveTests endpoints={config.syncoorApiEndpoints} />
       )}
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold">Finished test runs:</h2>
+        <h2 className="text-3xl font-bold">Finished test runs</h2>
         <Badge variant="outline">{total} total tests</Badge>
       </div>
       <div className="space-y-6">
@@ -181,16 +181,18 @@ export default function Dashboard() {
           </Card>
         ) : (
           <Tabs value={activeDirectory || availableDirectories[0]} onValueChange={handleDirectoryChange} className="w-full">
-            <TabsList className="mb-4">
-              {availableDirectories.map(directory => (
-                <TabsTrigger key={directory} value={directory}>
-                  {directory}
-                  <Badge variant="outline" className="ml-2">
-                    {reports.filter(r => r.source_directory === directory).length}
-                  </Badge>
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            {availableDirectories.length > 1 && (
+              <TabsList className="mb-4">
+                {availableDirectories.map(directory => (
+                  <TabsTrigger key={directory} value={directory}>
+                    {directory}
+                    <Badge variant="outline" className="ml-2">
+                      {reports.filter(r => r.source_directory === directory).length}
+                    </Badge>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            )}
 
             {availableDirectories.map(directory => {
               const networksForDirectory = getNetworksForDirectory(directory);
@@ -203,16 +205,18 @@ export default function Dashboard() {
                     onValueChange={(network) => handleNetworkChange(directory, network)}
                     className="w-full"
                   >
-                    <TabsList className="mb-4">
-                      {networksForDirectory.map(network => (
-                        <TabsTrigger key={network} value={network}>
-                          {network}
-                          <Badge variant="outline" className="ml-2">
-                            {reports.filter(r => r.source_directory === directory && r.network === network).length}
-                          </Badge>
-                        </TabsTrigger>
-                      ))}
-                    </TabsList>
+                    {networksForDirectory.length > 1 && (
+                      <TabsList className="mb-4">
+                        {networksForDirectory.map(network => (
+                          <TabsTrigger key={network} value={network}>
+                            {network}
+                            <Badge variant="outline" className="ml-2">
+                              {reports.filter(r => r.source_directory === directory && r.network === network).length}
+                            </Badge>
+                          </TabsTrigger>
+                        ))}
+                      </TabsList>
+                    )}
 
                     {networksForDirectory.map(network => {
                       const filteredReports = reports.filter(r => r.source_directory === directory && r.network === network);
@@ -228,10 +232,10 @@ export default function Dashboard() {
                                 // Get unique CL clients for this EL client group
                                 const availableCLClients = getUniqueConsensusClients(clientReports);
                                 const activeCLClient = getActiveCLClient(directory, network, clientType, availableCLClients);
-                                
+
                                 // Filter reports by active CL client
-                                const filteredClientReports = activeCLClient === 'All' 
-                                  ? clientReports 
+                                const filteredClientReports = activeCLClient === 'All'
+                                  ? clientReports
                                   : clientReports.filter(r => r.consensus_client_info.type === activeCLClient);
 
                                 return (
@@ -278,7 +282,7 @@ export default function Dashboard() {
                               {/* Stats Cards */}
                               {(() => {
                                 const stats = calculateClientGroupStats(filteredClientReports);
-                                
+
                                 // Calculate status breakdown
                                 const statusCounts = filteredClientReports.reduce((acc, report) => {
                                   const status = report.sync_info.status || 'success'; // Default to success
@@ -288,7 +292,7 @@ export default function Dashboard() {
 
                                 const successCount = statusCounts.success || 0;
                                 const totalTests = filteredClientReports.length;
-                                
+
                                 return (
                                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                                     <Card className="p-3">
@@ -383,8 +387,8 @@ export default function Dashboard() {
                                   </thead>
                                   <tbody>
                                     {filteredClientReports.slice(0, 3).map((report) => (
-                                      <tr 
-                                        key={report.run_id} 
+                                      <tr
+                                        key={report.run_id}
                                         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
                                         onClick={() => navigate(`/test/${report.run_id}`)}
                                       >
@@ -434,7 +438,7 @@ export default function Dashboard() {
                                         <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
                                         <td className="py-2 px-2 text-center">
                                           <div className="flex items-center justify-center">
-                                            <Badge 
+                                            <Badge
                                               variant={getStatusBadgeInfo(report.sync_info.status).variant}
                                               className="flex items-center gap-1"
                                             >
