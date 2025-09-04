@@ -1,10 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncReport } from '../types/report';
 import { formatDuration, formatTimestamp } from '../lib/utils';
 import { useNavigate } from 'react-router-dom';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
 interface ClientMatrixProps {
   reports: SyncReport[];
@@ -34,6 +35,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
   className
 }) => {
   const navigate = useNavigate();
+  const [boxCount, setBoxCount] = useState<number>(5);
 
   const matrixData = useMemo(() => {
     // Filter reports by directory and network
@@ -66,8 +68,8 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
             Number(b.timestamp) - Number(a.timestamp)
           );
 
-          // Take up to 5 most recent reports
-          const recentReports = sortedReports.slice(0, 5).map(report => ({
+          // Take up to boxCount most recent reports
+          const recentReports = sortedReports.slice(0, boxCount).map(report => ({
             report,
             status: (report.sync_info.status || 'success') as 'success' | 'failed' | 'timeout' | 'error',
             duration: report.sync_info.duration
@@ -104,7 +106,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     });
 
     return { matrix, elClients, clClients };
-  }, [reports, directory, network]);
+  }, [reports, directory, network, boxCount]);
 
   const getStatusColor = (status: 'success' | 'failed' | 'timeout' | 'error' | null): string => {
     switch (status) {
@@ -198,18 +200,38 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     <TooltipProvider>
       <Card className={className}>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-            </svg>
-            Client Matrix
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Most recent test results for {directory} / {network} ({matrixData.elClients.length} EL × {matrixData.clClients.length} CL clients)
-          </p>
+          <div className="flex items-center justify-between">
+            <div className="flex-1">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                </svg>
+                Client Matrix
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Most recent test results for {directory} / {network} ({matrixData.elClients.length} EL × {matrixData.clClients.length} CL clients)
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Show:</span>
+              <Select value={boxCount.toString()} onValueChange={(value) => setBoxCount(parseInt(value))}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="5">5</SelectItem>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="15">15</SelectItem>
+                  <SelectItem value="20">20</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">runs</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -264,48 +286,62 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                   {cell.fastestDuration ? `⚡︎ ${formatAverageDuration(cell.fastestDuration)}` : '⚡︎ N/A'}
                                 </div>
                               </div>
-                              {/* Last 5 runs as small boxes */}
-                              <div className="flex gap-1 justify-center">
-                                {/* Show up to 5 boxes, fill with empty if less than 5 */}
-                                {[...Array(5)].map((_, idx) => {
-                                  const report = cell.recentReports[idx];
-                                  if (report) {
-                                    return (
-                                      <Tooltip key={idx}>
-                                        <TooltipTrigger asChild>
+                              {/* Last N runs as small boxes, wrapped in rows of 5 */}
+                              <div className="flex flex-col gap-1">
+                                {/* Create rows of 5 boxes each */}
+                                {[...Array(Math.ceil(boxCount / 5))].map((_, rowIdx) => (
+                                  <div key={rowIdx} className="flex gap-1 justify-center">
+                                    {[...Array(5)].map((_, colIdx) => {
+                                      const idx = rowIdx * 5 + colIdx;
+                                      if (idx >= boxCount) return null;
+                                      const report = cell.recentReports[idx];
+                                      if (report) {
+                                        return (
+                                          <Tooltip key={colIdx}>
+                                            <TooltipTrigger asChild>
+                                              <div
+                                                className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status)}`}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  navigate(`/test/${report.report.run_id}`);
+                                                }}
+                                              />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <span>{formatDuration(report.duration)}</span>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        );
+                                      } else {
+                                        return (
                                           <div
-                                            className={`w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status)}`}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              navigate(`/test/${report.report.run_id}`);
-                                            }}
+                                            key={colIdx}
+                                            className="w-3 h-3 rounded-sm border border-muted-foreground/20"
                                           />
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <span>{formatDuration(report.duration)}</span>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                    );
-                                  } else {
-                                    return (
-                                      <div
-                                        key={idx}
-                                        className="w-3 h-3 rounded-sm border border-muted-foreground/20"
-                                      />
-                                    );
-                                  }
-                                })}
+                                        );
+                                      }
+                                    })}
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           ) : (
                             <div className="flex flex-col items-center gap-1.5">
                               <div className="text-sm text-muted-foreground">No Data</div>
-                              <div className="flex gap-1">
-                                {[...Array(5)].map((_, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="w-3 h-3 rounded-sm border border-muted-foreground/20"
-                                  />
+                              <div className="flex flex-col gap-1">
+                                {[...Array(Math.ceil(boxCount / 5))].map((_, rowIdx) => (
+                                  <div key={rowIdx} className="flex gap-1 justify-center">
+                                    {[...Array(5)].map((_, colIdx) => {
+                                      const idx = rowIdx * 5 + colIdx;
+                                      if (idx >= boxCount) return null;
+                                      return (
+                                        <div
+                                          key={colIdx}
+                                          className="w-3 h-3 rounded-sm border border-muted-foreground/20"
+                                        />
+                                      );
+                                    })}
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -343,7 +379,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Shows last 5 test runs (newest on the left). ⌀ = average, ⚡︎ = fastest (from successful runs only). Click to view details.
+              Shows last {boxCount} test runs (newest first, left to right, top to bottom). ⌀ = average, ⚡︎ = fastest (from successful runs only). Click to view details.
             </div>
           </div>
         </CardContent>
