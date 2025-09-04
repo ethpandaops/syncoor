@@ -299,10 +299,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
             <div>
               <span className="text-xs text-muted-foreground">Version:</span>
               <div className="font-mono text-xs break-all overflow-hidden">
-                {(() => {
-                  const version = test.current_metrics?.exec_version || testDetail.el_client_config?.image?.split(':')[1] || 'N/A';
-                  return version.length > 30 ? `${version.slice(0, 30)}...` : version;
-                })()}
+                {test.current_metrics?.exec_version || testDetail.el_client_config?.image?.split(':')[1] || 'N/A'}
               </div>
             </div>
             <div>
@@ -351,10 +348,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
             <div>
               <span className="text-xs text-muted-foreground">Version:</span>
               <div className="font-mono text-xs break-all overflow-hidden">
-                {(() => {
-                  const version = test.current_metrics?.cons_version || testDetail.cl_client_config?.image?.split(':')[1] || 'N/A';
-                  return version.length > 30 ? `${version.slice(0, 30)}...` : version;
-                })()}
+                {test.current_metrics?.cons_version || testDetail.cl_client_config?.image?.split(':')[1] || 'N/A'}
               </div>
             </div>
             <div>

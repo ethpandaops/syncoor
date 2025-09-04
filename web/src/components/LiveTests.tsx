@@ -155,9 +155,20 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
         }));
 
         // Parse the key to get endpoint and runId
-        const parts = testKey.split('_');
-        const runId = parts[parts.length - 1];
-        const endpointUrl = parts.slice(0, -1).join('_');
+        const parts = testKey.split('|||');
+        if (parts.length !== 2) {
+          console.error('Invalid testKey format:', testKey);
+          setTestDetails(prev => ({
+            ...prev,
+            [testKey]: {
+              loading: false,
+              error: 'Invalid test key format'
+            }
+          }));
+          return;
+        }
+        const endpointUrl = parts[0];
+        const runId = parts[1];
         const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
         
         if (endpoint) {
@@ -235,15 +246,13 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
   };
 
   const updateTestDetail = useCallback(async (testKey: string) => {
-    // The testKey format is: {endpointUrl}_{runId}
-    // But the runId itself may contain underscores, so we need to find the endpoint URL first
-    // Endpoint URLs start with http:// or https://
-    const endpointMatch = testKey.match(/^(https?:\/\/[^_]+)/);
-    if (!endpointMatch) {
+    // The testKey format is: {endpointUrl}|||{runId}
+    const parts = testKey.split('|||');
+    if (parts.length !== 2) {
       return;
     }
-    const endpointUrl = endpointMatch[1];
-    const runId = testKey.substring(endpointUrl.length + 1); // +1 for the underscore
+    const endpointUrl = parts[0];
+    const runId = parts[1];
     const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
     
     if (!endpoint) {
@@ -475,7 +484,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                       </thead>
                       <tbody>
                         {paginatedTests.map((test, testIndex) => {
-                          const testKey = `${data.endpoint.url}_${test.run_id}`;
+                          const testKey = `${data.endpoint.url}|||${test.run_id}`;
                           const isExpanded = expandedTests.has(testKey);
                           const shouldAutoExpand = autoExpand && test.is_running && !expandedTests.has(testKey);
                           
