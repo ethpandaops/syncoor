@@ -48,7 +48,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
     return () => {
       clearInterval(interval);
     };
-  }, [test.is_running, testKey, onUpdateDetail]); // Remove detail?.data to prevent constant re-running
+  }, [test.is_running, testKey, onUpdateDetail, detail?.data]); // Include detail?.data dependency
 
   // Update seconds since last fetch
   useEffect(() => {

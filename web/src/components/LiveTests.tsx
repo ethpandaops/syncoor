@@ -31,20 +31,6 @@ interface TestDetails {
 }
 
 const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
-  // Safety check for endpoints
-  if (!endpoints) {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle>Syncoor Tests</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">No syncoor API endpoints provided.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const [endpointData, setEndpointData] = useState<EndpointData[]>([]);
   const [searchParams] = useSearchParams();
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
@@ -132,6 +118,80 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     return () => clearInterval(interval);
   }, []);
 
+  const updateTestDetail = useCallback(async (testKey: string) => {
+    // The testKey format is: {endpointUrl}|||{runId}
+    const parts = testKey.split('|||');
+    if (parts.length !== 2) {
+      return;
+    }
+    const endpointUrl = parts[0];
+    const runId = parts[1];
+    const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
+    
+    if (!endpoint) {
+      return;
+    }
+
+    try {
+      const detail = await fetchSyncoorTestDetail(endpoint.endpoint, runId);
+
+      // Update state with new data
+      setTestDetails(prev => {
+        const existing = prev[testKey]?.data;
+
+        // Always create a completely new object structure for React to detect changes
+        const newData = { ...detail };
+
+        if (existing && existing.progress_history && detail.progress_history) {
+          // Create a map of existing timestamps for deduplication
+          const existingTimestamps = new Set(
+            existing.progress_history.map(p => p.timestamp)
+          );
+
+          // Add only new progress points
+          const newProgressPoints = detail.progress_history.filter(
+            p => !existingTimestamps.has(p.timestamp)
+          );
+
+          if (newProgressPoints.length > 0) {
+            // Merge and sort by timestamp - create completely new array
+            newData.progress_history = [
+              ...existing.progress_history,
+              ...newProgressPoints
+            ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+          } else {
+            // No new points, keep existing history but still create new reference
+            newData.progress_history = [...existing.progress_history];
+          }
+        }
+
+        return {
+          ...prev,
+          [testKey]: {
+            loading: false,
+            data: newData
+          }
+        };
+      });
+    } catch (error) {
+      // Don't update the error state to avoid disrupting the user experience
+    }
+  }, [endpointData]);
+
+  // Safety check for endpoints
+  if (!endpoints) {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle>Syncoor Tests</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">No syncoor API endpoints provided.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const toggleTestExpansion = async (testKey: string) => {
     const isCurrentlyExpanded = expandedTests.has(testKey);
 
@@ -157,7 +217,6 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
         // Parse the key to get endpoint and runId
         const parts = testKey.split('|||');
         if (parts.length !== 2) {
-          console.error('Invalid testKey format:', testKey);
           setTestDetails(prev => ({
             ...prev,
             [testKey]: {
@@ -245,65 +304,6 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     return `${gb.toFixed(1)} GB`;
   };
 
-  const updateTestDetail = useCallback(async (testKey: string) => {
-    // The testKey format is: {endpointUrl}|||{runId}
-    const parts = testKey.split('|||');
-    if (parts.length !== 2) {
-      return;
-    }
-    const endpointUrl = parts[0];
-    const runId = parts[1];
-    const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
-
-    if (!endpoint) {
-      return;
-    }
-
-    try {
-      const detail = await fetchSyncoorTestDetail(endpoint.endpoint, runId);
-
-      // Update state with new data
-      setTestDetails(prev => {
-        const existing = prev[testKey]?.data;
-
-        // Always create a completely new object structure for React to detect changes
-        const newData = { ...detail };
-
-        if (existing && existing.progress_history && detail.progress_history) {
-          // Create a map of existing timestamps for deduplication
-          const existingTimestamps = new Set(
-            existing.progress_history.map(p => p.timestamp)
-          );
-
-          // Add only new progress points
-          const newProgressPoints = detail.progress_history.filter(
-            p => !existingTimestamps.has(p.timestamp)
-          );
-
-          if (newProgressPoints.length > 0) {
-            // Merge and sort by timestamp - create completely new array
-            newData.progress_history = [
-              ...existing.progress_history,
-              ...newProgressPoints
-            ].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-          } else {
-            // No new points, keep existing history but still create new reference
-            newData.progress_history = [...existing.progress_history];
-          }
-        }
-
-        return {
-          ...prev,
-          [testKey]: {
-            loading: false,
-            data: newData
-          }
-        };
-      });
-    } catch (error) {
-      // Don't update the error state to avoid disrupting the user experience
-    }
-  }, [endpointData]);
 
 
 
