@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 import { SyncReport } from '../types/report';
-import { formatDuration, formatTimestamp } from '../lib/utils';
+import { formatDuration } from '../lib/utils';
 import { Link } from 'react-router-dom';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 
@@ -158,20 +157,6 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
     }
   };
 
-  const getStatusText = (status: 'success' | 'failed' | 'timeout' | 'error' | null): string => {
-    switch (status) {
-      case 'success':
-        return 'Success';
-      case 'failed':
-        return 'Failed';
-      case 'error':
-        return 'Error';
-      case 'timeout':
-        return 'Timeout';
-      default:
-        return 'No Data';
-    }
-  };
 
   const capitalizeClient = (clientType: string): string => {
     return clientType.charAt(0).toUpperCase() + clientType.slice(1);
@@ -309,7 +294,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                           <span className="capitalize">{capitalizeClient(matrixData.elClients[rowIndex])}</span>
                         </div>
                       </td>
-                      {row.map((cell, cellIndex) => (
+                      {row.map((cell) => (
                         <td key={`${cell.elClient}-${cell.clClient}`} className="py-3 px-2">
                           {cell.recentReports.length > 0 ? (
                             <div className="flex flex-col items-center gap-1.5">
