@@ -24,6 +24,7 @@ interface MatrixCell {
   clClient: string;
   recentReports: ReportData[];
   averageDuration?: number;
+  fastestDuration?: number;
 }
 
 const ClientMatrix: React.FC<ClientMatrixProps> = ({
@@ -72,24 +73,29 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
             duration: report.sync_info.duration
           }));
 
-          // Calculate average duration for successful runs
+          // Calculate average and fastest duration for successful runs
           const successfulRuns = recentReports.filter(r => r.status === 'success');
           const averageDuration = successfulRuns.length > 0
             ? successfulRuns.reduce((sum, r) => sum + r.duration, 0) / successfulRuns.length
+            : undefined;
+          const fastestDuration = successfulRuns.length > 0
+            ? Math.min(...successfulRuns.map(r => r.duration))
             : undefined;
 
           row.push({
             elClient,
             clClient,
             recentReports,
-            averageDuration
+            averageDuration,
+            fastestDuration
           });
         } else {
           row.push({
             elClient,
             clClient,
             recentReports: [],
-            averageDuration: undefined
+            averageDuration: undefined,
+            fastestDuration: undefined
           });
         }
       });
@@ -249,9 +255,14 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                         <td key={`${cell.elClient}-${cell.clClient}`} className="py-3 px-2">
                           {cell.recentReports.length > 0 ? (
                             <div className="flex flex-col items-center gap-1.5">
-                              {/* Average duration display */}
-                              <div className="text-sm font-medium">
-                                {cell.averageDuration ? `⌀ ${formatAverageDuration(cell.averageDuration)}` : '⌀ N/A'}
+                              {/* Duration statistics display */}
+                              <div className="flex flex-col items-center gap-0.5">
+                                <div className="text-sm font-medium">
+                                  {cell.averageDuration ? `⌀ ${formatAverageDuration(cell.averageDuration)}` : '⌀ N/A'}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  {cell.fastestDuration ? `⚡︎ ${formatAverageDuration(cell.fastestDuration)}` : '⚡︎ N/A'}
+                                </div>
                               </div>
                               {/* Last 5 runs as small boxes */}
                               <div className="flex gap-1 justify-center">
@@ -332,7 +343,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
               </div>
             </div>
             <div className="text-xs text-muted-foreground">
-              Shows last 5 test runs (newest on the left). Average duration is calculated from successful runs only. Click to view details.
+              Shows last 5 test runs (newest on the left). ⌀ = average, ⚡︎ = fastest (from successful runs only). Click to view details.
             </div>
           </div>
         </CardContent>
