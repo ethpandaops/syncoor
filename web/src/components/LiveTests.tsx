@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
+import { Button } from './ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { SyncoorApiEndpoint } from '../types/config';
 import { TestSummary, TestDetail, HealthResponse } from '../types/syncoor';
 import { fetchSyncoorTests, fetchSyncoorHealth, fetchSyncoorTestDetail } from '../lib/syncoorApi';
@@ -35,6 +37,8 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
   const [searchParams] = useSearchParams();
   const [expandedTests, setExpandedTests] = useState<Set<string>>(new Set());
   const [testDetails, setTestDetails] = useState<TestDetails>({});
+  const [currentPages, setCurrentPages] = useState<Record<string, number>>({});
+  const [testsPerPage, setTestsPerPage] = useState(10);
 
   const autoExpand = searchParams.get('expand') === 'true';
   const showActiveOnly = searchParams.get('active') === 'true';
@@ -127,7 +131,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     const endpointUrl = parts[0];
     const runId = parts[1];
     const endpoint = endpointData.find(d => d.endpoint.url === endpointUrl);
-    
+
     if (!endpoint) {
       return;
     }
@@ -335,7 +339,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     } else if (test.error || (!test.is_running && !test.is_complete)) {
       return 'bg-red-500';
     }
-    
+
     // Only apply "Unknown" logic to running tests
     if (test.is_running) {
       const now = new Date().getTime();
@@ -349,7 +353,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
         return 'bg-blue-500';
       }
     }
-    
+
     return 'bg-red-500';
   };
 
@@ -360,7 +364,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
     } else if (test.error || (!test.is_running && !test.is_complete)) {
       return 'Failed';
     }
-    
+
     // Only apply "Unknown" logic to running tests
     if (test.is_running) {
       const now = new Date().getTime();
@@ -374,7 +378,7 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
         return 'Running';
       }
     }
-    
+
     return 'Failed';
   };
 
@@ -485,18 +489,79 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                 return a.cl_client.localeCompare(b.cl_client);
               });
 
-              const paginatedTests = sortedTests.slice(0, 50); // Show max 50 tests
+              // Get current page for this endpoint
+              const endpointKey = data.endpoint.url;
+              const currentPage = currentPages[endpointKey] || 1;
+              const totalPages = Math.ceil(sortedTests.length / testsPerPage);
+              const startIndex = (currentPage - 1) * testsPerPage;
+              const endIndex = startIndex + testsPerPage;
+              const paginatedTests = sortedTests.slice(startIndex, endIndex);
+
+              const handlePageChange = (page: number) => {
+                setCurrentPages(prev => ({ ...prev, [endpointKey]: page }));
+              };
 
               return (
                 <div className="space-y-4">
-                  {/* Summary info */}
-                  <div className="flex items-center justify-between text-sm text-muted-foreground">
-                    <span>
-                      {filteredTests.length} test{filteredTests.length !== 1 ? 's' : ''}
-                      {showActiveOnly && ' (active only)'}
-                    </span>
-                    {filteredTests.length > 50 && (
-                      <span>Showing first 50 of {filteredTests.length}</span>
+                  {/* Summary info and pagination controls */}
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      {sortedTests.length > testsPerPage && (
+                        <span>
+                          Showing {startIndex + 1}-{Math.min(endIndex, sortedTests.length)} of {sortedTests.length}
+                        </span>
+                      )}
+                    </div>
+
+                    {sortedTests.length > 10 && (
+                      <div className="flex flex-wrap items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">Show:</span>
+                          <Select value={testsPerPage.toString()} onValueChange={(value) => {
+                            setTestsPerPage(parseInt(value));
+                            // Reset to first page when changing page size
+                            setCurrentPages({});
+                          }}>
+                            <SelectTrigger className="w-20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="25">25</SelectItem>
+                              <SelectItem value="50">50</SelectItem>
+                              <SelectItem value="100">100</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {sortedTests.length > testsPerPage && (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                              >
+                                <ChevronLeftIcon className="h-4 w-4" />
+                              </Button>
+
+                              <span className="text-sm">
+                                Page {currentPage} of {totalPages}
+                              </span>
+
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                              >
+                                <ChevronRightIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -926,6 +991,20 @@ function ChevronDownIcon({ className }: { className?: string }) {
       strokeWidth={2}
     >
       <polyline points="6,9 12,15 18,9" />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <polyline points="15,18 9,12 15,6" />
     </svg>
   );
 }
