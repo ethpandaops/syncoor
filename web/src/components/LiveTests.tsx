@@ -329,37 +329,53 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
   };
 
   const getStatusColor = (test: TestSummary): string => {
-    const now = new Date().getTime();
-    const lastUpdate = new Date(test.last_update).getTime();
-    const timeSinceUpdate = now - lastUpdate;
-    const threeMinutesInMs = 3 * 60 * 1000;
-
-    if (timeSinceUpdate > threeMinutesInMs) {
-      return 'bg-yellow-500';
-    } else if (test.is_running) {
-      return 'bg-blue-500';
-    } else if (test.is_complete && !test.error) {
+    // First check if test is complete or failed - these have final states
+    if (test.is_complete && !test.error) {
       return 'bg-green-500';
-    } else {
+    } else if (test.error || (!test.is_running && !test.is_complete)) {
       return 'bg-red-500';
     }
+    
+    // Only apply "Unknown" logic to running tests
+    if (test.is_running) {
+      const now = new Date().getTime();
+      const lastUpdate = new Date(test.last_update).getTime();
+      const timeSinceUpdate = now - lastUpdate;
+      const threeMinutesInMs = 3 * 60 * 1000;
+
+      if (timeSinceUpdate > threeMinutesInMs) {
+        return 'bg-yellow-500';
+      } else {
+        return 'bg-blue-500';
+      }
+    }
+    
+    return 'bg-red-500';
   };
 
   const getTestStatus = (test: TestSummary): string => {
-    const now = new Date().getTime();
-    const lastUpdate = new Date(test.last_update).getTime();
-    const timeSinceUpdate = now - lastUpdate;
-    const threeMinutesInMs = 3 * 60 * 1000;
-
-    if (timeSinceUpdate > threeMinutesInMs) {
-      return 'Unknown';
-    } else if (test.is_running) {
-      return 'Running';
-    } else if (test.is_complete && !test.error) {
+    // First check if test is complete or failed - these have final states
+    if (test.is_complete && !test.error) {
       return 'Complete';
-    } else {
+    } else if (test.error || (!test.is_running && !test.is_complete)) {
       return 'Failed';
     }
+    
+    // Only apply "Unknown" logic to running tests
+    if (test.is_running) {
+      const now = new Date().getTime();
+      const lastUpdate = new Date(test.last_update).getTime();
+      const timeSinceUpdate = now - lastUpdate;
+      const threeMinutesInMs = 3 * 60 * 1000;
+
+      if (timeSinceUpdate > threeMinutesInMs) {
+        return 'Unknown';
+      } else {
+        return 'Running';
+      }
+    }
+    
+    return 'Failed';
   };
 
   // If no endpoints are configured, show message
