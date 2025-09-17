@@ -48,10 +48,9 @@ func NewSyncCommand() *cobra.Command {
 		clientLogsLevelEL     string
 		clientLogsLevelCL     string
 		// Metrics exporter flags
-		metricsExporterImage        string
-		metricsExporterPort         int
-		metricsExporterDiskInterval string
-		metricsExporterLogLevel     string
+		metricsExporterImage    string
+		metricsExporterPort     int
+		metricsExporterLogLevel string
 	)
 
 	cmd := &cobra.Command{
@@ -84,33 +83,32 @@ Exit codes:
 
 			// Create sync test config from command line flags
 			config := synctest.Config{
-				CheckInterval:               checkInterval,
-				RunTimeout:                  runTimeout,
-				ELClient:                    elClient,
-				CLClient:                    clClient,
-				ELImage:                     elImage,
-				CLImage:                     clImage,
-				ELExtraArgs:                 elExtraArgs,
-				CLExtraArgs:                 clExtraArgs,
-				Network:                     networkName,
-				EnclaveName:                 enclaveName,
-				ReportDir:                   reportDir,
-				ServerURL:                   serverURL,
-				ServerAuth:                  serverAuth,
-				ClientLogs:                  clientLogs,
-				Supernode:                   supernode,
-				CheckpointSyncEnabled:       checkpointSyncEnabled,
-				CheckpointSyncURL:           checkpointSyncURL,
-				PublicPorts:                 publicPorts,
-				PublicPortEL:                publicPortEL,
-				PublicPortCL:                publicPortCL,
-				PublicIP:                    publicIP,
-				ClientLogsLevelEL:           clientLogsLevelEL,
-				ClientLogsLevelCL:           clientLogsLevelCL,
-				MetricsExporterImage:        metricsExporterImage,
-				MetricsExporterPort:         metricsExporterPort,
-				MetricsExporterDiskInterval: metricsExporterDiskInterval,
-				MetricsExporterLogLevel:     metricsExporterLogLevel,
+				CheckInterval:           checkInterval,
+				RunTimeout:              runTimeout,
+				ELClient:                elClient,
+				CLClient:                clClient,
+				ELImage:                 elImage,
+				CLImage:                 clImage,
+				ELExtraArgs:             elExtraArgs,
+				CLExtraArgs:             clExtraArgs,
+				Network:                 networkName,
+				EnclaveName:             enclaveName,
+				ReportDir:               reportDir,
+				ServerURL:               serverURL,
+				ServerAuth:              serverAuth,
+				ClientLogs:              clientLogs,
+				Supernode:               supernode,
+				CheckpointSyncEnabled:   checkpointSyncEnabled,
+				CheckpointSyncURL:       checkpointSyncURL,
+				PublicPorts:             publicPorts,
+				PublicPortEL:            publicPortEL,
+				PublicPortCL:            publicPortCL,
+				PublicIP:                publicIP,
+				ClientLogsLevelEL:       clientLogsLevelEL,
+				ClientLogsLevelCL:       clientLogsLevelCL,
+				MetricsExporterImage:    metricsExporterImage,
+				MetricsExporterPort:     metricsExporterPort,
+				MetricsExporterLogLevel: metricsExporterLogLevel,
 			}
 
 			// Parse labels
@@ -243,8 +241,6 @@ Exit codes:
 		"ethpandaops/ethereum-metrics-exporter:debian-latest", "Docker image for metrics exporter")
 	cmd.Flags().IntVar(&metricsExporterPort, "metrics-exporter-port", 9090,
 		"Port for metrics exporter")
-	cmd.Flags().StringVar(&metricsExporterDiskInterval, "metrics-exporter-disk-interval", "1m",
-		"Disk usage check interval for metrics exporter")
 	cmd.Flags().StringVar(&metricsExporterLogLevel, "metrics-exporter-log-level", "info",
 		"Log level for metrics exporter (trace, debug, info, warn, error)")
 

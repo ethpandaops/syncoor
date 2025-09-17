@@ -33,13 +33,12 @@ type Manager struct {
 
 // Config contains configuration for metrics exporter deployment
 type Config struct {
-	Image             string // Default: "ethpandaops/ethereum-metrics-exporter:debian-latest"
-	MetricsPort       int    // Default: 9090
-	DiskUsageInterval string // Default: "1m"
-	LogLevel          string // Default: "info"
-	ConfigDir         string // Temporary config directory
-	ELServiceName     string // Execution layer service name (optional, for specific discovery)
-	CLServiceName     string // Consensus layer service name (optional, for specific discovery)
+	Image         string // Default: "ethpandaops/ethereum-metrics-exporter:debian-latest"
+	MetricsPort   int    // Default: 9090
+	LogLevel      string // Default: "info"
+	ConfigDir     string // Temporary config directory
+	ELServiceName string // Execution layer service name (optional, for specific discovery)
+	CLServiceName string // Consensus layer service name (optional, for specific discovery)
 }
 
 // NewManager creates a new Manager instance
@@ -84,14 +83,13 @@ func (m *Manager) Start(ctx context.Context, enclaveName string, config Config) 
 
 	// Prepare configuration data
 	configData := ConfigTemplateData{
-		MetricsPort:       config.MetricsPort,
-		ConsensusURL:      m.serviceDiscovery.BuildConsensusURL(services),
-		ExecutionURL:      m.serviceDiscovery.BuildExecutionURL(services),
-		MonitoredDirs:     monitoredDirs,
-		DiskUsageInterval: config.DiskUsageInterval,
-		LogLevel:          config.LogLevel,
-		ELContainerName:   services.ELEndpoint.ContainerID,
-		CLContainerName:   services.CLEndpoint.ContainerID,
+		MetricsPort:     config.MetricsPort,
+		ConsensusURL:    m.serviceDiscovery.BuildConsensusURL(services),
+		ExecutionURL:    m.serviceDiscovery.BuildExecutionURL(services),
+		MonitoredDirs:   monitoredDirs,
+		LogLevel:        config.LogLevel,
+		ELContainerName: services.ELEndpoint.ContainerID,
+		CLContainerName: services.CLEndpoint.ContainerID,
 	}
 
 	// Validate configuration data
@@ -215,11 +213,10 @@ func (m *Manager) Restart(ctx context.Context, enclaveName string, config Config
 // GetDefaultConfig returns default configuration for metrics exporter
 func (m *Manager) GetDefaultConfig() Config {
 	return Config{
-		Image:             "ethpandaops/ethereum-metrics-exporter:debian-latest",
-		MetricsPort:       9090,
-		DiskUsageInterval: "1m",
-		LogLevel:          "info",
-		ConfigDir:         "", // Will be auto-generated
+		Image:       "ethpandaops/ethereum-metrics-exporter:debian-latest",
+		MetricsPort: 9090,
+		LogLevel:    "info",
+		ConfigDir:   "", // Will be auto-generated
 	}
 }
 
@@ -279,14 +276,13 @@ func (m *Manager) UpdateConfiguration(ctx context.Context, enclaveName string, c
 
 	// Prepare new configuration data
 	configData := ConfigTemplateData{
-		MetricsPort:       config.MetricsPort,
-		ConsensusURL:      m.serviceDiscovery.BuildConsensusURL(services),
-		ExecutionURL:      m.serviceDiscovery.BuildExecutionURL(services),
-		MonitoredDirs:     monitoredDirs,
-		DiskUsageInterval: config.DiskUsageInterval,
-		LogLevel:          config.LogLevel,
-		ELContainerName:   services.ELEndpoint.ContainerID,
-		CLContainerName:   services.CLEndpoint.ContainerID,
+		MetricsPort:     config.MetricsPort,
+		ConsensusURL:    m.serviceDiscovery.BuildConsensusURL(services),
+		ExecutionURL:    m.serviceDiscovery.BuildExecutionURL(services),
+		MonitoredDirs:   monitoredDirs,
+		LogLevel:        config.LogLevel,
+		ELContainerName: services.ELEndpoint.ContainerID,
+		CLContainerName: services.CLEndpoint.ContainerID,
 	}
 
 	// Validate and write new configuration

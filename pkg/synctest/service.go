@@ -1028,7 +1028,6 @@ func (s *service) startMetricsExporter(ctx context.Context) error {
 	config := s.metricsManager.GetDefaultConfig()
 	config.Image = s.cfg.MetricsExporterImage
 	config.MetricsPort = s.cfg.MetricsExporterPort
-	config.DiskUsageInterval = s.cfg.MetricsExporterDiskInterval
 	config.LogLevel = s.cfg.MetricsExporterLogLevel
 	config.ConfigDir = s.cfg.MetricsExporterConfigDir
 

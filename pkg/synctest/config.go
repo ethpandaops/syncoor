@@ -45,11 +45,10 @@ type Config struct {
 	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
 
 	// Metrics Exporter Options
-	MetricsExporterImage        string `json:"metrics_exporter_image"         yaml:"metrics_exporter_image"`
-	MetricsExporterPort         int    `json:"metrics_exporter_port"          yaml:"metrics_exporter_port"`
-	MetricsExporterDiskInterval string `json:"metrics_exporter_disk_interval" yaml:"metrics_exporter_disk_interval"`
-	MetricsExporterLogLevel     string `json:"metrics_exporter_log_level"     yaml:"metrics_exporter_log_level"`
-	MetricsExporterConfigDir    string `json:"metrics_exporter_config_dir"    yaml:"metrics_exporter_config_dir"`
+	MetricsExporterImage     string `json:"metrics_exporter_image"         yaml:"metrics_exporter_image"`
+	MetricsExporterPort      int    `json:"metrics_exporter_port"          yaml:"metrics_exporter_port"`
+	MetricsExporterLogLevel  string `json:"metrics_exporter_log_level"     yaml:"metrics_exporter_log_level"`
+	MetricsExporterConfigDir string `json:"metrics_exporter_config_dir"    yaml:"metrics_exporter_config_dir"`
 }
 
 // SetDefaults sets default values for unspecified configuration fields
@@ -135,11 +134,10 @@ func isValidLogLevel(level string, validLevels []string) bool {
 // GetMetricsExporterConfig returns the metrics exporter configuration
 func (c *Config) GetMetricsExporterConfig() map[string]interface{} {
 	return map[string]interface{}{
-		"image":         c.MetricsExporterImage,
-		"port":          c.MetricsExporterPort,
-		"disk_interval": c.MetricsExporterDiskInterval,
-		"log_level":     c.MetricsExporterLogLevel,
-		"config_dir":    c.MetricsExporterConfigDir,
+		"image":      c.MetricsExporterImage,
+		"port":       c.MetricsExporterPort,
+		"log_level":  c.MetricsExporterLogLevel,
+		"config_dir": c.MetricsExporterConfigDir,
 	}
 }
 
@@ -150,9 +148,6 @@ func (c *Config) setMetricsExporterDefaults() {
 	}
 	if c.MetricsExporterPort == 0 {
 		c.MetricsExporterPort = 9090
-	}
-	if c.MetricsExporterDiskInterval == "" {
-		c.MetricsExporterDiskInterval = "1m"
 	}
 	if c.MetricsExporterLogLevel == "" {
 		c.MetricsExporterLogLevel = "info"
@@ -171,17 +166,6 @@ func (c *Config) validateMetricsExporterConfig() error {
 	if !isValidLogLevel(c.MetricsExporterLogLevel, validLogLevels) {
 		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error, fatal, panic)",
 			ErrInvalidMetricsExporterLogLevel, c.MetricsExporterLogLevel)
-	}
-
-	// Validate disk usage interval format (basic validation)
-	if c.MetricsExporterDiskInterval == "" {
-		return fmt.Errorf("%w: cannot be empty", ErrInvalidMetricsExporterInterval)
-	}
-
-	// Basic format validation for time duration
-	if _, err := time.ParseDuration(c.MetricsExporterDiskInterval); err != nil {
-		return fmt.Errorf("%w: %s (must be a valid duration like '1m', '30s', '5m')",
-			ErrInvalidMetricsExporterInterval, c.MetricsExporterDiskInterval)
 	}
 
 	return nil

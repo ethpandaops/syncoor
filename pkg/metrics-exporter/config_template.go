@@ -13,24 +13,22 @@ import (
 
 // Static errors for better error handling
 var (
-	ErrInvalidMetricsPort     = errors.New("invalid metrics port")
-	ErrConsensusURLEmpty      = errors.New("consensus URL cannot be empty")
-	ErrExecutionURLEmpty      = errors.New("execution URL cannot be empty")
-	ErrDiskUsageIntervalEmpty = errors.New("disk usage interval cannot be empty")
-	ErrLogLevelEmpty          = errors.New("log level cannot be empty")
-	ErrInvalidLogLevel        = errors.New("invalid log level")
+	ErrInvalidMetricsPort = errors.New("invalid metrics port")
+	ErrConsensusURLEmpty  = errors.New("consensus URL cannot be empty")
+	ErrExecutionURLEmpty  = errors.New("execution URL cannot be empty")
+	ErrLogLevelEmpty      = errors.New("log level cannot be empty")
+	ErrInvalidLogLevel    = errors.New("invalid log level")
 )
 
 // ConfigTemplateData contains the data required for generating the metrics exporter configuration
 type ConfigTemplateData struct {
-	MetricsPort       int
-	ConsensusURL      string
-	ExecutionURL      string
-	MonitoredDirs     []string
-	DiskUsageInterval string
-	LogLevel          string
-	ELContainerName   string // Execution layer container name
-	CLContainerName   string // Consensus layer container name
+	MetricsPort     int
+	ConsensusURL    string
+	ExecutionURL    string
+	MonitoredDirs   []string
+	LogLevel        string
+	ELContainerName string // Execution layer container name
+	CLContainerName string // Consensus layer container name
 }
 
 // ConfigGenerator handles generation of ethereum-metrics-exporter configuration files
@@ -52,7 +50,6 @@ func (g *ConfigGenerator) GenerateConfig(data ConfigTemplateData) ([]byte, error
 		"consensus_url":  data.ConsensusURL,
 		"execution_url":  data.ExecutionURL,
 		"monitored_dirs": len(data.MonitoredDirs),
-		"disk_interval":  data.DiskUsageInterval,
 		"log_level":      data.LogLevel,
 	}).Debug("Generating metrics exporter configuration")
 
@@ -115,7 +112,7 @@ execution:
 docker:
   enabled: true
   endpoint: "unix:///var/run/docker.sock"
-  interval: "{{ .DiskUsageInterval }}"
+  interval: "10s"
   containers:
 {{- if .ELContainerName }}
     - name: "{{ .ELContainerName }}"
@@ -175,10 +172,6 @@ func (g *ConfigGenerator) ValidateConfigData(data ConfigTemplateData) error {
 		return fmt.Errorf("%w", ErrExecutionURLEmpty)
 	}
 
-	if data.DiskUsageInterval == "" {
-		return fmt.Errorf("%w", ErrDiskUsageIntervalEmpty)
-	}
-
 	if data.LogLevel == "" {
 		return fmt.Errorf("%w", ErrLogLevelEmpty)
 	}
@@ -203,7 +196,6 @@ func (g *ConfigGenerator) ValidateConfigData(data ConfigTemplateData) error {
 		"consensus_url":  data.ConsensusURL,
 		"execution_url":  data.ExecutionURL,
 		"monitored_dirs": len(data.MonitoredDirs),
-		"disk_interval":  data.DiskUsageInterval,
 		"log_level":      data.LogLevel,
 	}).Debug("Configuration data validation passed")
 
@@ -213,11 +205,10 @@ func (g *ConfigGenerator) ValidateConfigData(data ConfigTemplateData) error {
 // GetDefaultConfigData returns default configuration data for the metrics exporter
 func (g *ConfigGenerator) GetDefaultConfigData() ConfigTemplateData {
 	return ConfigTemplateData{
-		MetricsPort:       9090,
-		ConsensusURL:      "",
-		ExecutionURL:      "",
-		MonitoredDirs:     []string{},
-		DiskUsageInterval: "1m",
-		LogLevel:          "info",
+		MetricsPort:   9090,
+		ConsensusURL:  "",
+		ExecutionURL:  "",
+		MonitoredDirs: []string{},
+		LogLevel:      "info",
 	}
 }
