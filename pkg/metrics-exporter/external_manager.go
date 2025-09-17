@@ -1,0 +1,377 @@
+package metrics_exporter
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strconv"
+	"time"
+
+	"github.com/docker/go-connections/nat"
+	"github.com/ethpandaops/syncoor/pkg/docker"
+	"github.com/moby/moby/api/types/container"
+	"github.com/sirupsen/logrus"
+)
+
+// Static errors for better error handling
+var (
+	ErrNoContainerRunning = errors.New("no container is currently running")
+	ErrNoConfigDirectory  = errors.New("no configuration directory available")
+)
+
+// ExternalManager handles lifecycle management of the external ethereum-metrics-exporter container
+type ExternalManager struct {
+	dockerManager    *docker.ContainerManager
+	configGenerator  *ConfigGenerator
+	serviceDiscovery *ServiceDiscovery
+	logger           logrus.FieldLogger
+	containerID      string
+	configDir        string
+}
+
+// ExternalConfig contains configuration for external metrics exporter deployment
+type ExternalConfig struct {
+	Image             string // Default: "ethpandaops/ethereum-metrics-exporter:debian-latest"
+	MetricsPort       int    // Default: 9090
+	DiskUsageInterval string // Default: "1m"
+	LogLevel          string // Default: "info"
+	ConfigDir         string // Temporary config directory
+	ELServiceName     string // Execution layer service name (optional, for specific discovery)
+	CLServiceName     string // Consensus layer service name (optional, for specific discovery)
+}
+
+// NewExternalManager creates a new ExternalManager instance
+func NewExternalManager(
+	dockerManager *docker.ContainerManager,
+	configGenerator *ConfigGenerator,
+	serviceDiscovery *ServiceDiscovery,
+	logger logrus.FieldLogger,
+) *ExternalManager {
+	return &ExternalManager{
+		dockerManager:    dockerManager,
+		configGenerator:  configGenerator,
+		serviceDiscovery: serviceDiscovery,
+		logger:           logger.WithField("component", "external-manager"),
+	}
+}
+
+// Start starts the external metrics exporter container
+func (m *ExternalManager) Start(ctx context.Context, enclaveName string, config ExternalConfig) error {
+	m.logger.WithFields(logrus.Fields{
+		"enclave": enclaveName,
+		"image":   config.Image,
+		"port":    config.MetricsPort,
+	}).Info("Starting external metrics exporter")
+
+	// Discover services
+	services, err := m.discoverServicesForConfig(ctx, enclaveName, config)
+	if err != nil {
+		return fmt.Errorf("failed to discover services: %w", err)
+	}
+
+	// Validate discovered endpoints
+	if err := m.serviceDiscovery.ValidateEndpoints(ctx, services); err != nil {
+		return fmt.Errorf("service endpoint validation failed: %w", err)
+	}
+
+	// Get monitored directories
+	monitoredDirs, err := m.serviceDiscovery.GetMonitoredDirectories(ctx, services)
+	if err != nil {
+		return fmt.Errorf("failed to get monitored directories: %w", err)
+	}
+
+	// Prepare configuration data
+	configData := ConfigTemplateData{
+		MetricsPort:       config.MetricsPort,
+		ConsensusURL:      m.serviceDiscovery.BuildConsensusURL(services),
+		ExecutionURL:      m.serviceDiscovery.BuildExecutionURL(services),
+		MonitoredDirs:     monitoredDirs,
+		DiskUsageInterval: config.DiskUsageInterval,
+		LogLevel:          config.LogLevel,
+		ELContainerName:   services.ELEndpoint.ContainerID,
+		CLContainerName:   services.CLEndpoint.ContainerID,
+	}
+
+	// Validate configuration data
+	if err := m.configGenerator.ValidateConfigData(configData); err != nil {
+		return fmt.Errorf("invalid configuration data: %w", err)
+	}
+
+	// Set up temporary configuration directory
+	if config.ConfigDir == "" {
+		tempDir, err := os.MkdirTemp("", "syncoor-metrics-exporter-*")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary config directory: %w", err)
+		}
+		config.ConfigDir = tempDir
+		m.configDir = tempDir
+	}
+
+	// Generate configuration file
+	configPath, err := m.configGenerator.WriteConfigFile(config.ConfigDir, configData)
+	if err != nil {
+		return fmt.Errorf("failed to write configuration file: %w", err)
+	}
+
+	m.logger.WithField("config_path", configPath).Debug("Generated metrics exporter configuration")
+
+	// Prepare Docker container configuration
+	containerConfig := m.buildContainerConfig(config, services.NetworkName)
+
+	// Start the container
+	containerInfo, err := m.dockerManager.StartContainer(ctx, containerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to start metrics exporter container: %w", err)
+	}
+
+	m.containerID = containerInfo.ID
+
+	// Wait for container to become healthy
+	if err := m.dockerManager.WaitForHealthy(ctx, m.containerID, 60*time.Second); err != nil {
+		m.logger.WithError(err).Warn("Container did not become healthy within timeout, but proceeding")
+		// Don't fail here as the container might still be functional
+	}
+
+	m.logger.WithFields(logrus.Fields{
+		"container_id":   m.containerID[:12],
+		"metrics_url":    m.GetMetricsEndpoint(),
+		"consensus_url":  configData.ConsensusURL,
+		"execution_url":  configData.ExecutionURL,
+		"monitored_dirs": len(monitoredDirs),
+	}).Info("External metrics exporter started successfully")
+
+	return nil
+}
+
+// Stop stops and removes the external metrics exporter container
+func (m *ExternalManager) Stop(ctx context.Context) error {
+	m.logger.Debug("Stopping external metrics exporter")
+
+	if m.containerID != "" {
+		if err := m.dockerManager.StopContainer(ctx, m.containerID); err != nil {
+			m.logger.WithError(err).Error("Failed to stop metrics exporter container")
+			return fmt.Errorf("failed to stop container: %w", err)
+		}
+		m.containerID = ""
+	}
+
+	// Clean up temporary configuration directory
+	if m.configDir != "" {
+		if err := os.RemoveAll(m.configDir); err != nil {
+			m.logger.WithError(err).Warn("Failed to remove temporary config directory")
+		}
+		m.configDir = ""
+	}
+
+	m.logger.Info("External metrics exporter stopped successfully")
+	return nil
+}
+
+// GetMetricsEndpoint returns the metrics endpoint URL
+func (m *ExternalManager) GetMetricsEndpoint() string {
+	if m.containerID == "" {
+		return ""
+	}
+
+	// For external containers, we assume they're accessible via localhost
+	// This could be enhanced to get the actual mapped port from Docker
+	return "http://localhost:9090/metrics"
+}
+
+// IsRunning checks if the external metrics exporter container is currently running
+func (m *ExternalManager) IsRunning(ctx context.Context) bool {
+	if m.containerID == "" {
+		return false
+	}
+
+	containerJSON, err := m.dockerManager.InspectContainer(ctx, m.containerID)
+	if err != nil {
+		m.logger.WithError(err).Debug("Failed to inspect container")
+		return false
+	}
+
+	return containerJSON.State.Running
+}
+
+// Restart restarts the external metrics exporter with new configuration
+func (m *ExternalManager) Restart(ctx context.Context, enclaveName string, config ExternalConfig) error {
+	m.logger.WithField("enclave", enclaveName).Info("Restarting external metrics exporter")
+
+	// Stop existing container
+	if err := m.Stop(ctx); err != nil {
+		return fmt.Errorf("failed to stop existing container: %w", err)
+	}
+
+	// Start with new configuration
+	if err := m.Start(ctx, enclaveName, config); err != nil {
+		return fmt.Errorf("failed to start container with new configuration: %w", err)
+	}
+
+	return nil
+}
+
+// GetDefaultConfig returns default configuration for external metrics exporter
+func (m *ExternalManager) GetDefaultConfig() ExternalConfig {
+	return ExternalConfig{
+		Image:             "ethpandaops/ethereum-metrics-exporter:debian-latest",
+		MetricsPort:       9090,
+		DiskUsageInterval: "1m",
+		LogLevel:          "info",
+		ConfigDir:         "", // Will be auto-generated
+	}
+}
+
+// GetContainerID returns the current container ID
+func (m *ExternalManager) GetContainerID() string {
+	return m.containerID
+}
+
+// GetConfigDirectory returns the current configuration directory path
+func (m *ExternalManager) GetConfigDirectory() string {
+	return m.configDir
+}
+
+// GetContainerInfo returns information about the running container
+func (m *ExternalManager) GetContainerInfo(ctx context.Context) (*docker.ContainerInfo, error) {
+	if m.containerID == "" {
+		return nil, fmt.Errorf("%w", ErrNoContainerRunning)
+	}
+
+	containerJSON, err := m.dockerManager.InspectContainer(ctx, m.containerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to inspect container: %w", err)
+	}
+
+	// Convert to ContainerInfo (simplified)
+	info := &docker.ContainerInfo{
+		ID:     m.containerID,
+		Name:   containerJSON.Name,
+		Status: containerJSON.State.Status,
+		Image:  containerJSON.Config.Image,
+		Labels: containerJSON.Config.Labels,
+	}
+
+	return info, nil
+}
+
+// UpdateConfiguration updates the configuration without restarting the container
+// Note: This requires the metrics exporter to support configuration reloading
+func (m *ExternalManager) UpdateConfiguration(ctx context.Context, enclaveName string, config ExternalConfig) error {
+	m.logger.WithField("enclave", enclaveName).Info("Updating metrics exporter configuration")
+
+	if m.configDir == "" {
+		return fmt.Errorf("%w", ErrNoConfigDirectory)
+	}
+
+	// Discover services
+	services, err := m.serviceDiscovery.DiscoverServices(ctx, enclaveName)
+	if err != nil {
+		return fmt.Errorf("failed to discover services: %w", err)
+	}
+
+	// Get monitored directories
+	monitoredDirs, err := m.serviceDiscovery.GetMonitoredDirectories(ctx, services)
+	if err != nil {
+		return fmt.Errorf("failed to get monitored directories: %w", err)
+	}
+
+	// Prepare new configuration data
+	configData := ConfigTemplateData{
+		MetricsPort:       config.MetricsPort,
+		ConsensusURL:      m.serviceDiscovery.BuildConsensusURL(services),
+		ExecutionURL:      m.serviceDiscovery.BuildExecutionURL(services),
+		MonitoredDirs:     monitoredDirs,
+		DiskUsageInterval: config.DiskUsageInterval,
+		LogLevel:          config.LogLevel,
+		ELContainerName:   services.ELEndpoint.ContainerID,
+		CLContainerName:   services.CLEndpoint.ContainerID,
+	}
+
+	// Validate and write new configuration
+	if err := m.configGenerator.ValidateConfigData(configData); err != nil {
+		return fmt.Errorf("invalid configuration data: %w", err)
+	}
+
+	_, err = m.configGenerator.WriteConfigFile(m.configDir, configData)
+	if err != nil {
+		return fmt.Errorf("failed to write updated configuration: %w", err)
+	}
+
+	m.logger.Info("Configuration updated successfully")
+	// Note: The metrics exporter would need to support configuration reloading
+	// for this to take effect without a restart
+
+	return nil
+}
+
+// discoverServicesForConfig discovers services based on the configuration
+func (m *ExternalManager) discoverServicesForConfig(
+	ctx context.Context, enclaveName string, config ExternalConfig,
+) (*DiscoveredServices, error) {
+	if config.ELServiceName != "" && config.CLServiceName != "" {
+		// Use specific service names
+		return m.serviceDiscovery.DiscoverServicesWithNames(
+			ctx, enclaveName, config.ELServiceName, config.CLServiceName,
+		)
+	}
+	// Auto-discover services
+	return m.serviceDiscovery.DiscoverServices(ctx, enclaveName)
+}
+
+// buildContainerConfig builds the Docker container configuration for the metrics exporter
+func (m *ExternalManager) buildContainerConfig(config ExternalConfig, _ string) docker.ContainerConfig {
+	// Set up port mappings
+	exposedPorts := nat.PortSet{
+		nat.Port(fmt.Sprintf("%d/tcp", config.MetricsPort)): {},
+	}
+
+	portBindings := nat.PortMap{
+		nat.Port(fmt.Sprintf("%d/tcp", config.MetricsPort)): []nat.PortBinding{
+			{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(config.MetricsPort),
+			},
+		},
+	}
+
+	// Set up volume binds
+	binds := []string{
+		// Mount configuration directory
+		config.ConfigDir + ":/config:ro",
+		// Mount Docker socket for container monitoring
+		"/var/run/docker.sock:/var/run/docker.sock:ro",
+		// Mount Docker volumes directory for disk usage monitoring
+		"/var/lib/docker/volumes:/var/lib/docker/volumes:ro",
+	}
+
+	// Check if OrbStack volumes directory exists and mount it
+	if homeDir, err := os.UserHomeDir(); err == nil {
+		orbStackVolumes := filepath.Join(homeDir, "OrbStack", "docker", "volumes")
+		if _, err := os.Stat(orbStackVolumes); err == nil {
+			m.logger.WithField("orbstack_volumes", orbStackVolumes).Debug("Found OrbStack volumes, adding mount")
+			binds = append(binds, orbStackVolumes+":/root/OrbStack/docker/volumes:ro")
+		}
+	}
+
+	// Container labels for identification
+	labels := map[string]string{
+		"com.ethpandaops.syncoor":      "true",
+		"com.ethpandaops.syncoor.role": "metrics-exporter",
+		"com.ethpandaops.syncoor.type": "external",
+	}
+
+	return docker.ContainerConfig{
+		Image:         config.Image,
+		Name:          "syncoor-metrics-exporter",
+		Cmd:           []string{"--config", "/config/config.yaml"},
+		Binds:         binds,
+		ExposedPorts:  exposedPorts,
+		PortBindings:  portBindings,
+		Labels:        labels,
+		RestartPolicy: container.RestartPolicy{Name: "no"},
+		// Note: We don't set Networks here as we want the container to run on the default bridge network
+		// This allows it to access both the host and the Kurtosis enclave network
+	}
+}

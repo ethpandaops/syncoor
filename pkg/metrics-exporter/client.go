@@ -2,6 +2,7 @@ package metrics_exporter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -12,6 +13,14 @@ import (
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"github.com/sirupsen/logrus"
+)
+
+// Static errors for better error handling
+var (
+	ErrExternalMetricsExporterNotRunning = errors.New("external metrics exporter is not running")
+	ErrMetricsEndpointStatusCode         = errors.New("metrics endpoint returned non-200 status code")
+	ErrFailedToFetchMetrics              = errors.New("failed to fetch metrics")
+	ErrFailedToReadResponseBody          = errors.New("failed to read response body")
 )
 
 type Client interface {
@@ -46,9 +55,13 @@ type client struct {
 	log        logrus.FieldLogger
 	httpClient *http.Client
 	endpoint   string
+
+	// External endpoint support
+	isExternal      bool
+	externalManager *ExternalManager
 }
 
-// NewClient creates a new metrics export client
+// NewClient creates a new metrics export client for internal endpoints
 func NewClient(log logrus.FieldLogger, endpoint string) Client {
 	return &client{
 		log:      log.WithField("package", "metrics-exporter"),
@@ -56,26 +69,56 @@ func NewClient(log logrus.FieldLogger, endpoint string) Client {
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		isExternal: false,
 	}
 }
 
-// FetchMetrics fetches and parses metrics from the given endpoint
-func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
-	c.log.WithField("endpoint", c.endpoint).Debug("Fetching metrics")
+// NewExternalClient creates a new metrics export client for external endpoints
+func NewExternalClient(externalManager *ExternalManager, logger logrus.FieldLogger) Client {
+	return &client{
+		log: logger.WithField("package", "metrics-exporter-external"),
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+		isExternal:      true,
+		externalManager: externalManager,
+	}
+}
 
-	resp, err := c.httpClient.Get(c.endpoint)
+// FetchMetrics fetches and parses metrics from either internal or external endpoint
+func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
+	var metricsURL string
+
+	if c.isExternal {
+		if !c.externalManager.IsRunning(ctx) {
+			return nil, fmt.Errorf("%w", ErrExternalMetricsExporterNotRunning)
+		}
+		metricsURL = c.externalManager.GetMetricsEndpoint()
+		c.log.WithField("external_endpoint", metricsURL).Debug("Fetching metrics from external exporter")
+	} else {
+		metricsURL = c.endpoint
+		c.log.WithField("internal_endpoint", metricsURL).Debug("Fetching metrics from internal exporter")
+	}
+
+	// Create request with context
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metrics: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrFailedToFetchMetrics, err.Error())
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w from %s: %s", ErrFailedToFetchMetrics, metricsURL, err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("metrics endpoint returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%w: %s returned status %d", ErrMetricsEndpointStatusCode, metricsURL, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("%w from %s: %s", ErrFailedToReadResponseBody, metricsURL, err.Error())
 	}
 
 	return c.parseMetrics(strings.NewReader(string(body)))
@@ -112,7 +155,7 @@ func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
 	}
 
 	// Parse disk usage metrics
-	if family, exists := metricFamilies["eth_disk_usage_bytes"]; exists {
+	if family, exists := metricFamilies["eth_docker_volume_usage_bytes"]; exists {
 		c.parseDiskUsageFamily(family, parsed)
 	}
 
@@ -184,23 +227,23 @@ func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
 	return parsed, nil
 }
 
-// parseDiskUsageFamily parses eth_disk_usage_bytes metrics
+// parseDiskUsageFamily parses eth_docker_volume_usage_bytes metrics
 func (c *client) parseDiskUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
-		var directory string
+		var clientType string
 		for _, label := range metric.GetLabel() {
-			if label.GetName() == "directory" {
-				directory = label.GetValue()
+			if label.GetName() == "type" {
+				clientType = label.GetValue()
 				break
 			}
 		}
 
 		if metric.GetGauge() != nil {
-			switch directory {
-			case "/data/consensus-db":
-				parsed.ConDiskUsage = uint64(metric.GetGauge().GetValue())
-			case "/data/execution-db":
-				parsed.ExeDiskUsage = uint64(metric.GetGauge().GetValue())
+			switch clientType {
+			case "consensus":
+				parsed.ConDiskUsage += uint64(metric.GetGauge().GetValue())
+			case "execution":
+				parsed.ExeDiskUsage += uint64(metric.GetGauge().GetValue())
 			}
 		}
 	}

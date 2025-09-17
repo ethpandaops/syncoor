@@ -8,8 +8,11 @@ import (
 
 // Config validation errors
 var (
-	ErrInvalidELLogLevel = errors.New("invalid execution client log level")
-	ErrInvalidCLLogLevel = errors.New("invalid consensus client log level")
+	ErrInvalidELLogLevel              = errors.New("invalid execution client log level")
+	ErrInvalidCLLogLevel              = errors.New("invalid consensus client log level")
+	ErrInvalidMetricsExporterLogLevel = errors.New("invalid metrics exporter log level")
+	ErrInvalidMetricsExporterPort     = errors.New("invalid metrics exporter port")
+	ErrInvalidMetricsExporterInterval = errors.New("invalid metrics exporter disk usage interval")
 )
 
 // Config contains the configuration for the synctest service
@@ -40,6 +43,14 @@ type Config struct {
 	PublicIP              string // Public IP for port publishing (default: 'auto')
 	ClientLogsLevelEL     string // Log level for execution layer client (default: 'info')
 	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
+
+	// External Metrics Exporter Options
+	ExternalMetricsExporter     bool   `json:"external_metrics_exporter"      yaml:"external_metrics_exporter"`
+	MetricsExporterImage        string `json:"metrics_exporter_image"         yaml:"metrics_exporter_image"`
+	MetricsExporterPort         int    `json:"metrics_exporter_port"          yaml:"metrics_exporter_port"`
+	MetricsExporterDiskInterval string `json:"metrics_exporter_disk_interval" yaml:"metrics_exporter_disk_interval"`
+	MetricsExporterLogLevel     string `json:"metrics_exporter_log_level"     yaml:"metrics_exporter_log_level"`
+	MetricsExporterConfigDir    string `json:"metrics_exporter_config_dir"    yaml:"metrics_exporter_config_dir"`
 }
 
 // SetDefaults sets default values for unspecified configuration fields
@@ -69,6 +80,9 @@ func (c *Config) SetDefaults() {
 	if c.ClientLogsLevelCL == "" {
 		c.ClientLogsLevelCL = "info"
 	}
+
+	// Set default external metrics exporter options
+	c.setMetricsExporterDefaults()
 }
 
 // Validate validates the configuration
@@ -101,6 +115,13 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error)", ErrInvalidCLLogLevel, c.ClientLogsLevelCL)
 	}
 
+	// Validate external metrics exporter configuration if enabled
+	if c.ExternalMetricsExporter {
+		if err := c.validateMetricsExporterConfig(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -112,4 +133,65 @@ func isValidLogLevel(level string, validLevels []string) bool {
 		}
 	}
 	return false
+}
+
+// IsExternalMetricsExporterEnabled returns true if external metrics exporter is enabled
+func (c *Config) IsExternalMetricsExporterEnabled() bool {
+	return c.ExternalMetricsExporter
+}
+
+// GetMetricsExporterConfig returns the external metrics exporter configuration
+func (c *Config) GetMetricsExporterConfig() map[string]interface{} {
+	return map[string]interface{}{
+		"enabled":       c.ExternalMetricsExporter,
+		"image":         c.MetricsExporterImage,
+		"port":          c.MetricsExporterPort,
+		"disk_interval": c.MetricsExporterDiskInterval,
+		"log_level":     c.MetricsExporterLogLevel,
+		"config_dir":    c.MetricsExporterConfigDir,
+	}
+}
+
+// setMetricsExporterDefaults sets default values for external metrics exporter configuration
+func (c *Config) setMetricsExporterDefaults() {
+	if c.MetricsExporterImage == "" {
+		c.MetricsExporterImage = "ethpandaops/ethereum-metrics-exporter:debian-latest"
+	}
+	if c.MetricsExporterPort == 0 {
+		c.MetricsExporterPort = 9090
+	}
+	if c.MetricsExporterDiskInterval == "" {
+		c.MetricsExporterDiskInterval = "1m"
+	}
+	if c.MetricsExporterLogLevel == "" {
+		c.MetricsExporterLogLevel = "info"
+	}
+	// MetricsExporterConfigDir is left empty to be auto-generated
+}
+
+// validateMetricsExporterConfig validates the external metrics exporter configuration
+func (c *Config) validateMetricsExporterConfig() error {
+	if c.MetricsExporterPort <= 0 || c.MetricsExporterPort > 65535 {
+		return fmt.Errorf("%w: %d (must be between 1-65535)", ErrInvalidMetricsExporterPort, c.MetricsExporterPort)
+	}
+
+	// Validate metrics exporter log level
+	validLogLevels := []string{"trace", "debug", "info", "warn", "error", "fatal", "panic"}
+	if !isValidLogLevel(c.MetricsExporterLogLevel, validLogLevels) {
+		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error, fatal, panic)",
+			ErrInvalidMetricsExporterLogLevel, c.MetricsExporterLogLevel)
+	}
+
+	// Validate disk usage interval format (basic validation)
+	if c.MetricsExporterDiskInterval == "" {
+		return fmt.Errorf("%w: cannot be empty", ErrInvalidMetricsExporterInterval)
+	}
+
+	// Basic format validation for time duration
+	if _, err := time.ParseDuration(c.MetricsExporterDiskInterval); err != nil {
+		return fmt.Errorf("%w: %s (must be a valid duration like '1m', '30s', '5m')",
+			ErrInvalidMetricsExporterInterval, c.MetricsExporterDiskInterval)
+	}
+
+	return nil
 }
