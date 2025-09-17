@@ -103,7 +103,6 @@ inputs:
     required: false
     default: 'false'
 
-
   labels:
     description: 'Comma-separated labels in key=value format (e.g., "test=sync,env=ci")'
     required: false
@@ -118,6 +117,22 @@ inputs:
     description: 'Bearer token for server authentication'
     required: false
     default: ''
+
+  # Metrics exporter configuration
+  metrics-exporter-image:
+    description: 'Docker image for metrics exporter (e.g., ethpandaops/ethereum-metrics-exporter:debian-latest)'
+    required: false
+    default: 'ethpandaops/ethereum-metrics-exporter:debian-latest'
+
+  metrics-exporter-port:
+    description: 'Port for metrics exporter'
+    required: false
+    default: '9090'
+
+  metrics-exporter-log-level:
+    description: 'Log level for metrics exporter (panic, fatal, error, warn, info, debug, trace)'
+    required: false
+    default: 'info'
 
   # Ethereum network configuration
   supernode:
@@ -482,6 +497,11 @@ runs:
           DOCKER_CMD="$DOCKER_CMD --public-port-cl=${{ inputs.public-port-cl }}"
           DOCKER_CMD="$DOCKER_CMD --public-ip=\"${{ inputs.public-ip }}\""
         fi
+
+        # Add metrics exporter configuration parameters
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-image=${{ inputs.metrics-exporter-image }}"
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-port=${{ inputs.metrics-exporter-port }}"
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-log-level=${{ inputs.metrics-exporter-log-level }}"
 
         # Add client log level parameters
         DOCKER_CMD="$DOCKER_CMD --log-level-el=${{ inputs.log-level-el }}"
