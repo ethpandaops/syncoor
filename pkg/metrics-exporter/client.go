@@ -17,10 +17,10 @@ import (
 
 // Static errors for better error handling
 var (
-	ErrExternalMetricsExporterNotRunning = errors.New("external metrics exporter is not running")
-	ErrMetricsEndpointStatusCode         = errors.New("metrics endpoint returned non-200 status code")
-	ErrFailedToFetchMetrics              = errors.New("failed to fetch metrics")
-	ErrFailedToReadResponseBody          = errors.New("failed to read response body")
+	ErrMetricsExporterNotRunning = errors.New("metrics exporter is not running")
+	ErrMetricsEndpointStatusCode = errors.New("metrics endpoint returned non-200 status code")
+	ErrFailedToFetchMetrics      = errors.New("failed to fetch metrics")
+	ErrFailedToReadResponseBody  = errors.New("failed to read response body")
 )
 
 type Client interface {
@@ -54,51 +54,30 @@ type ParsedMetrics struct {
 type client struct {
 	log        logrus.FieldLogger
 	httpClient *http.Client
-	endpoint   string
 
-	// External endpoint support
-	isExternal      bool
-	externalManager *ExternalManager
+	manager *Manager
 }
 
-// NewClient creates a new metrics export client for internal endpoints
-func NewClient(log logrus.FieldLogger, endpoint string) Client {
+// NewClient creates a new metrics export client
+func NewClient(manager *Manager, logger logrus.FieldLogger) Client {
 	return &client{
-		log:      log.WithField("package", "metrics-exporter"),
-		endpoint: endpoint,
+		log: logger.WithField("package", "metrics-exporter"),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
-		isExternal: false,
+		manager: manager,
 	}
 }
 
-// NewExternalClient creates a new metrics export client for external endpoints
-func NewExternalClient(externalManager *ExternalManager, logger logrus.FieldLogger) Client {
-	return &client{
-		log: logger.WithField("package", "metrics-exporter-external"),
-		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
-		},
-		isExternal:      true,
-		externalManager: externalManager,
-	}
-}
-
-// FetchMetrics fetches and parses metrics from either internal or external endpoint
+// FetchMetrics fetches and parses metrics
 func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
 	var metricsURL string
 
-	if c.isExternal {
-		if !c.externalManager.IsRunning(ctx) {
-			return nil, fmt.Errorf("%w", ErrExternalMetricsExporterNotRunning)
-		}
-		metricsURL = c.externalManager.GetMetricsEndpoint()
-		c.log.WithField("external_endpoint", metricsURL).Debug("Fetching metrics from external exporter")
-	} else {
-		metricsURL = c.endpoint
-		c.log.WithField("internal_endpoint", metricsURL).Debug("Fetching metrics from internal exporter")
+	if !c.manager.IsRunning(ctx) {
+		return nil, fmt.Errorf("%w", ErrMetricsExporterNotRunning)
 	}
+	metricsURL = c.manager.GetMetricsEndpoint()
+	c.log.WithField("endpoint", metricsURL).Debug("Fetching metrics from exporter")
 
 	// Create request with context
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsURL, nil)

@@ -44,8 +44,7 @@ type Config struct {
 	ClientLogsLevelEL     string // Log level for execution layer client (default: 'info')
 	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
 
-	// External Metrics Exporter Options
-	ExternalMetricsExporter     bool   `json:"external_metrics_exporter"      yaml:"external_metrics_exporter"`
+	// Metrics Exporter Options
 	MetricsExporterImage        string `json:"metrics_exporter_image"         yaml:"metrics_exporter_image"`
 	MetricsExporterPort         int    `json:"metrics_exporter_port"          yaml:"metrics_exporter_port"`
 	MetricsExporterDiskInterval string `json:"metrics_exporter_disk_interval" yaml:"metrics_exporter_disk_interval"`
@@ -81,7 +80,7 @@ func (c *Config) SetDefaults() {
 		c.ClientLogsLevelCL = "info"
 	}
 
-	// Set default external metrics exporter options
+	// Set default metrics exporter options
 	c.setMetricsExporterDefaults()
 }
 
@@ -115,11 +114,9 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("%w: %s (valid values: trace, debug, info, warn, error)", ErrInvalidCLLogLevel, c.ClientLogsLevelCL)
 	}
 
-	// Validate external metrics exporter configuration if enabled
-	if c.ExternalMetricsExporter {
-		if err := c.validateMetricsExporterConfig(); err != nil {
-			return err
-		}
+	// Validate metrics exporter configuration (always enabled)
+	if err := c.validateMetricsExporterConfig(); err != nil {
+		return err
 	}
 
 	return nil
@@ -135,15 +132,9 @@ func isValidLogLevel(level string, validLevels []string) bool {
 	return false
 }
 
-// IsExternalMetricsExporterEnabled returns true if external metrics exporter is enabled
-func (c *Config) IsExternalMetricsExporterEnabled() bool {
-	return c.ExternalMetricsExporter
-}
-
-// GetMetricsExporterConfig returns the external metrics exporter configuration
+// GetMetricsExporterConfig returns the metrics exporter configuration
 func (c *Config) GetMetricsExporterConfig() map[string]interface{} {
 	return map[string]interface{}{
-		"enabled":       c.ExternalMetricsExporter,
 		"image":         c.MetricsExporterImage,
 		"port":          c.MetricsExporterPort,
 		"disk_interval": c.MetricsExporterDiskInterval,
@@ -152,7 +143,7 @@ func (c *Config) GetMetricsExporterConfig() map[string]interface{} {
 	}
 }
 
-// setMetricsExporterDefaults sets default values for external metrics exporter configuration
+// setMetricsExporterDefaults sets default values for metrics exporter configuration
 func (c *Config) setMetricsExporterDefaults() {
 	if c.MetricsExporterImage == "" {
 		c.MetricsExporterImage = "ethpandaops/ethereum-metrics-exporter:debian-latest"
@@ -169,7 +160,7 @@ func (c *Config) setMetricsExporterDefaults() {
 	// MetricsExporterConfigDir is left empty to be auto-generated
 }
 
-// validateMetricsExporterConfig validates the external metrics exporter configuration
+// validateMetricsExporterConfig validates the metrics exporter configuration
 func (c *Config) validateMetricsExporterConfig() error {
 	if c.MetricsExporterPort <= 0 || c.MetricsExporterPort > 65535 {
 		return fmt.Errorf("%w: %d (must be between 1-65535)", ErrInvalidMetricsExporterPort, c.MetricsExporterPort)

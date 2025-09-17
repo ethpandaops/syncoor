@@ -70,12 +70,12 @@ type service struct {
 	// Run identification
 	runID string
 
-	// External Metrics Exporter Components
-	dockerManager          *docker.ContainerManager
-	externalMetricsManager *metrics_exporter.ExternalManager
-	serviceDiscovery       *metrics_exporter.ServiceDiscovery
-	configGenerator        *metrics_exporter.ConfigGenerator
-	volumeHandler          *docker.VolumeHandler
+	// Metrics Exporter Components
+	dockerManager    *docker.ContainerManager
+	metricsManager   *metrics_exporter.Manager
+	serviceDiscovery *metrics_exporter.ServiceDiscovery
+	configGenerator  *metrics_exporter.ConfigGenerator
+	volumeHandler    *docker.VolumeHandler
 
 	cancel context.CancelFunc
 }
@@ -108,11 +108,9 @@ func NewService(
 		)
 	}
 
-	// Initialize external metrics exporter components if enabled
-	if cfg.IsExternalMetricsExporterEnabled() {
-		if err := svc.initializeExternalMetricsComponents(log); err != nil {
-			log.WithError(err).Fatal("Failed to initialize external metrics exporter components")
-		}
+	// Initialize metrics exporter components (always enabled)
+	if err := svc.initializeMetricsComponents(log); err != nil {
+		log.WithError(err).Fatal("Failed to initialize metrics exporter components")
 	}
 
 	return svc
@@ -178,8 +176,8 @@ func (s *service) Start(ctx context.Context) error {
 
 	// Create ethereum package config
 	ethConfig := &config.EthereumPackageConfig{
-		// Disable internal metrics exporter if external one is enabled
-		EthereumMetricsExporterEnabled: boolPtr(!s.cfg.IsExternalMetricsExporterEnabled()),
+		// Disable internal metrics exporter since standalone one is always enabled
+		EthereumMetricsExporterEnabled: boolPtr(false),
 		Participants:                   []config.ParticipantConfig{participantConfig},
 		NetworkParams: &config.NetworkParams{
 			Network: s.cfg.Network,
@@ -501,14 +499,12 @@ func (s *service) Start(ctx context.Context) error {
 		}
 	}
 
-	// Start external metrics exporter if enabled (after clients are identified)
-	if s.cfg.IsExternalMetricsExporterEnabled() {
-		if err := s.startExternalMetricsExporter(ctx); err != nil {
-			return fmt.Errorf("failed to start external metrics exporter: %w", err)
-		}
+	// Start metrics exporter (after clients are identified)
+	if err := s.startMetricsExporter(ctx); err != nil {
+		return fmt.Errorf("failed to start metrics exporter: %w", err)
 	}
 
-	// Initialize metrics exporter (internal or external)
+	// Initialize metrics exporter
 	if err := s.initializeMetricsExporter(ctx); err != nil {
 		return fmt.Errorf("failed to initialize metrics exporter: %w", err)
 	}
@@ -520,12 +516,12 @@ func (s *service) Start(ctx context.Context) error {
 func (s *service) Stop() error {
 	s.log.Info("Stopping synctest service")
 
-	// Stop external metrics exporter first
-	if s.externalMetricsManager != nil {
+	// Stop metrics exporter first
+	if s.metricsManager != nil {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
-		if err := s.externalMetricsManager.Stop(ctx); err != nil {
-			s.log.WithError(err).Error("Failed to stop external metrics exporter")
+		if err := s.metricsManager.Stop(ctx); err != nil {
+			s.log.WithError(err).Error("Failed to stop metrics exporter")
 		}
 	}
 
@@ -977,12 +973,12 @@ func (s *service) finalizeSyncTest(ctx context.Context, status, errorMessage, lo
 		s.log.Info("Failure report saved successfully")
 	}
 
-	// Stop external metrics exporter if running
-	if s.externalMetricsManager != nil {
+	// Stop metrics exporter if running
+	if s.metricsManager != nil {
 		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, 15*time.Second)
 		defer cleanupCancel()
-		if err := s.externalMetricsManager.Stop(cleanupCtx); err != nil {
-			s.log.WithError(err).Error("Failed to stop external metrics exporter during finalization")
+		if err := s.metricsManager.Stop(cleanupCtx); err != nil {
+			s.log.WithError(err).Error("Failed to stop metrics exporter during finalization")
 		}
 	}
 
@@ -994,9 +990,9 @@ func (s *service) finalizeSyncTest(ctx context.Context, status, errorMessage, lo
 	}
 }
 
-// initializeExternalMetricsComponents initializes the external metrics exporter components
-func (s *service) initializeExternalMetricsComponents(log logrus.FieldLogger) error {
-	s.log.Info("Initializing external metrics exporter components")
+// initializeMetricsComponents initializes the metrics exporter components
+func (s *service) initializeMetricsComponents(log logrus.FieldLogger) error {
+	s.log.Info("Initializing metrics exporter components")
 
 	// Create Docker client and manager
 	dockerClient, err := docker.NewClient()
@@ -1013,71 +1009,61 @@ func (s *service) initializeExternalMetricsComponents(log logrus.FieldLogger) er
 		s.volumeHandler,
 		log.WithField("component", "service-discovery"),
 	)
-	s.externalMetricsManager = metrics_exporter.NewExternalManager(
+	s.metricsManager = metrics_exporter.NewManager(
 		s.dockerManager,
 		s.configGenerator,
 		s.serviceDiscovery,
-		log.WithField("component", "external-metrics-manager"),
+		log.WithField("component", "metrics-manager"),
 	)
 
-	s.log.Info("External metrics exporter components initialized successfully")
+	s.log.Info("Metrics exporter components initialized successfully")
 	return nil
 }
 
-// startExternalMetricsExporter starts the external metrics exporter container
-func (s *service) startExternalMetricsExporter(ctx context.Context) error {
-	s.log.WithField("enclave", s.network.EnclaveName()).Info("Starting external metrics exporter")
+// startMetricsExporter starts the metrics exporter container
+func (s *service) startMetricsExporter(ctx context.Context) error {
+	s.log.WithField("enclave", s.network.EnclaveName()).Info("Starting metrics exporter")
 
-	// Get default external config and override with user settings
-	externalConfig := s.externalMetricsManager.GetDefaultConfig()
-	externalConfig.Image = s.cfg.MetricsExporterImage
-	externalConfig.MetricsPort = s.cfg.MetricsExporterPort
-	externalConfig.DiskUsageInterval = s.cfg.MetricsExporterDiskInterval
-	externalConfig.LogLevel = s.cfg.MetricsExporterLogLevel
-	externalConfig.ConfigDir = s.cfg.MetricsExporterConfigDir
+	// Get default config and override with user settings
+	config := s.metricsManager.GetDefaultConfig()
+	config.Image = s.cfg.MetricsExporterImage
+	config.MetricsPort = s.cfg.MetricsExporterPort
+	config.DiskUsageInterval = s.cfg.MetricsExporterDiskInterval
+	config.LogLevel = s.cfg.MetricsExporterLogLevel
+	config.ConfigDir = s.cfg.MetricsExporterConfigDir
 
 	// Pass the actual service names we discovered
 	if s.executionClient != nil && s.consensusClient != nil {
-		externalConfig.ELServiceName = s.executionClient.Name()
-		externalConfig.CLServiceName = s.consensusClient.Name()
+		config.ELServiceName = s.executionClient.Name()
+		config.CLServiceName = s.consensusClient.Name()
 		s.log.WithFields(logrus.Fields{
-			"el_service": externalConfig.ELServiceName,
-			"cl_service": externalConfig.CLServiceName,
+			"el_service": config.ELServiceName,
+			"cl_service": config.CLServiceName,
 		}).Debug("Using specific service names for metrics exporter")
 	}
 
-	if err := s.externalMetricsManager.Start(ctx, s.network.EnclaveName(), externalConfig); err != nil {
-		return fmt.Errorf("failed to start external metrics exporter: %w", err)
+	if err := s.metricsManager.Start(ctx, s.network.EnclaveName(), config); err != nil {
+		return fmt.Errorf("failed to start metrics exporter: %w", err)
 	}
 
-	s.log.WithField("metrics_endpoint", s.externalMetricsManager.GetMetricsEndpoint()).Info("External metrics exporter started successfully")
+	s.log.WithField("metrics_endpoint", s.metricsManager.GetMetricsEndpoint()).Info("Metrics exporter started successfully")
 	return nil
 }
 
-// initializeMetricsExporter initializes either internal or external metrics exporter
+// initializeMetricsExporter initializes metrics exporter
 func (s *service) initializeMetricsExporter(ctx context.Context) error {
 	var metricsExporterEndpoint string
-	var err error
 
-	if s.cfg.IsExternalMetricsExporterEnabled() {
-		// External metrics exporter was already started in startExternalMetricsExporter
-		metricsExporterEndpoint = s.externalMetricsManager.GetMetricsEndpoint()
-		s.metricsExporterClientFetcher = metrics_exporter.NewExternalClient(
-			s.externalMetricsManager,
-			s.log.WithField("component", "external-metrics-client"),
-		)
-	} else {
-		// Use internal metrics exporter
-		metricsExporterEndpoint, err = s.metricsExporterServiceEndpoint(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get internal metrics exporter endpoint: %w", err)
-		}
-		s.metricsExporterClientFetcher = metrics_exporter.NewClient(s.log, metricsExporterEndpoint)
-	}
+	// Metrics exporter was already started in startMetricsExporter
+	// Use managed metrics client
+	metricsExporterEndpoint = s.metricsManager.GetMetricsEndpoint()
+	s.metricsExporterClientFetcher = metrics_exporter.NewClient(
+		s.metricsManager,
+		s.log.WithField("component", "metrics-client"),
+	)
 
 	logrus.WithFields(logrus.Fields{
 		"metrics_url": metricsExporterEndpoint,
-		"external":    s.cfg.IsExternalMetricsExporterEnabled(),
 	}).Info("Metrics exporter initialized")
 
 	return nil

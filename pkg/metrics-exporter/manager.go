@@ -21,8 +21,8 @@ var (
 	ErrNoConfigDirectory  = errors.New("no configuration directory available")
 )
 
-// ExternalManager handles lifecycle management of the external ethereum-metrics-exporter container
-type ExternalManager struct {
+// Manager handles lifecycle management of the ethereum-metrics-exporter container
+type Manager struct {
 	dockerManager    *docker.ContainerManager
 	configGenerator  *ConfigGenerator
 	serviceDiscovery *ServiceDiscovery
@@ -31,8 +31,8 @@ type ExternalManager struct {
 	configDir        string
 }
 
-// ExternalConfig contains configuration for external metrics exporter deployment
-type ExternalConfig struct {
+// Config contains configuration for metrics exporter deployment
+type Config struct {
 	Image             string // Default: "ethpandaops/ethereum-metrics-exporter:debian-latest"
 	MetricsPort       int    // Default: 9090
 	DiskUsageInterval string // Default: "1m"
@@ -42,28 +42,28 @@ type ExternalConfig struct {
 	CLServiceName     string // Consensus layer service name (optional, for specific discovery)
 }
 
-// NewExternalManager creates a new ExternalManager instance
-func NewExternalManager(
+// NewManager creates a new Manager instance
+func NewManager(
 	dockerManager *docker.ContainerManager,
 	configGenerator *ConfigGenerator,
 	serviceDiscovery *ServiceDiscovery,
 	logger logrus.FieldLogger,
-) *ExternalManager {
-	return &ExternalManager{
+) *Manager {
+	return &Manager{
 		dockerManager:    dockerManager,
 		configGenerator:  configGenerator,
 		serviceDiscovery: serviceDiscovery,
-		logger:           logger.WithField("component", "external-manager"),
+		logger:           logger.WithField("component", "metrics-manager"),
 	}
 }
 
-// Start starts the external metrics exporter container
-func (m *ExternalManager) Start(ctx context.Context, enclaveName string, config ExternalConfig) error {
+// Start starts the metrics exporter container
+func (m *Manager) Start(ctx context.Context, enclaveName string, config Config) error {
 	m.logger.WithFields(logrus.Fields{
 		"enclave": enclaveName,
 		"image":   config.Image,
 		"port":    config.MetricsPort,
-	}).Info("Starting external metrics exporter")
+	}).Info("Starting metrics exporter")
 
 	// Discover services
 	services, err := m.discoverServicesForConfig(ctx, enclaveName, config)
@@ -140,14 +140,14 @@ func (m *ExternalManager) Start(ctx context.Context, enclaveName string, config 
 		"consensus_url":  configData.ConsensusURL,
 		"execution_url":  configData.ExecutionURL,
 		"monitored_dirs": len(monitoredDirs),
-	}).Info("External metrics exporter started successfully")
+	}).Info("Metrics exporter started successfully")
 
 	return nil
 }
 
-// Stop stops and removes the external metrics exporter container
-func (m *ExternalManager) Stop(ctx context.Context) error {
-	m.logger.Debug("Stopping external metrics exporter")
+// Stop stops and removes the metrics exporter container
+func (m *Manager) Stop(ctx context.Context) error {
+	m.logger.Debug("Stopping metrics exporter")
 
 	if m.containerID != "" {
 		if err := m.dockerManager.StopContainer(ctx, m.containerID); err != nil {
@@ -165,23 +165,23 @@ func (m *ExternalManager) Stop(ctx context.Context) error {
 		m.configDir = ""
 	}
 
-	m.logger.Info("External metrics exporter stopped successfully")
+	m.logger.Info("Metrics exporter stopped successfully")
 	return nil
 }
 
 // GetMetricsEndpoint returns the metrics endpoint URL
-func (m *ExternalManager) GetMetricsEndpoint() string {
+func (m *Manager) GetMetricsEndpoint() string {
 	if m.containerID == "" {
 		return ""
 	}
 
-	// For external containers, we assume they're accessible via localhost
+	// For containers, we assume they're accessible via localhost
 	// This could be enhanced to get the actual mapped port from Docker
 	return "http://localhost:9090/metrics"
 }
 
-// IsRunning checks if the external metrics exporter container is currently running
-func (m *ExternalManager) IsRunning(ctx context.Context) bool {
+// IsRunning checks if the metrics exporter container is currently running
+func (m *Manager) IsRunning(ctx context.Context) bool {
 	if m.containerID == "" {
 		return false
 	}
@@ -195,9 +195,9 @@ func (m *ExternalManager) IsRunning(ctx context.Context) bool {
 	return containerJSON.State.Running
 }
 
-// Restart restarts the external metrics exporter with new configuration
-func (m *ExternalManager) Restart(ctx context.Context, enclaveName string, config ExternalConfig) error {
-	m.logger.WithField("enclave", enclaveName).Info("Restarting external metrics exporter")
+// Restart restarts the metrics exporter with new configuration
+func (m *Manager) Restart(ctx context.Context, enclaveName string, config Config) error {
+	m.logger.WithField("enclave", enclaveName).Info("Restarting metrics exporter")
 
 	// Stop existing container
 	if err := m.Stop(ctx); err != nil {
@@ -212,9 +212,9 @@ func (m *ExternalManager) Restart(ctx context.Context, enclaveName string, confi
 	return nil
 }
 
-// GetDefaultConfig returns default configuration for external metrics exporter
-func (m *ExternalManager) GetDefaultConfig() ExternalConfig {
-	return ExternalConfig{
+// GetDefaultConfig returns default configuration for metrics exporter
+func (m *Manager) GetDefaultConfig() Config {
+	return Config{
 		Image:             "ethpandaops/ethereum-metrics-exporter:debian-latest",
 		MetricsPort:       9090,
 		DiskUsageInterval: "1m",
@@ -224,17 +224,17 @@ func (m *ExternalManager) GetDefaultConfig() ExternalConfig {
 }
 
 // GetContainerID returns the current container ID
-func (m *ExternalManager) GetContainerID() string {
+func (m *Manager) GetContainerID() string {
 	return m.containerID
 }
 
 // GetConfigDirectory returns the current configuration directory path
-func (m *ExternalManager) GetConfigDirectory() string {
+func (m *Manager) GetConfigDirectory() string {
 	return m.configDir
 }
 
 // GetContainerInfo returns information about the running container
-func (m *ExternalManager) GetContainerInfo(ctx context.Context) (*docker.ContainerInfo, error) {
+func (m *Manager) GetContainerInfo(ctx context.Context) (*docker.ContainerInfo, error) {
 	if m.containerID == "" {
 		return nil, fmt.Errorf("%w", ErrNoContainerRunning)
 	}
@@ -258,7 +258,7 @@ func (m *ExternalManager) GetContainerInfo(ctx context.Context) (*docker.Contain
 
 // UpdateConfiguration updates the configuration without restarting the container
 // Note: This requires the metrics exporter to support configuration reloading
-func (m *ExternalManager) UpdateConfiguration(ctx context.Context, enclaveName string, config ExternalConfig) error {
+func (m *Manager) UpdateConfiguration(ctx context.Context, enclaveName string, config Config) error {
 	m.logger.WithField("enclave", enclaveName).Info("Updating metrics exporter configuration")
 
 	if m.configDir == "" {
@@ -307,8 +307,8 @@ func (m *ExternalManager) UpdateConfiguration(ctx context.Context, enclaveName s
 }
 
 // discoverServicesForConfig discovers services based on the configuration
-func (m *ExternalManager) discoverServicesForConfig(
-	ctx context.Context, enclaveName string, config ExternalConfig,
+func (m *Manager) discoverServicesForConfig(
+	ctx context.Context, enclaveName string, config Config,
 ) (*DiscoveredServices, error) {
 	if config.ELServiceName != "" && config.CLServiceName != "" {
 		// Use specific service names
@@ -321,7 +321,7 @@ func (m *ExternalManager) discoverServicesForConfig(
 }
 
 // buildContainerConfig builds the Docker container configuration for the metrics exporter
-func (m *ExternalManager) buildContainerConfig(config ExternalConfig, _ string) docker.ContainerConfig {
+func (m *Manager) buildContainerConfig(config Config, _ string) docker.ContainerConfig {
 	// Set up port mappings
 	exposedPorts := nat.PortSet{
 		nat.Port(fmt.Sprintf("%d/tcp", config.MetricsPort)): {},
@@ -359,7 +359,7 @@ func (m *ExternalManager) buildContainerConfig(config ExternalConfig, _ string) 
 	labels := map[string]string{
 		"com.ethpandaops.syncoor":      "true",
 		"com.ethpandaops.syncoor.role": "metrics-exporter",
-		"com.ethpandaops.syncoor.type": "external",
+		"com.ethpandaops.syncoor.type": "standalone",
 	}
 
 	return docker.ContainerConfig{

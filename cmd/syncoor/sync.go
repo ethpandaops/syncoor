@@ -47,8 +47,7 @@ func NewSyncCommand() *cobra.Command {
 		publicIP              string
 		clientLogsLevelEL     string
 		clientLogsLevelCL     string
-		// External metrics exporter flags
-		externalMetricsExporter     bool
+		// Metrics exporter flags
 		metricsExporterImage        string
 		metricsExporterPort         int
 		metricsExporterDiskInterval string
@@ -108,7 +107,6 @@ Exit codes:
 				PublicIP:                    publicIP,
 				ClientLogsLevelEL:           clientLogsLevelEL,
 				ClientLogsLevelCL:           clientLogsLevelCL,
-				ExternalMetricsExporter:     externalMetricsExporter,
 				MetricsExporterImage:        metricsExporterImage,
 				MetricsExporterPort:         metricsExporterPort,
 				MetricsExporterDiskInterval: metricsExporterDiskInterval,
@@ -240,17 +238,15 @@ Exit codes:
 	cmd.Flags().StringVar(&clientLogsLevelEL, "log-level-el", "info", "Log level for execution layer client (trace, debug, info, warn, error)")
 	cmd.Flags().StringVar(&clientLogsLevelCL, "log-level-cl", "info", "Log level for consensus layer client (trace, debug, info, warn, error)")
 
-	// External metrics exporter flags
-	cmd.Flags().BoolVar(&externalMetricsExporter, "external-metrics-exporter", false,
-		"Run metrics exporter as external container (default: false, runs inside enclave)")
+	// Metrics exporter flags
 	cmd.Flags().StringVar(&metricsExporterImage, "metrics-exporter-image",
-		"ethpandaops/ethereum-metrics-exporter:debian-latest", "Docker image for external metrics exporter")
+		"ethpandaops/ethereum-metrics-exporter:debian-latest", "Docker image for metrics exporter")
 	cmd.Flags().IntVar(&metricsExporterPort, "metrics-exporter-port", 9090,
-		"Port for external metrics exporter")
+		"Port for metrics exporter")
 	cmd.Flags().StringVar(&metricsExporterDiskInterval, "metrics-exporter-disk-interval", "1m",
-		"Disk usage check interval for external metrics exporter")
+		"Disk usage check interval for metrics exporter")
 	cmd.Flags().StringVar(&metricsExporterLogLevel, "metrics-exporter-log-level", "info",
-		"Log level for external metrics exporter (trace, debug, info, warn, error)")
+		"Log level for metrics exporter (trace, debug, info, warn, error)")
 
 	return cmd
 }
