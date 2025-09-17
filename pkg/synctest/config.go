@@ -45,10 +45,10 @@ type Config struct {
 	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
 
 	// Metrics Exporter Options
-	MetricsExporterImage     string `json:"metrics_exporter_image"         yaml:"metrics_exporter_image"`
-	MetricsExporterPort      int    `json:"metrics_exporter_port"          yaml:"metrics_exporter_port"`
-	MetricsExporterLogLevel  string `json:"metrics_exporter_log_level"     yaml:"metrics_exporter_log_level"`
-	MetricsExporterConfigDir string `json:"metrics_exporter_config_dir"    yaml:"metrics_exporter_config_dir"`
+	MetricsExporterImage     string `json:"metrics_exporter_image"      yaml:"metrics_exporter_image"`
+	MetricsExporterPort      int    `json:"metrics_exporter_port"       yaml:"metrics_exporter_port"`
+	MetricsExporterLogLevel  string `json:"metrics_exporter_log_level"  yaml:"metrics_exporter_log_level"`
+	MetricsExporterConfigDir string `json:"metrics_exporter_config_dir" yaml:"metrics_exporter_config_dir"`
 }
 
 // SetDefaults sets default values for unspecified configuration fields

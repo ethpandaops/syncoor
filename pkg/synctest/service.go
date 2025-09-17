@@ -505,9 +505,7 @@ func (s *service) Start(ctx context.Context) error {
 	}
 
 	// Initialize metrics exporter
-	if err := s.initializeMetricsExporter(ctx); err != nil {
-		return fmt.Errorf("failed to initialize metrics exporter: %w", err)
-	}
+	s.initializeMetricsExporter()
 
 	return nil
 }
@@ -849,15 +847,6 @@ func (s *service) SaveTempReport(ctx context.Context) error {
 	return nil
 }
 
-func (s *service) metricsExporterServiceEndpoint(ctx context.Context) (string, error) {
-	name := fmt.Sprintf("ethereum-metrics-exporter-1-%s-%s", s.cfg.CLClient, s.cfg.ELClient)
-	kservice, err := s.kurtosisClient.InspectService(ctx, s.network.EnclaveName(), name)
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect metrics exporter service: %w", err)
-	}
-	return fmt.Sprintf("http://127.0.0.1:%d/metrics", kservice.PublicPorts["http"].Number), nil
-}
-
 // createBasicReport creates a basic report structure as fallback
 func (s *service) createBasicReport() *report.Result {
 	return &report.Result{
@@ -1050,12 +1039,10 @@ func (s *service) startMetricsExporter(ctx context.Context) error {
 }
 
 // initializeMetricsExporter initializes metrics exporter
-func (s *service) initializeMetricsExporter(ctx context.Context) error {
-	var metricsExporterEndpoint string
-
+func (s *service) initializeMetricsExporter() {
 	// Metrics exporter was already started in startMetricsExporter
 	// Use managed metrics client
-	metricsExporterEndpoint = s.metricsManager.GetMetricsEndpoint()
+	metricsExporterEndpoint := s.metricsManager.GetMetricsEndpoint()
 	s.metricsExporterClientFetcher = metrics_exporter.NewClient(
 		s.metricsManager,
 		s.log.WithField("component", "metrics-client"),
@@ -1064,8 +1051,6 @@ func (s *service) initializeMetricsExporter(ctx context.Context) error {
 	logrus.WithFields(logrus.Fields{
 		"metrics_url": metricsExporterEndpoint,
 	}).Info("Metrics exporter initialized")
-
-	return nil
 }
 
 // Interface compliance check
