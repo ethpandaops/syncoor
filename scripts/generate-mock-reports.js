@@ -164,6 +164,41 @@ function generateProgressEntry(timestamp, blockStart, slotStart, index, totalEnt
   const peersEL = randomInt(8, 25);
   const peersCL = randomInt(3, 50);
   
+  // Memory usage - gradually increasing with progress
+  const baseMemEL = 2 * 1024 * 1024 * 1024; // 2GB base
+  const maxMemEL = 8 * 1024 * 1024 * 1024;   // 8GB max
+  const memEL = Math.floor(baseMemEL + (progress * (maxMemEL - baseMemEL)) + randomFloat(-512*1024*1024, 512*1024*1024));
+  
+  const baseMemCL = 4 * 1024 * 1024 * 1024; // 4GB base
+  const maxMemCL = 12 * 1024 * 1024 * 1024; // 12GB max
+  const memCL = Math.floor(baseMemCL + (progress * (maxMemCL - baseMemCL)) + randomFloat(-1024*1024*1024, 1024*1024*1024));
+  
+  // Block IO - increasing with progress
+  const baseIOReadEL = 5 * 1024 * 1024 * 1024;  // 5GB base read
+  const maxIOReadEL = 50 * 1024 * 1024 * 1024;   // 50GB max read
+  const ioReadEL = Math.floor(baseIOReadEL + (progress * (maxIOReadEL - baseIOReadEL)));
+  
+  const baseIOWriteEL = 20 * 1024 * 1024 * 1024;  // 20GB base write
+  const maxIOWriteEL = 200 * 1024 * 1024 * 1024;  // 200GB max write
+  const ioWriteEL = Math.floor(baseIOWriteEL + (progress * (maxIOWriteEL - baseIOWriteEL)));
+  
+  const baseIOReadCL = 1 * 1024 * 1024 * 1024;   // 1GB base read
+  const maxIOReadCL = 5 * 1024 * 1024 * 1024;    // 5GB max read
+  const ioReadCL = Math.floor(baseIOReadCL + (progress * (maxIOReadCL - baseIOReadCL)));
+  
+  const baseIOWriteCL = 2 * 1024 * 1024 * 1024;  // 2GB base write
+  const maxIOWriteCL = 10 * 1024 * 1024 * 1024;  // 10GB max write
+  const ioWriteCL = Math.floor(baseIOWriteCL + (progress * (maxIOWriteCL - baseIOWriteCL)));
+  
+  // CPU usage - varies during sync
+  const baseCPUEL = 30.0;
+  const maxCPUEL = 95.0;
+  const cpuEL = baseCPUEL + (progress * (maxCPUEL - baseCPUEL)) + randomFloat(-10, 10);
+  
+  const baseCPUCL = 10.0;
+  const maxCPUCL = 45.0;
+  const cpuCL = baseCPUCL + (progress * (maxCPUCL - baseCPUCL)) + randomFloat(-5, 5);
+  
   return {
     t: timestamp + timeOffset,
     b: Math.max(0, currentBlock),
@@ -171,7 +206,16 @@ function generateProgressEntry(timestamp, blockStart, slotStart, index, totalEnt
     de: Math.max(baseDiskEL, diskEL),
     dc: Math.max(clFactors.base, diskCL),
     pe: peersEL,
-    pc: peersCL
+    pc: peersCL,
+    // New Docker metrics
+    me: Math.max(baseMemEL, memEL),      // Execution memory
+    mc: Math.max(baseMemCL, memCL),      // Consensus memory
+    bre: Math.max(0, ioReadEL),          // Execution block IO read
+    brc: Math.max(0, ioReadCL),          // Consensus block IO read
+    bwe: Math.max(0, ioWriteEL),         // Execution block IO write
+    bwc: Math.max(0, ioWriteCL),         // Consensus block IO write
+    ce: Math.max(0, Math.min(100, cpuEL)), // Execution CPU % (capped at 100)
+    cc: Math.max(0, Math.min(100, cpuCL))  // Consensus CPU % (capped at 100)
   };
 }
 

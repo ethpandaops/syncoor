@@ -153,6 +153,18 @@ func (s *Server) addRunningTestData(runID, elType, clType string) {
 		ConsSyncPercent: 92.3,
 		ExecVersion:     elType + "/v1.0.0",
 		ConsVersion:     clType + "/v2.1.0",
+
+		// Docker metrics for execution client
+		ExecMemoryUsage:     3 * 1024 * 1024 * 1024,  // 3GB
+		ExecBlockIORead:     6 * 1024 * 1024 * 1024,  // 6GB
+		ExecBlockIOWrite:    80 * 1024 * 1024 * 1024, // 80GB
+		ExecCPUUsagePercent: 45.5,
+
+		// Docker metrics for consensus client
+		ConsMemoryUsage:     8 * 1024 * 1024 * 1024, // 8GB
+		ConsBlockIORead:     1 * 1024 * 1024 * 1024, // 1GB
+		ConsBlockIOWrite:    4 * 1024 * 1024 * 1024, // 4GB
+		ConsCPUUsagePercent: 12.3,
 	}
 
 	if err := s.store.UpdateProgress(runID, mockMetrics); err != nil {
@@ -181,6 +193,18 @@ func (s *Server) generateMockProgressHistory(runID, elType, clType string, confi
 			ConsSyncPercent: float64(config.baseSyncCons + i*config.syncStepCons),
 			ExecVersion:     elType + "/v1.0.0",
 			ConsVersion:     clType + "/v2.1.0",
+
+			// Docker metrics for execution client
+			ExecMemoryUsage:     (2 + iOffset) * 1024 * 1024 * 1024,     // 2-5GB growing
+			ExecBlockIORead:     (5 + iOffset*2) * 1024 * 1024 * 1024,   // 5-11GB growing
+			ExecBlockIOWrite:    (70 + iOffset*10) * 1024 * 1024 * 1024, // 70-100GB growing
+			ExecCPUUsagePercent: 40.0 + float64(i*5),                    // 40-55% growing
+
+			// Docker metrics for consensus client
+			ConsMemoryUsage:     (7 + iOffset) * 1024 * 1024 * 1024,   // 7-10GB growing
+			ConsBlockIORead:     (1 + iOffset/2) * 1024 * 1024 * 1024, // 1-2.5GB growing
+			ConsBlockIOWrite:    (3 + iOffset) * 1024 * 1024 * 1024,   // 3-6GB growing
+			ConsCPUUsagePercent: 10.0 + float64(i*2),                  // 10-16% growing
 		}
 
 		if err := s.store.UpdateProgress(runID, mockMetrics); err != nil {
@@ -640,6 +664,18 @@ func (s *Server) updateMockTestProgress(runID, elType, clType string) {
 		ConsSyncPercent: 92.3 + float64(timeOffset%80)/10,                  // Gradually increasing sync %
 		ExecVersion:     elType + "/v1.0.0",
 		ConsVersion:     clType + "/v2.1.0",
+
+		// Docker metrics for execution client
+		ExecMemoryUsage:     uint64(3*1024*1024*1024) + timeOffset*256*1024,   // Gradually increasing memory
+		ExecBlockIORead:     uint64(6*1024*1024*1024) + timeOffset*512*1024,   // Gradually increasing IO
+		ExecBlockIOWrite:    uint64(80*1024*1024*1024) + timeOffset*2048*1024, // Gradually increasing IO
+		ExecCPUUsagePercent: 45.5 + float64(timeOffset%200)/10,                // 45.5-65.5% CPU usage
+
+		// Docker metrics for consensus client
+		ConsMemoryUsage:     uint64(8*1024*1024*1024) + timeOffset*128*1024, // Gradually increasing memory
+		ConsBlockIORead:     uint64(1*1024*1024*1024) + timeOffset*64*1024,  // Gradually increasing IO
+		ConsBlockIOWrite:    uint64(4*1024*1024*1024) + timeOffset*256*1024, // Gradually increasing IO
+		ConsCPUUsagePercent: 12.3 + float64(timeOffset%150)/10,              // 12.3-27.3% CPU usage
 	}
 
 	if err := s.store.UpdateProgress(runID, mockMetrics); err != nil {
