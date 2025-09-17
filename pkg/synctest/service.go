@@ -701,13 +701,26 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			})
 
 			progressEntry := report.SyncProgressEntry{
-				T:                        timestamp,
-				Block:                    blockNumber,
-				Slot:                     slotNumber,
-				DiskUsageExecutionClient: metrics.ExeDiskUsage,
-				DiskUsageConsensusClient: metrics.ConDiskUsage,
-				PeersExecutionClient:     metrics.ExePeers,
-				PeersConsensusClient:     metrics.ConPeers,
+				T:     timestamp,
+				Block: blockNumber,
+				Slot:  slotNumber,
+
+				PeersExecutionClient: metrics.ExePeers,
+				PeersConsensusClient: metrics.ConPeers,
+
+				// Docker metrics for execution client
+				DiskUsageExecutionClient:       metrics.ExeDiskUsage,
+				MemoryUsageExecutionClient:     metrics.ExeMemoryUsage,
+				BlockIOReadExecutionClient:     metrics.ExeBlockIORead,
+				BlockIOWriteExecutionClient:    metrics.ExeBlockIOWrite,
+				CPUUsagePercentExecutionClient: metrics.ExeCPUUsagePercent,
+
+				// Docker metrics for consensus client
+				DiskUsageConsensusClient:       metrics.ConDiskUsage,
+				MemoryUsageConsensusClient:     metrics.ConMemoryUsage,
+				BlockIOReadConsensusClient:     metrics.ConBlockIORead,
+				BlockIOWriteConsensusClient:    metrics.ConBlockIOWrite,
+				CPUUsagePercentConsensusClient: metrics.ConCPUUsagePercent,
 			}
 
 			s.reportService.AddSyncProgressEntry(ctx, progressEntry)
@@ -732,6 +745,18 @@ func (s *service) WaitForSync(ctx context.Context) error {
 					ConsSyncPercent: metrics.ConSyncPercentage,
 					ExecVersion:     metrics.ExeVersion,
 					ConsVersion:     metrics.ConVersion,
+
+					// Docker metrics for execution client
+					ExecMemoryUsage:     metrics.ExeMemoryUsage,
+					ExecBlockIORead:     metrics.ExeBlockIORead,
+					ExecBlockIOWrite:    metrics.ExeBlockIOWrite,
+					ExecCPUUsagePercent: metrics.ExeCPUUsagePercent,
+
+					// Docker metrics for consensus client
+					ConsMemoryUsage:     metrics.ConMemoryUsage,
+					ConsBlockIORead:     metrics.ConBlockIORead,
+					ConsBlockIOWrite:    metrics.ConBlockIOWrite,
+					ConsCPUUsagePercent: metrics.ConCPUUsagePercent,
 				}
 				s.reportingClient.ReportProgress(progressMetrics) // Non-blocking
 			}
