@@ -1,6 +1,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { BlockProgressChart, SlotProgressChart, DiskUsageChart, PeerCountChart } from './charts';
+import { 
+  BlockProgressChart, 
+  SlotProgressChart, 
+  DiskUsageChart, 
+  PeerCountChart, 
+  MemoryUsageChart, 
+  BlockIOChart, 
+  CPUUsageChart 
+} from './charts';
 import { transformProgressPoints } from '../lib/chartUtils';
 import { ProgressPoint } from '../types/syncoor';
 import { ProgressEntry } from '../types/report';
@@ -38,6 +46,24 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
     }
     return [];
   }, [progressHistory, progressData]);
+
+  // Check if Docker metrics data is available
+  const hasMemoryData = React.useMemo(() => {
+    return chartData.some(entry => entry.me !== undefined && entry.mc !== undefined);
+  }, [chartData]);
+
+  const hasBlockIOData = React.useMemo(() => {
+    return chartData.some(entry => 
+      entry.bre !== undefined && 
+      entry.bwe !== undefined && 
+      entry.brc !== undefined && 
+      entry.bwc !== undefined
+    );
+  }, [chartData]);
+
+  const hasCPUData = React.useMemo(() => {
+    return chartData.some(entry => entry.ce !== undefined && entry.cc !== undefined);
+  }, [chartData]);
 
   if (chartData.length === 0) {
     return (
@@ -123,6 +149,57 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
             </div>
           </CardContent>
         </Card>
+
+        {hasMemoryData && (
+          <Card>
+            <CardHeader className={compact ? "pb-3" : undefined}>
+              <CardTitle className={compact ? "text-sm" : undefined}>Memory Usage</CardTitle>
+            </CardHeader>
+            <CardContent className={compact ? "pt-0" : undefined}>
+              <div className="w-full" style={{ height: chartHeight }}>
+                <MemoryUsageChart 
+                  data={chartData}
+                  height={chartHeight}
+                  showLegend={!compact}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasBlockIOData && (
+          <Card>
+            <CardHeader className={compact ? "pb-3" : undefined}>
+              <CardTitle className={compact ? "text-sm" : undefined}>Block I/O</CardTitle>
+            </CardHeader>
+            <CardContent className={compact ? "pt-0" : undefined}>
+              <div className="w-full" style={{ height: chartHeight }}>
+                <BlockIOChart 
+                  data={chartData}
+                  height={chartHeight}
+                  showLegend={!compact}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasCPUData && (
+          <Card>
+            <CardHeader className={compact ? "pb-3" : undefined}>
+              <CardTitle className={compact ? "text-sm" : undefined}>CPU Usage</CardTitle>
+            </CardHeader>
+            <CardContent className={compact ? "pt-0" : undefined}>
+              <div className="w-full" style={{ height: chartHeight }}>
+                <CPUUsageChart 
+                  data={chartData}
+                  height={chartHeight}
+                  showLegend={!compact}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

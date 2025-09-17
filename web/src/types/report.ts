@@ -92,6 +92,22 @@ export interface ProgressEntry {
   pe: number;
   /** Peers consensus - Number of peers connected to consensus client */
   pc: number;
+  /** Memory usage execution - Execution client memory usage in bytes */
+  me: number;
+  /** Memory usage consensus - Consensus client memory usage in bytes */
+  mc: number;
+  /** Block IO read execution - Execution client block IO read bytes total */
+  bre: number;
+  /** Block IO read consensus - Consensus client block IO read bytes total */
+  brc: number;
+  /** Block IO write execution - Execution client block IO write bytes total */
+  bwe: number;
+  /** Block IO write consensus - Consensus client block IO write bytes total */
+  bwc: number;
+  /** CPU usage execution - Execution client CPU usage percentage */
+  ce: number;
+  /** CPU usage consensus - Consensus client CPU usage percentage */
+  cc: number;
 }
 
 /**
