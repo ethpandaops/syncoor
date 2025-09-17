@@ -977,6 +977,15 @@ func (s *service) finalizeSyncTest(ctx context.Context, status, errorMessage, lo
 		s.log.Info("Failure report saved successfully")
 	}
 
+	// Stop external metrics exporter if running
+	if s.externalMetricsManager != nil {
+		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cleanupCancel()
+		if err := s.externalMetricsManager.Stop(cleanupCtx); err != nil {
+			s.log.WithError(err).Error("Failed to stop external metrics exporter during finalization")
+		}
+	}
+
 	// Clean up temporary reports
 	if s.recoveryService != nil {
 		if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {

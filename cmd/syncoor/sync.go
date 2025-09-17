@@ -276,6 +276,10 @@ func setupSignalHandling(ctx context.Context, cancel context.CancelFunc, service
 			if err := service.SaveTempReport(ctx); err != nil {
 				logger.WithError(err).Error("Failed to save temp report")
 			}
+			// Explicitly stop the service to ensure cleanup
+			if err := service.Stop(); err != nil {
+				logger.WithError(err).Error("Failed to stop sync test service during signal shutdown")
+			}
 			cancel()
 		case <-ctx.Done():
 			return
