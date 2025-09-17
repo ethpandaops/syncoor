@@ -39,4 +39,5 @@ jobs:
 
         check-interval: 30s
         public: true
+        log-level: debug
         run-timeout: 1m # We expect the run to timeout. It will still be marked as success in CI.
