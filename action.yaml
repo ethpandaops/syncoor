@@ -290,7 +290,7 @@ runs:
       shell: bash
       run: |
         # List of named containers that might exist from previous runs
-        CONTAINERS=("syncoor-run" "syncoor-index" "syncoor-md")
+        CONTAINERS=("syncoor-run" "syncoor-index" "syncoor-md", "syncoor-metrics-exporter")
 
         for container in "${CONTAINERS[@]}"; do
           if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
@@ -664,4 +664,5 @@ runs:
         docker rm -f syncoor-run
         docker rm -f syncoor-index
         docker rm -f syncoor-md
+        docker rm -f syncoor-metrics-exporter || true
         kurtosis clean -a || true
