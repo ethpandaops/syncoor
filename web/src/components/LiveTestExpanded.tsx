@@ -11,11 +11,11 @@ interface LiveTestExpandedProps {
   onUpdateDetail: (testKey: string) => void;
 }
 
-const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({ 
+const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
   testKey,
-  test, 
-  detail, 
-  getClientLogo, 
+  test,
+  detail,
+  getClientLogo,
   capitalizeClient,
   onUpdateDetail
 }) => {
@@ -66,7 +66,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
       </div>
     );
   }
-  
+
   if (detail?.error) {
     return (
       <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
@@ -75,10 +75,10 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
       </div>
     );
   }
-  
+
   const testDetail = detail?.data;
   if (!testDetail) return null;
-  
+
   return (
     <div className="space-y-4">
       {/* Error information if present */}
@@ -90,7 +90,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Test Information */}
       <div className="space-y-2">
         <h4 className="font-semibold text-sm">Test Information</h4>
@@ -127,7 +127,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
           )}
         </div>
       </div>
-      
+
       {/* System Information */}
       {testDetail.system_info && (
         <div className="space-y-2">
@@ -217,7 +217,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* GitHub Information if available */}
       {test.labels && Object.keys(test.labels).some(key => key.startsWith('github.')) && (
         <div className="space-y-2">
@@ -278,16 +278,16 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
                     const jobName = test.labels['github.job'] || '';
                     const repository = test.labels['github.repository'];
                     const jobIdSuffix = jobId ? jobId.slice(-3) : '';
-                    
+
                     const displayText = `#${runNumber}${jobIdSuffix ? `(${jobIdSuffix})` : ''}${jobName ? ` - ${jobName}` : ''}`;
-                    
+
                     if (repository && runId) {
-                      const jobUrl = jobId 
+                      const jobUrl = jobId
                         ? `https://github.com/${repository}/actions/runs/${runId}/job/${jobId}`
                         : `https://github.com/${repository}/actions/runs/${runId}`;
-                      
+
                       return (
-                        <a 
+                        <a
                           href={jobUrl}
                           target="_blank"
                           rel="noopener noreferrer"
@@ -297,7 +297,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
                         </a>
                       );
                     }
-                    
+
                     return displayText;
                   })()}
                 </div>
@@ -306,7 +306,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
           </div>
         </div>
       )}
-      
+
       {/* Client Configuration Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* EL Client Config */}
@@ -333,11 +333,11 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
               <span className="text-xs text-muted-foreground">Image:</span>
               <div className="font-mono text-xs break-all overflow-hidden">{testDetail.el_client_config.image}</div>
             </div>
-            {testDetail.el_client_config.extra_args && testDetail.el_client_config.extra_args.length > 0 && (
+            {testDetail.el_client_config.cmd && testDetail.el_client_config.cmd.length > 0 && (
               <div>
                 <span className="text-xs text-muted-foreground">Command Args:</span>
                 <div className="font-mono text-xs space-y-1">
-                  {testDetail.el_client_config.extra_args.map((arg, i) => (
+                  {testDetail.el_client_config.cmd.map((arg, i) => (
                     <div key={i} className="text-blue-600 dark:text-blue-400 break-all overflow-hidden">{arg}</div>
                   ))}
                 </div>
@@ -357,7 +357,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
             )}
           </div>
         </div>
-        
+
         {/* CL Client Config */}
         <div className="space-y-2">
           <h4 className="font-semibold text-sm flex items-center gap-2">
@@ -382,11 +382,11 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
               <span className="text-xs text-muted-foreground">Image:</span>
               <div className="font-mono text-xs break-all overflow-hidden">{testDetail.cl_client_config.image}</div>
             </div>
-            {testDetail.cl_client_config.extra_args && testDetail.cl_client_config.extra_args.length > 0 && (
+            {testDetail.cl_client_config.cmd && testDetail.cl_client_config.cmd.length > 0 && (
               <div>
                 <span className="text-xs text-muted-foreground">Command Args:</span>
                 <div className="font-mono text-xs space-y-1">
-                  {testDetail.cl_client_config.extra_args.map((arg, i) => (
+                  {testDetail.cl_client_config.cmd.map((arg, i) => (
                     <div key={i} className="text-blue-600 dark:text-blue-400 break-all overflow-hidden">{arg}</div>
                   ))}
                 </div>
@@ -407,7 +407,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
           </div>
         </div>
       </div>
-      
+
       {/* Progress Charts */}
       {testDetail.progress_history && testDetail.progress_history.length > 0 && (
         <div className="border-t pt-4">
@@ -432,7 +432,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
               </div>
             )}
           </div>
-          <ProgressCharts 
+          <ProgressCharts
             progressHistory={testDetail.progress_history}
             showTitle={false}
             compact={true}

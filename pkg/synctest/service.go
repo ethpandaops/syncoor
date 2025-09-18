@@ -327,16 +327,16 @@ func (s *service) Start(ctx context.Context) error {
 			Network:   s.cfg.Network,
 			Labels:    s.cfg.Labels,
 			ELClient: reporting.ClientConfig{
-				Type:      s.cfg.ELClient,
-				Image:     s.cfg.ELImage,
-				ExtraArgs: s.cfg.ELExtraArgs,
-				EnvVars:   s.cfg.ELEnvVars,
+				Type:    s.cfg.ELClient,
+				Image:   s.cfg.ELImage,
+				Cmd:     s.cfg.ELExtraArgs,
+				EnvVars: s.cfg.ELEnvVars,
 			},
 			CLClient: reporting.ClientConfig{
-				Type:      s.cfg.CLClient,
-				Image:     s.cfg.CLImage,
-				ExtraArgs: s.cfg.CLExtraArgs,
-				EnvVars:   s.cfg.CLEnvVars,
+				Type:    s.cfg.CLClient,
+				Image:   s.cfg.CLImage,
+				Cmd:     s.cfg.CLExtraArgs,
+				EnvVars: s.cfg.CLEnvVars,
 			},
 			EnclaveName: s.cfg.EnclaveName,
 			SystemInfo:  systemInfo,
@@ -447,39 +447,17 @@ func (s *service) Start(ctx context.Context) error {
 
 		// Create updated client configurations with actual container details
 		elClientConfig := reporting.ClientConfig{
-			Type:      s.cfg.ELClient,
-			Image:     elInspect.Image,
-			ExtraArgs: elArgs,
-			EnvVars:   elInspect.EnvVars,
+			Type:    s.cfg.ELClient,
+			Image:   elInspect.Image,
+			Cmd:     elArgs,
+			EnvVars: elInspect.EnvVars,
 		}
 
 		clClientConfig := reporting.ClientConfig{
-			Type:      s.cfg.CLClient,
-			Image:     clInspect.Image,
-			ExtraArgs: clArgs,
-			EnvVars:   clInspect.EnvVars,
-		}
-
-		// Add user-provided extra args to the actual container args
-		if len(s.cfg.ELExtraArgs) > 0 {
-			elClientConfig.ExtraArgs = append(elClientConfig.ExtraArgs, s.cfg.ELExtraArgs...)
-		}
-		if len(s.cfg.CLExtraArgs) > 0 {
-			clClientConfig.ExtraArgs = append(clClientConfig.ExtraArgs, s.cfg.CLExtraArgs...)
-		}
-
-		// Merge user-provided env vars with container env vars
-		for key, value := range s.cfg.ELEnvVars {
-			if elClientConfig.EnvVars == nil {
-				elClientConfig.EnvVars = make(map[string]string)
-			}
-			elClientConfig.EnvVars[key] = value
-		}
-		for key, value := range s.cfg.CLEnvVars {
-			if clClientConfig.EnvVars == nil {
-				clClientConfig.EnvVars = make(map[string]string)
-			}
-			clClientConfig.EnvVars[key] = value
+			Type:    s.cfg.CLClient,
+			Image:   clInspect.Image,
+			Cmd:     clArgs,
+			EnvVars: clInspect.EnvVars,
 		}
 
 		updatedReq := reporting.TestKeepaliveRequest{
