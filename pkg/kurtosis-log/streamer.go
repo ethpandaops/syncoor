@@ -83,17 +83,27 @@ func (s *Streamer) streamWithRetry(ctx context.Context, clientName string, clien
 		default:
 		}
 
-		err := s.startStreaming(ctx, clientName, clientType, serviceClient)
+		err := s.startStreaming(ctx, clientName, clientType, serviceClient, attempt)
 		if err == nil {
 			return // Successfully started
 		}
 
-		s.log.WithFields(logrus.Fields{
-			"attempt": attempt,
-			"error":   err,
-			"client":  clientName,
-			"type":    clientType,
-		}).Warn("Failed to start log streaming, retrying...")
+		// Only log warnings after 8 attempts to reduce noise during startup
+		if attempt > 8 {
+			s.log.WithFields(logrus.Fields{
+				"attempt": attempt,
+				"error":   err,
+				"client":  clientName,
+				"type":    clientType,
+			}).Warn("Failed to start log streaming, retrying...")
+		} else {
+			// For initial attempts, just log at debug level
+			s.log.WithFields(logrus.Fields{
+				"attempt": attempt,
+				"client":  clientName,
+				"type":    clientType,
+			}).Debug("Waiting for logs to become available...")
+		}
 
 		if attempt < s.config.MaxRetries {
 			select {
@@ -115,7 +125,13 @@ func (s *Streamer) streamWithRetry(ctx context.Context, clientName string, clien
 }
 
 // startStreaming starts the actual log streaming
-func (s *Streamer) startStreaming(ctx context.Context, clientName string, clientType string, serviceClient client.ServiceWithLogs) error {
+func (s *Streamer) startStreaming(
+	ctx context.Context,
+	clientName string,
+	clientType string,
+	serviceClient client.ServiceWithLogs,
+	attempt int,
+) error {
 	// Create Kurtosis context for log streaming
 	kurtosisCtx, err := kurtosis_context.NewKurtosisContextFromLocalEngine()
 	if err != nil {
@@ -134,10 +150,18 @@ func (s *Streamer) startStreaming(ctx context.Context, clientName string, client
 		return fmt.Errorf("failed to start log stream: %w", ErrNilLogChannel)
 	}
 
-	s.log.WithFields(logrus.Fields{
-		"client": clientName,
-		"type":   clientType,
-	}).Info("Started log streaming")
+	// Only log "Started log streaming" after initial attempts to reduce noise
+	if attempt > 8 {
+		s.log.WithFields(logrus.Fields{
+			"client": clientName,
+			"type":   clientType,
+		}).Info("Started log streaming")
+	} else {
+		s.log.WithFields(logrus.Fields{
+			"client": clientName,
+			"type":   clientType,
+		}).Debug("Started log streaming")
+	}
 
 	// Handle log streaming in a separate goroutine with error reporting
 	errorChan := make(chan error, 1)
