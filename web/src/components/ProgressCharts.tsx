@@ -6,7 +6,8 @@ import {
   DiskUsageChart, 
   PeerCountChart, 
   MemoryUsageChart, 
-  BlockIOChart, 
+  BlockIOReadChart, 
+  BlockIOWriteChart, 
   CPUUsageChart 
 } from './charts';
 import { transformProgressPoints } from '../lib/chartUtils';
@@ -52,11 +53,16 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
     return chartData.some(entry => entry.me !== undefined && entry.mc !== undefined);
   }, [chartData]);
 
-  const hasBlockIOData = React.useMemo(() => {
+  const hasBlockIOReadData = React.useMemo(() => {
     return chartData.some(entry => 
       entry.bre !== undefined && 
+      entry.brc !== undefined
+    );
+  }, [chartData]);
+
+  const hasBlockIOWriteData = React.useMemo(() => {
+    return chartData.some(entry => 
       entry.bwe !== undefined && 
-      entry.brc !== undefined && 
       entry.bwc !== undefined
     );
   }, [chartData]);
@@ -150,6 +156,23 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
           </CardContent>
         </Card>
 
+        {hasCPUData && (
+          <Card>
+            <CardHeader className={compact ? "pb-3" : undefined}>
+              <CardTitle className={compact ? "text-sm" : undefined}>CPU Usage</CardTitle>
+            </CardHeader>
+            <CardContent className={compact ? "pt-0" : undefined}>
+              <div className="w-full" style={{ height: chartHeight }}>
+                <CPUUsageChart 
+                  data={chartData}
+                  height={chartHeight}
+                  showLegend={!compact}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {hasMemoryData && (
           <Card>
             <CardHeader className={compact ? "pb-3" : undefined}>
@@ -167,14 +190,14 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
           </Card>
         )}
 
-        {hasBlockIOData && (
+        {hasBlockIOReadData && (
           <Card>
             <CardHeader className={compact ? "pb-3" : undefined}>
-              <CardTitle className={compact ? "text-sm" : undefined}>Block I/O</CardTitle>
+              <CardTitle className={compact ? "text-sm" : undefined}>Block I/O Read</CardTitle>
             </CardHeader>
             <CardContent className={compact ? "pt-0" : undefined}>
               <div className="w-full" style={{ height: chartHeight }}>
-                <BlockIOChart 
+                <BlockIOReadChart 
                   data={chartData}
                   height={chartHeight}
                   showLegend={!compact}
@@ -184,14 +207,14 @@ export const ProgressCharts: React.FC<ProgressChartsProps> = ({
           </Card>
         )}
 
-        {hasCPUData && (
+        {hasBlockIOWriteData && (
           <Card>
             <CardHeader className={compact ? "pb-3" : undefined}>
-              <CardTitle className={compact ? "text-sm" : undefined}>CPU Usage</CardTitle>
+              <CardTitle className={compact ? "text-sm" : undefined}>Block I/O Write</CardTitle>
             </CardHeader>
             <CardContent className={compact ? "pt-0" : undefined}>
               <div className="w-full" style={{ height: chartHeight }}>
-                <CPUUsageChart 
+                <BlockIOWriteChart 
                   data={chartData}
                   height={chartHeight}
                   showLegend={!compact}
