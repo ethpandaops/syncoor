@@ -23,7 +23,7 @@ jobs:
         repository: https://github.com/${{ github.repository }}.git
         git-ref: ${{ github.event.pull_request.head.sha }}
         log-force-colors: true
-        client-logs: true
+        client-logs: false
         network: hoodi
         el-client: reth
         el-extra-args: >-
