@@ -337,7 +337,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
               <div>
                 <span className="text-xs text-muted-foreground">Command Args:</span>
                 <div className="font-mono text-xs space-y-1">
-                  {testDetail.el_client_config.cmd.map((arg, i) => (
+                  {testDetail.el_client_config.cmd.map((arg: string, i: number) => (
                     <div key={i} className="text-blue-600 dark:text-blue-400 break-all overflow-hidden">{arg}</div>
                   ))}
                 </div>
@@ -386,7 +386,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
               <div>
                 <span className="text-xs text-muted-foreground">Command Args:</span>
                 <div className="font-mono text-xs space-y-1">
-                  {testDetail.cl_client_config.cmd.map((arg, i) => (
+                  {testDetail.cl_client_config.cmd.map((arg: string, i: number) => (
                     <div key={i} className="text-blue-600 dark:text-blue-400 break-all overflow-hidden">{arg}</div>
                   ))}
                 </div>
