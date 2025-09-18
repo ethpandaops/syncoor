@@ -29,12 +29,12 @@ interface BlockIOChartProps {
 interface ChartDataPoint {
   timestamp: number;
   formattedTime: string;
-  executionRead: number;
-  executionWrite: number;
-  consensusRead: number;
-  consensusWrite: number;
-  totalRead: number;
-  totalWrite: number;
+  executionReadRate: number;
+  executionWriteRate: number;
+  consensusReadRate: number;
+  consensusWriteRate: number;
+  totalReadRate: number;
+  totalWriteRate: number;
 }
 
 const BlockIOChart: React.FC<BlockIOChartProps> = ({
@@ -50,28 +50,49 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
     consensusWrite: '#047857',
   },
 }) => {
-  // Transform data for the chart
+  // Transform data for the chart - calculate rates (bytes per second)
   const chartData: ChartDataPoint[] = React.useMemo(() => {
     if (!data || data.length === 0) return [];
 
-    return data
+    const filteredData = data
       .filter((entry) => 
         entry.bre !== undefined && 
         entry.bwe !== undefined && 
         entry.brc !== undefined && 
         entry.bwc !== undefined
       )
-      .sort((a, b) => a.t - b.t)
-      .map((entry) => ({
-        timestamp: entry.t,
-        formattedTime: formatTimestamp(entry.t),
-        executionRead: entry.bre,
-        executionWrite: entry.bwe,
-        consensusRead: entry.brc,
-        consensusWrite: entry.bwc,
-        totalRead: entry.bre + entry.brc,
-        totalWrite: entry.bwe + entry.bwc,
-      }));
+      .sort((a, b) => a.t - b.t);
+
+    if (filteredData.length < 2) return [];
+
+    const rateData: ChartDataPoint[] = [];
+
+    for (let i = 1; i < filteredData.length; i++) {
+      const current = filteredData[i];
+      const previous = filteredData[i - 1];
+      
+      const timeDiff = current.t - previous.t;
+      if (timeDiff <= 0) continue; // Skip if no time difference
+
+      // Calculate rates (bytes per second)
+      const executionReadRate = Math.max(0, (current.bre - previous.bre) / timeDiff);
+      const executionWriteRate = Math.max(0, (current.bwe - previous.bwe) / timeDiff);
+      const consensusReadRate = Math.max(0, (current.brc - previous.brc) / timeDiff);
+      const consensusWriteRate = Math.max(0, (current.bwc - previous.bwc) / timeDiff);
+
+      rateData.push({
+        timestamp: current.t,
+        formattedTime: formatTimestamp(current.t),
+        executionReadRate,
+        executionWriteRate,
+        consensusReadRate,
+        consensusWriteRate,
+        totalReadRate: executionReadRate + consensusReadRate,
+        totalWriteRate: executionWriteRate + consensusWriteRate,
+      });
+    }
+
+    return rateData;
   }, [data]);
 
   // Custom tooltip component
@@ -90,7 +111,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               />
               <span className="text-gray-600">Read:</span>
               <span className="font-medium text-gray-800">
-                {formatBytes(data.executionRead)}
+                {formatBytes(data.executionReadRate)}/s
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm ml-3">
@@ -100,7 +121,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               />
               <span className="text-gray-600">Write:</span>
               <span className="font-medium text-gray-800">
-                {formatBytes(data.executionWrite)}
+                {formatBytes(data.executionWriteRate)}/s
               </span>
             </div>
             
@@ -112,7 +133,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               />
               <span className="text-gray-600">Read:</span>
               <span className="font-medium text-gray-800">
-                {formatBytes(data.consensusRead)}
+                {formatBytes(data.consensusReadRate)}/s
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm ml-3">
@@ -122,7 +143,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               />
               <span className="text-gray-600">Write:</span>
               <span className="font-medium text-gray-800">
-                {formatBytes(data.consensusWrite)}
+                {formatBytes(data.consensusWriteRate)}/s
               </span>
             </div>
             
@@ -130,13 +151,13 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               <div className="flex items-center gap-1">
                 <span className="text-gray-600 font-medium">Total Read:</span>
                 <span className="font-semibold text-gray-800">
-                  {formatBytes(data.totalRead)}
+                  {formatBytes(data.totalReadRate)}/s
                 </span>
               </div>
               <div className="flex items-center gap-1">
                 <span className="text-gray-600 font-medium">Total Write:</span>
                 <span className="font-semibold text-gray-800">
-                  {formatBytes(data.totalWrite)}
+                  {formatBytes(data.totalWriteRate)}/s
                 </span>
               </div>
             </div>
@@ -147,9 +168,9 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
     return null;
   };
 
-  // Format tick values for Y-axis (bytes)
+  // Format tick values for Y-axis (bytes per second)
   const formatYAxisTick = (value: number): string => {
-    return formatBytes(value, 0);
+    return `${formatBytes(value, 0)}/s`;
   };
 
   // Format tick values for X-axis (timestamps)
@@ -162,8 +183,8 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
     return (
       <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
         <div className="text-center text-gray-500">
-          <p className="text-lg font-medium">No block I/O data available</p>
-          <p className="text-sm">Data will appear here once block I/O metrics are recorded</p>
+          <p className="text-lg font-medium">No block I/O rate data available</p>
+          <p className="text-sm">Data will appear here once sufficient block I/O metrics are recorded</p>
         </div>
       </div>
     );
@@ -216,7 +237,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
           
           <Line
             type="monotone"
-            dataKey="executionRead"
+            dataKey="executionReadRate"
             stroke={colors.executionRead}
             strokeWidth={2}
             dot={false}
@@ -225,7 +246,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
           
           <Line
             type="monotone"
-            dataKey="executionWrite"
+            dataKey="executionWriteRate"
             stroke={colors.executionWrite}
             strokeWidth={2}
             dot={false}
@@ -235,7 +256,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
           
           <Line
             type="monotone"
-            dataKey="consensusRead"
+            dataKey="consensusReadRate"
             stroke={colors.consensusRead}
             strokeWidth={2}
             dot={false}
@@ -244,7 +265,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
           
           <Line
             type="monotone"
-            dataKey="consensusWrite"
+            dataKey="consensusWriteRate"
             stroke={colors.consensusWrite}
             strokeWidth={2}
             dot={false}
