@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -125,7 +125,7 @@ const CPUUsageChart: React.FC<CPUUsageChartProps> = ({
   return (
     <div className={`w-full ${className}`}>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart
+        <AreaChart
           data={chartData}
           margin={{
             top: 20,
@@ -168,24 +168,26 @@ const CPUUsageChart: React.FC<CPUUsageChartProps> = ({
             />
           )}
           
-          <Line
+          <Area
             type="monotone"
             dataKey="execution"
+            stackId="1"
             stroke={colors.execution}
-            strokeWidth={2}
-            dot={false}
+            fill={colors.execution}
+            fillOpacity={0.6}
             name="Execution Client"
           />
           
-          <Line
+          <Area
             type="monotone"
             dataKey="consensus"
+            stackId="1"
             stroke={colors.consensus}
-            strokeWidth={2}
-            dot={false}
+            fill={colors.consensus}
+            fillOpacity={0.6}
             name="Consensus Client"
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

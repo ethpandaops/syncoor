@@ -1,7 +1,7 @@
 import React from 'react';
 import {
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -147,7 +147,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
   return (
     <div className={`w-full ${className}`}>
       <ResponsiveContainer width="100%" height={height}>
-        <LineChart
+        <AreaChart
           data={chartData}
           margin={{
             top: 20,
@@ -189,24 +189,26 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
             />
           )}
           
-          <Line
+          <Area
             type="monotone"
             dataKey="executionWriteRate"
+            stackId="1"
             stroke={colors.execution}
-            strokeWidth={2}
-            dot={false}
+            fill={colors.execution}
+            fillOpacity={0.6}
             name="Execution Client"
           />
           
-          <Line
+          <Area
             type="monotone"
             dataKey="consensusWriteRate"
+            stackId="1"
             stroke={colors.consensus}
-            strokeWidth={2}
-            dot={false}
+            fill={colors.consensus}
+            fillOpacity={0.6}
             name="Consensus Client"
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );
