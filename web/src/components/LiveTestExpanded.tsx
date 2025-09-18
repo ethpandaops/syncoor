@@ -33,22 +33,19 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
       return;
     }
 
-    // Initial fetch on mount
     const fetchData = () => {
       onUpdateDetail(testKey);
       setLastFetch(new Date());
     };
-    
-    // Fetch immediately
-    fetchData();
 
     // Set up periodic updates every 30 seconds for running tests
+    // Don't fetch immediately to avoid duplicate requests
     const interval = setInterval(fetchData, 30000);
 
     return () => {
       clearInterval(interval);
     };
-  }, [test.is_running, testKey, onUpdateDetail, detail?.data]); // Include detail?.data dependency
+  }, [test.is_running, testKey, onUpdateDetail]); // Removed detail?.data to prevent infinite loop
 
   // Update seconds since last fetch
   useEffect(() => {

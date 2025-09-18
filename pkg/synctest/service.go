@@ -15,6 +15,7 @@ import (
 	"github.com/ethpandaops/ethereum-package-go/pkg/config"
 	"github.com/ethpandaops/ethereum-package-go/pkg/network"
 	"github.com/ethpandaops/syncoor/pkg/consensus"
+	"github.com/ethpandaops/syncoor/pkg/docker"
 	"github.com/ethpandaops/syncoor/pkg/execution"
 	"github.com/ethpandaops/syncoor/pkg/kurtosis"
 	kurtosislog "github.com/ethpandaops/syncoor/pkg/kurtosis-log"
@@ -69,6 +70,13 @@ type service struct {
 	// Run identification
 	runID string
 
+	// Metrics Exporter Components
+	dockerManager    *docker.ContainerManager
+	metricsManager   *metrics_exporter.Manager
+	serviceDiscovery *metrics_exporter.ServiceDiscovery
+	configGenerator  *metrics_exporter.ConfigGenerator
+	volumeHandler    *docker.VolumeHandler
+
 	cancel context.CancelFunc
 }
 
@@ -100,6 +108,11 @@ func NewService(
 		)
 	}
 
+	// Initialize metrics exporter components (always enabled)
+	if err := svc.initializeMetricsComponents(log); err != nil {
+		log.WithError(err).Fatal("Failed to initialize metrics exporter components")
+	}
+
 	return svc
 }
 
@@ -109,6 +122,15 @@ func (s *service) Start(ctx context.Context) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
+
+	// Pre-pull latest metrics exporter image early to avoid delays later
+	if s.dockerManager != nil {
+		s.log.WithField("image", s.cfg.MetricsExporterImage).Info("Pre-pulling latest metrics exporter image")
+		if err := s.dockerManager.EnsureImageLatest(ctx, s.cfg.MetricsExporterImage); err != nil {
+			s.log.WithError(err).Warn("Failed to pre-pull latest metrics exporter image, will retry when starting metrics exporter")
+			// Don't fail here, just warn - the image will be pulled again when the metrics exporter starts
+		}
+	}
 
 	// Start reporting client if configured
 	if s.reportingClient != nil {
@@ -163,7 +185,8 @@ func (s *service) Start(ctx context.Context) error {
 
 	// Create ethereum package config
 	ethConfig := &config.EthereumPackageConfig{
-		EthereumMetricsExporterEnabled: boolPtr(true),
+		// Disable internal metrics exporter since standalone one is always enabled
+		EthereumMetricsExporterEnabled: boolPtr(false),
 		Participants:                   []config.ParticipantConfig{participantConfig},
 		NetworkParams: &config.NetworkParams{
 			Network: s.cfg.Network,
@@ -485,16 +508,13 @@ func (s *service) Start(ctx context.Context) error {
 		}
 	}
 
-	metricsExporterEndpoint, err := s.metricsExporterServiceEndpoint()
-	if err != nil {
-		return fmt.Errorf("failed to get metrics exporter endpoint: %w", err)
+	// Start metrics exporter (after clients are identified)
+	if err := s.startMetricsExporter(ctx); err != nil {
+		return fmt.Errorf("failed to start metrics exporter: %w", err)
 	}
 
-	s.metricsExporterClientFetcher = metrics_exporter.NewClient(s.log, metricsExporterEndpoint)
-
-	logrus.WithFields(logrus.Fields{
-		"metrics_url": metricsExporterEndpoint,
-	}).Info("Metrics exporter info")
+	// Initialize metrics exporter
+	s.initializeMetricsExporter()
 
 	return nil
 }
@@ -502,6 +522,15 @@ func (s *service) Start(ctx context.Context) error {
 // Stop cleans up and stops the sync test service
 func (s *service) Stop() error {
 	s.log.Info("Stopping synctest service")
+
+	// Stop metrics exporter first
+	if s.metricsManager != nil {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		if err := s.metricsManager.Stop(ctx); err != nil {
+			s.log.WithError(err).Error("Failed to stop metrics exporter")
+		}
+	}
 
 	if s.reportingClient != nil {
 		s.reportingClient.Stop()
@@ -681,13 +710,26 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			})
 
 			progressEntry := report.SyncProgressEntry{
-				T:                        timestamp,
-				Block:                    blockNumber,
-				Slot:                     slotNumber,
-				DiskUsageExecutionClient: metrics.ExeDiskUsage,
-				DiskUsageConsensusClient: metrics.ConDiskUsage,
-				PeersExecutionClient:     metrics.ExePeers,
-				PeersConsensusClient:     metrics.ConPeers,
+				T:     timestamp,
+				Block: blockNumber,
+				Slot:  slotNumber,
+
+				PeersExecutionClient: metrics.ExePeers,
+				PeersConsensusClient: metrics.ConPeers,
+
+				// Docker metrics for execution client
+				DiskUsageExecutionClient:       metrics.ExeDiskUsage,
+				MemoryUsageExecutionClient:     metrics.ExeMemoryUsage,
+				BlockIOReadExecutionClient:     metrics.ExeBlockIORead,
+				BlockIOWriteExecutionClient:    metrics.ExeBlockIOWrite,
+				CPUUsagePercentExecutionClient: metrics.ExeCPUUsagePercent,
+
+				// Docker metrics for consensus client
+				DiskUsageConsensusClient:       metrics.ConDiskUsage,
+				MemoryUsageConsensusClient:     metrics.ConMemoryUsage,
+				BlockIOReadConsensusClient:     metrics.ConBlockIORead,
+				BlockIOWriteConsensusClient:    metrics.ConBlockIOWrite,
+				CPUUsagePercentConsensusClient: metrics.ConCPUUsagePercent,
 			}
 
 			s.reportService.AddSyncProgressEntry(ctx, progressEntry)
@@ -712,6 +754,18 @@ func (s *service) WaitForSync(ctx context.Context) error {
 					ConsSyncPercent: metrics.ConSyncPercentage,
 					ExecVersion:     metrics.ExeVersion,
 					ConsVersion:     metrics.ConVersion,
+
+					// Docker metrics for execution client
+					ExecMemoryUsage:     metrics.ExeMemoryUsage,
+					ExecBlockIORead:     metrics.ExeBlockIORead,
+					ExecBlockIOWrite:    metrics.ExeBlockIOWrite,
+					ExecCPUUsagePercent: metrics.ExeCPUUsagePercent,
+
+					// Docker metrics for consensus client
+					ConsMemoryUsage:     metrics.ConMemoryUsage,
+					ConsBlockIORead:     metrics.ConBlockIORead,
+					ConsBlockIOWrite:    metrics.ConBlockIOWrite,
+					ConsCPUUsagePercent: metrics.ConCPUUsagePercent,
 				}
 				s.reportingClient.ReportProgress(progressMetrics) // Non-blocking
 			}
@@ -784,15 +838,6 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 func boolPtr(b bool) *bool {
 	return &b
-}
-
-func (s *service) metricsExporterServiceEndpoint() (string, error) {
-	name := fmt.Sprintf("ethereum-metrics-exporter-1-%s-%s", s.cfg.CLClient, s.cfg.ELClient)
-	kservice, err := s.kurtosisClient.InspectService(context.Background(), s.network.EnclaveName(), name)
-	if err != nil {
-		return "", fmt.Errorf("failed to inspect metrics exporter service: %w", err)
-	}
-	return fmt.Sprintf("http://127.0.0.1:%d/metrics", kservice.PublicPorts["http"].Number), nil
 }
 
 // EnableRecovery enables the recovery service for this sync test
@@ -951,12 +996,95 @@ func (s *service) finalizeSyncTest(ctx context.Context, status, errorMessage, lo
 		s.log.Info("Failure report saved successfully")
 	}
 
+	// Stop metrics exporter if running
+	if s.metricsManager != nil {
+		cleanupCtx, cleanupCancel := context.WithTimeout(ctx, 15*time.Second)
+		defer cleanupCancel()
+		if err := s.metricsManager.Stop(cleanupCtx); err != nil {
+			s.log.WithError(err).Error("Failed to stop metrics exporter during finalization")
+		}
+	}
+
 	// Clean up temporary reports
 	if s.recoveryService != nil {
 		if err := s.reportService.RemoveTempReport(ctx, s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient); err != nil {
 			s.log.WithError(err).Warn("Failed to clean up temporary reports")
 		}
 	}
+}
+
+// initializeMetricsComponents initializes the metrics exporter components
+func (s *service) initializeMetricsComponents(log logrus.FieldLogger) error {
+	s.log.Info("Initializing metrics exporter components")
+
+	// Create Docker client and manager
+	dockerClient, err := docker.NewClient()
+	if err != nil {
+		return fmt.Errorf("failed to create Docker client: %w", err)
+	}
+
+	s.dockerManager = docker.NewContainerManager(dockerClient, log.WithField("component", "docker-manager"))
+	s.volumeHandler = docker.NewVolumeHandler(dockerClient, log.WithField("component", "volume-handler"))
+	s.configGenerator = metrics_exporter.NewConfigGenerator(log.WithField("component", "config-generator"))
+	s.serviceDiscovery = metrics_exporter.NewServiceDiscovery(
+		s.kurtosisClient,
+		s.dockerManager,
+		s.volumeHandler,
+		log.WithField("component", "service-discovery"),
+	)
+	s.metricsManager = metrics_exporter.NewManager(
+		s.dockerManager,
+		s.configGenerator,
+		s.serviceDiscovery,
+		log.WithField("component", "metrics-manager"),
+	)
+
+	s.log.Info("Metrics exporter components initialized successfully")
+	return nil
+}
+
+// startMetricsExporter starts the metrics exporter container
+func (s *service) startMetricsExporter(ctx context.Context) error {
+	s.log.WithField("enclave", s.network.EnclaveName()).Info("Starting metrics exporter")
+
+	// Get default config and override with user settings
+	config := s.metricsManager.GetDefaultConfig()
+	config.Image = s.cfg.MetricsExporterImage
+	config.MetricsPort = s.cfg.MetricsExporterPort
+	config.LogLevel = s.cfg.MetricsExporterLogLevel
+	config.ConfigDir = s.cfg.MetricsExporterConfigDir
+
+	// Pass the actual service names we discovered
+	if s.executionClient != nil && s.consensusClient != nil {
+		config.ELServiceName = s.executionClient.Name()
+		config.CLServiceName = s.consensusClient.Name()
+		s.log.WithFields(logrus.Fields{
+			"el_service": config.ELServiceName,
+			"cl_service": config.CLServiceName,
+		}).Debug("Using specific service names for metrics exporter")
+	}
+
+	if err := s.metricsManager.Start(ctx, s.network.EnclaveName(), config); err != nil {
+		return fmt.Errorf("failed to start metrics exporter: %w", err)
+	}
+
+	s.log.WithField("metrics_endpoint", s.metricsManager.GetMetricsEndpoint()).Info("Metrics exporter started successfully")
+	return nil
+}
+
+// initializeMetricsExporter initializes metrics exporter
+func (s *service) initializeMetricsExporter() {
+	// Metrics exporter was already started in startMetricsExporter
+	// Use managed metrics client
+	metricsExporterEndpoint := s.metricsManager.GetMetricsEndpoint()
+	s.metricsExporterClientFetcher = metrics_exporter.NewClient(
+		s.metricsManager,
+		s.log.WithField("component", "metrics-client"),
+	)
+
+	logrus.WithFields(logrus.Fields{
+		"metrics_url": metricsExporterEndpoint,
+	}).Info("Metrics exporter initialized")
 }
 
 // Interface compliance check

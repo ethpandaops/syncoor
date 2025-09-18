@@ -1,0 +1,10 @@
+[default]
+extend-ignore-re = [
+  "bre",
+]
+
+[files]
+extend-exclude = [
+  "go.mod",
+  "go.sum",
+]

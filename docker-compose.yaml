@@ -51,6 +51,7 @@ services:
       - SYNCOOR_AUTH_TOKEN=${SYNCOOR_AUTH_TOKEN:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /tmp:/tmp
       - ${HOME}/.docker:/root/.docker:ro
       - ./reports:/app/reports
     network_mode: host

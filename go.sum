@@ -32,8 +32,6 @@ github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5/go.mod h1:qssHWj6
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
 github.com/emicklei/dot v1.9.0 h1:FyaJNctdMfaEIbTQ1FkKZ1UCZyJJSkyvkrXOVoNZPKU=
 github.com/emicklei/dot v1.9.0/go.mod h1:DeV7GvQtIw4h2u73RKBkkFdvVAz0D9fzeJrgPW6gy/s=
-github.com/ethpandaops/ethereum-package-go v0.7.1-0.20250829075717-b942a79752b1 h1:eC6U6NiM+qBmgQqmPs6J7asmhKoRdoTKsMHbY9Vbwws=
-github.com/ethpandaops/ethereum-package-go v0.7.1-0.20250829075717-b942a79752b1/go.mod h1:LQThCwlCeeNBTdXOFV+xSwudoced53x+o/Orya3Y+oo=
 github.com/ethpandaops/ethereum-package-go v0.7.1-0.20250829080900-63d166555395 h1:B9ZttNsVjnpOv7m95ptx3dgAdaodpYamnLgAqEnMbTc=
 github.com/ethpandaops/ethereum-package-go v0.7.1-0.20250829080900-63d166555395/go.mod h1:LQThCwlCeeNBTdXOFV+xSwudoced53x+o/Orya3Y+oo=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
@@ -228,3 +226,7 @@ gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
 gopkg.in/yaml.v3 v3.0.1 h1:fxVm/GzAzEWqLHuvctI91KS9hhNmmWOoWu0XTYJS7CA=
 gopkg.in/yaml.v3 v3.0.1/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
+gotest.tools/v3 v3.5.2 h1:7koQfIKdy+I8UTetycgUqXWSDwpgv193Ka+qRsmBY8Q=
+gotest.tools/v3 v3.5.2/go.mod h1:LtdLGcnqToBH83WByAAi/wiwSFCArdFIUV/xxN4pcjA=
+pgregory.net/rapid v1.2.0 h1:keKAYRcjm+e1F0oAuU5F5+YPAWcyxNNRK2wud503Gnk=
+pgregory.net/rapid v1.2.0/go.mod h1:PY5XlDGj0+V1FCq0o192FdRhpKHGTRIWBgqjDBTrq04=

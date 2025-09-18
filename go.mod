@@ -3,9 +3,12 @@ module github.com/ethpandaops/syncoor
 go 1.23.5
 
 require (
+	github.com/docker/go-connections v0.5.0
 	github.com/ethpandaops/ethereum-package-go v0.7.1-0.20250829080900-63d166555395
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.11.1
+	github.com/moby/moby/api v1.52.0-alpha.1
+	github.com/moby/moby/client v0.1.0-alpha.0
 	github.com/prometheus/client_golang v1.23.0
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.65.0
@@ -30,7 +33,6 @@ require (
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/distribution/reference v0.6.0 // indirect
-	github.com/docker/go-connections v0.5.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20210315054119-f66993602bf5 // indirect
 	github.com/emicklei/dot v1.9.0 // indirect
@@ -58,8 +60,6 @@ require (
 	github.com/minio/sha256-simd v1.0.1 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/moby/docker-image-spec v1.3.1 // indirect
-	github.com/moby/moby/api v1.52.0-alpha.1 // indirect
-	github.com/moby/moby/client v0.1.0-alpha.0 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect

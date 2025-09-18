@@ -17,6 +17,14 @@ export function transformProgressPoints(progressHistory: ProgressPoint[]): Progr
     dc: point.metrics.cons_disk_usage,
     pe: point.metrics.exec_peers,
     pc: point.metrics.cons_peers,
+    me: point.metrics.exec_memory_usage || 0,
+    mc: point.metrics.cons_memory_usage || 0,
+    bre: point.metrics.exec_block_io_read || 0,
+    brc: point.metrics.cons_block_io_read || 0,
+    bwe: point.metrics.exec_block_io_write || 0,
+    bwc: point.metrics.cons_block_io_write || 0,
+    ce: point.metrics.exec_cpu_usage_percent || 0,
+    cc: point.metrics.cons_cpu_usage_percent || 0,
   }));
 }
 
@@ -36,6 +44,14 @@ export function transformProgressEntries(progressEntries: ProgressEntry[]): Prog
       cons_peers: entry.pc,
       exec_sync_percent: 0, // Not available in ProgressEntry format
       cons_sync_percent: 0, // Not available in ProgressEntry format
+      exec_memory_usage: entry.me,
+      cons_memory_usage: entry.mc,
+      exec_block_io_read: entry.bre,
+      cons_block_io_read: entry.brc,
+      exec_block_io_write: entry.bwe,
+      cons_block_io_write: entry.bwc,
+      exec_cpu_usage_percent: entry.ce,
+      cons_cpu_usage_percent: entry.cc,
     },
   }));
 }

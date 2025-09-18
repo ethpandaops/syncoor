@@ -2,6 +2,7 @@ package metrics_exporter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -14,6 +15,23 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// Static errors for better error handling
+var (
+	ErrMetricsExporterNotRunning = errors.New("metrics exporter is not running")
+	ErrMetricsEndpointStatusCode = errors.New("metrics endpoint returned non-200 status code")
+	ErrFailedToFetchMetrics      = errors.New("failed to fetch metrics")
+	ErrFailedToReadResponseBody  = errors.New("failed to read response body")
+)
+
+// Constants for metric labels
+const (
+	labelType      = "type"
+	labelConsensus = "consensus"
+	labelExecution = "execution"
+	labelConnected = "connected"
+	labelVersion   = "version"
+)
+
 type Client interface {
 	FetchMetrics(ctx context.Context) (*ParsedMetrics, error)
 }
@@ -24,58 +42,83 @@ type ParsedMetrics struct {
 	// Execution
 	ExeVersion          string
 	ExePeers            uint64
-	ExeDiskUsage        uint64
 	ExeChainID          uint64
 	ExeSyncCurrentBlock uint64
 	ExeSyncHighestBlock uint64
 	ExeIsSyncing        bool
 	ExeSyncPercentage   float64
 
+	// Execution Docker metrics
+	ExeDiskUsage       uint64
+	ExeMemoryUsage     uint64
+	ExeBlockIORead     uint64
+	ExeBlockIOWrite    uint64
+	ExeCPUUsagePercent float64
+
 	// Consensus
 	ConVersion                  string
 	ConPeers                    uint64
-	ConDiskUsage                uint64
 	ConSyncHeadSlot             uint64
 	ConSyncEstimatedHighestSlot uint64
 	ConIsSyncing                bool
 	ConSyncPercentage           float64
+
+	// Consensus Docker metrics
+	ConDiskUsage       uint64
+	ConMemoryUsage     uint64
+	ConBlockIORead     uint64
+	ConBlockIOWrite    uint64
+	ConCPUUsagePercent float64
 }
 
 // MetricsClient handles fetching and parsing metrics
 type client struct {
 	log        logrus.FieldLogger
 	httpClient *http.Client
-	endpoint   string
+
+	manager *Manager
 }
 
 // NewClient creates a new metrics export client
-func NewClient(log logrus.FieldLogger, endpoint string) Client {
+func NewClient(manager *Manager, logger logrus.FieldLogger) Client {
 	return &client{
-		log:      log.WithField("package", "metrics-exporter"),
-		endpoint: endpoint,
+		log: logger.WithField("package", "metrics-exporter"),
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		manager: manager,
 	}
 }
 
-// FetchMetrics fetches and parses metrics from the given endpoint
+// FetchMetrics fetches and parses metrics
 func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
-	c.log.WithField("endpoint", c.endpoint).Debug("Fetching metrics")
+	var metricsURL string
 
-	resp, err := c.httpClient.Get(c.endpoint)
+	if !c.manager.IsRunning(ctx) {
+		return nil, fmt.Errorf("%w", ErrMetricsExporterNotRunning)
+	}
+	metricsURL = c.manager.GetMetricsEndpoint()
+	c.log.WithField("endpoint", metricsURL).Debug("Fetching metrics from exporter")
+
+	// Create request with context
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, metricsURL, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch metrics: %w", err)
+		return nil, fmt.Errorf("%w: %s", ErrFailedToFetchMetrics, err.Error())
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("%w from %s: %s", ErrFailedToFetchMetrics, metricsURL, err.Error())
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("metrics endpoint returned status %d", resp.StatusCode)
+		return nil, fmt.Errorf("%w: %s returned status %d", ErrMetricsEndpointStatusCode, metricsURL, resp.StatusCode)
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
+		return nil, fmt.Errorf("%w from %s: %s", ErrFailedToReadResponseBody, metricsURL, err.Error())
 	}
 
 	return c.parseMetrics(strings.NewReader(string(body)))
@@ -104,15 +147,27 @@ func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
 		ExeIsSyncing:        false,
 		ExeSyncPercentage:   0.0,
 
+		// Execution Docker metrics
+		ExeMemoryUsage:     0,
+		ExeBlockIORead:     0,
+		ExeBlockIOWrite:    0,
+		ExeCPUUsagePercent: 0.0,
+
 		// Consensus sync metrics
 		ConSyncHeadSlot:             0,
 		ConSyncEstimatedHighestSlot: 0,
 		ConIsSyncing:                false,
 		ConSyncPercentage:           0.0,
+
+		// Consensus Docker metrics
+		ConMemoryUsage:     0,
+		ConBlockIORead:     0,
+		ConBlockIOWrite:    0,
+		ConCPUUsagePercent: 0.0,
 	}
 
 	// Parse disk usage metrics
-	if family, exists := metricFamilies["eth_disk_usage_bytes"]; exists {
+	if family, exists := metricFamilies["eth_docker_volume_usage_bytes"]; exists {
 		c.parseDiskUsageFamily(family, parsed)
 	}
 
@@ -181,26 +236,46 @@ func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
 		c.parseConSyncPercentageFamily(family, parsed)
 	}
 
+	// Parse Docker memory usage metrics
+	if family, exists := metricFamilies["eth_docker_memory_usage_bytes"]; exists {
+		c.parseDockerMemoryUsageFamily(family, parsed)
+	}
+
+	// Parse Docker block IO read metrics
+	if family, exists := metricFamilies["eth_docker_block_io_read_bytes_total"]; exists {
+		c.parseDockerBlockIOReadFamily(family, parsed)
+	}
+
+	// Parse Docker block IO write metrics
+	if family, exists := metricFamilies["eth_docker_block_io_write_bytes_total"]; exists {
+		c.parseDockerBlockIOWriteFamily(family, parsed)
+	}
+
+	// Parse Docker CPU usage metrics
+	if family, exists := metricFamilies["eth_docker_cpu_usage_percent"]; exists {
+		c.parseDockerCPUUsageFamily(family, parsed)
+	}
+
 	return parsed, nil
 }
 
-// parseDiskUsageFamily parses eth_disk_usage_bytes metrics
+// parseDiskUsageFamily parses eth_docker_volume_usage_bytes metrics
 func (c *client) parseDiskUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
 	for _, metric := range family.GetMetric() {
-		var directory string
+		var clientType string
 		for _, label := range metric.GetLabel() {
-			if label.GetName() == "directory" {
-				directory = label.GetValue()
+			if label.GetName() == labelType {
+				clientType = label.GetValue()
 				break
 			}
 		}
 
 		if metric.GetGauge() != nil {
-			switch directory {
-			case "/data/consensus-db":
-				parsed.ConDiskUsage = uint64(metric.GetGauge().GetValue())
-			case "/data/execution-db":
-				parsed.ExeDiskUsage = uint64(metric.GetGauge().GetValue())
+			switch clientType {
+			case labelConsensus:
+				parsed.ConDiskUsage += uint64(metric.GetGauge().GetValue())
+			case labelExecution:
+				parsed.ExeDiskUsage += uint64(metric.GetGauge().GetValue())
 			}
 		}
 	}
@@ -217,7 +292,7 @@ func (c *client) parseConPeersFamily(family *io_prometheus_client.MetricFamily, 
 			}
 		}
 
-		if state == "connected" && metric.GetGauge() != nil {
+		if state == labelConnected && metric.GetGauge() != nil {
 			parsed.ConPeers += uint64(metric.GetGauge().GetValue())
 		}
 	}
@@ -247,7 +322,7 @@ func (c *client) parseConVersionFamily(family *io_prometheus_client.MetricFamily
 func (c *client) extractVersionFromFamily(family *io_prometheus_client.MetricFamily) string {
 	for _, metric := range family.GetMetric() {
 		for _, label := range metric.GetLabel() {
-			if label.GetName() == "version" {
+			if label.GetName() == labelVersion {
 				return label.GetValue()
 			}
 		}
@@ -351,6 +426,98 @@ func (c *client) parseConSyncPercentageFamily(family *io_prometheus_client.Metri
 				parsed.ConSyncPercentage = value
 			}
 			break
+		}
+	}
+}
+
+// parseDockerMemoryUsageFamily parses eth_docker_memory_usage_bytes metrics
+func (c *client) parseDockerMemoryUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	for _, metric := range family.GetMetric() {
+		var clientType string
+		for _, label := range metric.GetLabel() {
+			if label.GetName() == labelType {
+				clientType = label.GetValue()
+				break
+			}
+		}
+
+		if metric.GetGauge() != nil {
+			switch clientType {
+			case labelConsensus:
+				parsed.ConMemoryUsage = uint64(metric.GetGauge().GetValue())
+			case labelExecution:
+				parsed.ExeMemoryUsage = uint64(metric.GetGauge().GetValue())
+			}
+		}
+	}
+}
+
+// parseDockerBlockIOReadFamily parses eth_docker_block_io_read_bytes_total metrics
+func (c *client) parseDockerBlockIOReadFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	for _, metric := range family.GetMetric() {
+		var clientType string
+		for _, label := range metric.GetLabel() {
+			if label.GetName() == labelType {
+				clientType = label.GetValue()
+				break
+			}
+		}
+
+		if metric.GetGauge() != nil {
+			switch clientType {
+			case labelConsensus:
+				parsed.ConBlockIORead = uint64(metric.GetGauge().GetValue())
+			case labelExecution:
+				parsed.ExeBlockIORead = uint64(metric.GetGauge().GetValue())
+			}
+		}
+	}
+}
+
+// parseDockerBlockIOWriteFamily parses eth_docker_block_io_write_bytes_total metrics
+func (c *client) parseDockerBlockIOWriteFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	for _, metric := range family.GetMetric() {
+		var clientType string
+		for _, label := range metric.GetLabel() {
+			if label.GetName() == labelType {
+				clientType = label.GetValue()
+				break
+			}
+		}
+
+		if metric.GetGauge() != nil {
+			switch clientType {
+			case labelConsensus:
+				parsed.ConBlockIOWrite = uint64(metric.GetGauge().GetValue())
+			case labelExecution:
+				parsed.ExeBlockIOWrite = uint64(metric.GetGauge().GetValue())
+			}
+		}
+	}
+}
+
+// parseDockerCPUUsageFamily parses eth_docker_cpu_usage_percent metrics
+func (c *client) parseDockerCPUUsageFamily(family *io_prometheus_client.MetricFamily, parsed *ParsedMetrics) {
+	for _, metric := range family.GetMetric() {
+		var clientType string
+		for _, label := range metric.GetLabel() {
+			if label.GetName() == labelType {
+				clientType = label.GetValue()
+				break
+			}
+		}
+
+		if metric.GetGauge() != nil {
+			value := metric.GetGauge().GetValue()
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				value = 0.0
+			}
+			switch clientType {
+			case labelConsensus:
+				parsed.ConCPUUsagePercent = value
+			case labelExecution:
+				parsed.ExeCPUUsagePercent = value
+			}
 		}
 	}
 }

@@ -47,6 +47,10 @@ func NewSyncCommand() *cobra.Command {
 		publicIP              string
 		clientLogsLevelEL     string
 		clientLogsLevelCL     string
+		// Metrics exporter flags
+		metricsExporterImage    string
+		metricsExporterPort     int
+		metricsExporterLogLevel string
 	)
 
 	cmd := &cobra.Command{
@@ -79,29 +83,32 @@ Exit codes:
 
 			// Create sync test config from command line flags
 			config := synctest.Config{
-				CheckInterval:         checkInterval,
-				RunTimeout:            runTimeout,
-				ELClient:              elClient,
-				CLClient:              clClient,
-				ELImage:               elImage,
-				CLImage:               clImage,
-				ELExtraArgs:           elExtraArgs,
-				CLExtraArgs:           clExtraArgs,
-				Network:               networkName,
-				EnclaveName:           enclaveName,
-				ReportDir:             reportDir,
-				ServerURL:             serverURL,
-				ServerAuth:            serverAuth,
-				ClientLogs:            clientLogs,
-				Supernode:             supernode,
-				CheckpointSyncEnabled: checkpointSyncEnabled,
-				CheckpointSyncURL:     checkpointSyncURL,
-				PublicPorts:           publicPorts,
-				PublicPortEL:          publicPortEL,
-				PublicPortCL:          publicPortCL,
-				PublicIP:              publicIP,
-				ClientLogsLevelEL:     clientLogsLevelEL,
-				ClientLogsLevelCL:     clientLogsLevelCL,
+				CheckInterval:           checkInterval,
+				RunTimeout:              runTimeout,
+				ELClient:                elClient,
+				CLClient:                clClient,
+				ELImage:                 elImage,
+				CLImage:                 clImage,
+				ELExtraArgs:             elExtraArgs,
+				CLExtraArgs:             clExtraArgs,
+				Network:                 networkName,
+				EnclaveName:             enclaveName,
+				ReportDir:               reportDir,
+				ServerURL:               serverURL,
+				ServerAuth:              serverAuth,
+				ClientLogs:              clientLogs,
+				Supernode:               supernode,
+				CheckpointSyncEnabled:   checkpointSyncEnabled,
+				CheckpointSyncURL:       checkpointSyncURL,
+				PublicPorts:             publicPorts,
+				PublicPortEL:            publicPortEL,
+				PublicPortCL:            publicPortCL,
+				PublicIP:                publicIP,
+				ClientLogsLevelEL:       clientLogsLevelEL,
+				ClientLogsLevelCL:       clientLogsLevelCL,
+				MetricsExporterImage:    metricsExporterImage,
+				MetricsExporterPort:     metricsExporterPort,
+				MetricsExporterLogLevel: metricsExporterLogLevel,
 			}
 
 			// Parse labels
@@ -229,6 +236,14 @@ Exit codes:
 	cmd.Flags().StringVar(&clientLogsLevelEL, "log-level-el", "info", "Log level for execution layer client (trace, debug, info, warn, error)")
 	cmd.Flags().StringVar(&clientLogsLevelCL, "log-level-cl", "info", "Log level for consensus layer client (trace, debug, info, warn, error)")
 
+	// Metrics exporter flags
+	cmd.Flags().StringVar(&metricsExporterImage, "metrics-exporter-image",
+		"ethpandaops/ethereum-metrics-exporter:debian-latest", "Docker image for metrics exporter")
+	cmd.Flags().IntVar(&metricsExporterPort, "metrics-exporter-port", 9090,
+		"Port for metrics exporter")
+	cmd.Flags().StringVar(&metricsExporterLogLevel, "metrics-exporter-log-level", "info",
+		"Log level for metrics exporter (trace, debug, info, warn, error)")
+
 	return cmd
 }
 
@@ -252,6 +267,10 @@ func setupSignalHandling(ctx context.Context, cancel context.CancelFunc, service
 			}
 			if err := service.SaveTempReport(ctx); err != nil {
 				logger.WithError(err).Error("Failed to save temp report")
+			}
+			// Explicitly stop the service to ensure cleanup
+			if err := service.Stop(); err != nil {
+				logger.WithError(err).Error("Failed to stop sync test service during signal shutdown")
 			}
 			cancel()
 		case <-ctx.Done():

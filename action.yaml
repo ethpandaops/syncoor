@@ -103,7 +103,6 @@ inputs:
     required: false
     default: 'false'
 
-
   labels:
     description: 'Comma-separated labels in key=value format (e.g., "test=sync,env=ci")'
     required: false
@@ -118,6 +117,22 @@ inputs:
     description: 'Bearer token for server authentication'
     required: false
     default: ''
+
+  # Metrics exporter configuration
+  metrics-exporter-image:
+    description: 'Docker image for metrics exporter (e.g., ethpandaops/ethereum-metrics-exporter:debian-latest)'
+    required: false
+    default: 'ethpandaops/ethereum-metrics-exporter:debian-latest'
+
+  metrics-exporter-port:
+    description: 'Port for metrics exporter'
+    required: false
+    default: '9090'
+
+  metrics-exporter-log-level:
+    description: 'Log level for metrics exporter (panic, fatal, error, warn, info, debug, trace)'
+    required: false
+    default: 'info'
 
   # Ethereum network configuration
   supernode:
@@ -290,7 +305,7 @@ runs:
       shell: bash
       run: |
         # List of named containers that might exist from previous runs
-        CONTAINERS=("syncoor-run" "syncoor-index" "syncoor-md")
+        CONTAINERS=("syncoor-run" "syncoor-index" "syncoor-md", "syncoor-metrics-exporter")
 
         for container in "${CONTAINERS[@]}"; do
           if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
@@ -363,6 +378,9 @@ runs:
 
         # Mount report directory
         DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/reports:/app/reports"
+
+        # Mount temp directory (for metrics exporter config file)
+        DOCKER_CMD="$DOCKER_CMD -v /tmp:/tmp"
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
@@ -482,6 +500,11 @@ runs:
           DOCKER_CMD="$DOCKER_CMD --public-port-cl=${{ inputs.public-port-cl }}"
           DOCKER_CMD="$DOCKER_CMD --public-ip=\"${{ inputs.public-ip }}\""
         fi
+
+        # Add metrics exporter configuration parameters
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-image=${{ inputs.metrics-exporter-image }}"
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-port=${{ inputs.metrics-exporter-port }}"
+        DOCKER_CMD="$DOCKER_CMD --metrics-exporter-log-level=${{ inputs.metrics-exporter-log-level }}"
 
         # Add client log level parameters
         DOCKER_CMD="$DOCKER_CMD --log-level-el=${{ inputs.log-level-el }}"
@@ -664,4 +687,5 @@ runs:
         docker rm -f syncoor-run
         docker rm -f syncoor-index
         docker rm -f syncoor-md
+        docker rm -f syncoor-metrics-exporter || true
         kurtosis clean -a || true

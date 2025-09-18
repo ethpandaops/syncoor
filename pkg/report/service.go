@@ -79,13 +79,26 @@ type SyncStatus struct {
 
 // SyncProgressEntry represents the progress data at a specific timestamp
 type SyncProgressEntry struct {
-	T                        int64  `json:"t"`  // Timestamp
-	Block                    uint64 `json:"b"`  // Execution client block number
-	Slot                     uint64 `json:"s"`  // Consensus client slot number
-	DiskUsageExecutionClient uint64 `json:"de"` // Execution client disk usage (bytes)
-	DiskUsageConsensusClient uint64 `json:"dc"` // Consensus client disk usage (bytes)
-	PeersExecutionClient     uint64 `json:"pe"` // Execution client peers
-	PeersConsensusClient     uint64 `json:"pc"` // Consensus client peers
+	T     int64  `json:"t"` // Timestamp
+	Block uint64 `json:"b"` // Execution client block number
+	Slot  uint64 `json:"s"` // Consensus client slot number
+
+	PeersExecutionClient uint64 `json:"pe"` // Execution client peers
+	PeersConsensusClient uint64 `json:"pc"` // Consensus client peers
+
+	// Docker metrics for execution client
+	DiskUsageExecutionClient       uint64  `json:"de"`  // Execution client disk usage (bytes)
+	MemoryUsageExecutionClient     uint64  `json:"me"`  // Execution client memory usage (bytes)
+	BlockIOReadExecutionClient     uint64  `json:"bre"` // Execution client block IO read (bytes)
+	BlockIOWriteExecutionClient    uint64  `json:"bwe"` // Execution client block IO write (bytes)
+	CPUUsagePercentExecutionClient float64 `json:"ce"`  // Execution client CPU usage (percent)
+
+	// Docker metrics for consensus client
+	DiskUsageConsensusClient       uint64  `json:"dc"`  // Consensus client disk usage (bytes)
+	MemoryUsageConsensusClient     uint64  `json:"mc"`  // Consensus client memory usage (bytes)
+	BlockIOReadConsensusClient     uint64  `json:"brc"` // Consensus client block IO read (bytes)
+	BlockIOWriteConsensusClient    uint64  `json:"bwc"` // Consensus client block IO write (bytes)
+	CPUUsagePercentConsensusClient float64 `json:"cc"`  // Consensus client CPU usage (percent)
 }
 
 // service implements the Service interface

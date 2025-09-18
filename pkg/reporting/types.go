@@ -29,16 +29,29 @@ type ProgressUpdateRequest struct {
 }
 
 type ProgressMetrics struct {
-	Block           uint64  `json:"block"`
-	Slot            uint64  `json:"slot"`
-	ExecDiskUsage   uint64  `json:"exec_disk_usage"`
-	ConsDiskUsage   uint64  `json:"cons_disk_usage"`
+	Block uint64 `json:"block"`
+	Slot  uint64 `json:"slot"`
+
 	ExecPeers       uint64  `json:"exec_peers"`
 	ConsPeers       uint64  `json:"cons_peers"`
 	ExecSyncPercent float64 `json:"exec_sync_percent"`
 	ConsSyncPercent float64 `json:"cons_sync_percent"`
 	ExecVersion     string  `json:"exec_version,omitempty"`
 	ConsVersion     string  `json:"cons_version,omitempty"`
+
+	// Docker metrics for execution client
+	ExecDiskUsage       uint64  `json:"exec_disk_usage"`
+	ExecMemoryUsage     uint64  `json:"exec_memory_usage"`
+	ExecBlockIORead     uint64  `json:"exec_block_io_read"`
+	ExecBlockIOWrite    uint64  `json:"exec_block_io_write"`
+	ExecCPUUsagePercent float64 `json:"exec_cpu_usage_percent"`
+
+	// Docker metrics for consensus client
+	ConsDiskUsage       uint64  `json:"cons_disk_usage"`
+	ConsMemoryUsage     uint64  `json:"cons_memory_usage"`
+	ConsBlockIORead     uint64  `json:"cons_block_io_read"`
+	ConsBlockIOWrite    uint64  `json:"cons_block_io_write"`
+	ConsCPUUsagePercent float64 `json:"cons_cpu_usage_percent"`
 }
 
 type TestCompleteRequest struct {
