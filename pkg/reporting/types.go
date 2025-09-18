@@ -46,7 +46,7 @@ type ProgressMetrics struct {
 	ExecBlockIOWrite    uint64  `json:"exec_block_io_write"`
 	ExecCPUUsagePercent float64 `json:"exec_cpu_usage_percent"`
 
-	// Docker metrics for consensus clien
+	// Docker metrics for consensus client
 	ConsDiskUsage       uint64  `json:"cons_disk_usage"`
 	ConsMemoryUsage     uint64  `json:"cons_memory_usage"`
 	ConsBlockIORead     uint64  `json:"cons_block_io_read"`

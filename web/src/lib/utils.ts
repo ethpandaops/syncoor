@@ -228,6 +228,14 @@ export function groupProgressByInterval(
       dc: Math.round(groupEntries.reduce((sum, e) => sum + e.dc, 0) / count),
       pe: Math.round(groupEntries.reduce((sum, e) => sum + e.pe, 0) / count),
       pc: Math.round(groupEntries.reduce((sum, e) => sum + e.pc, 0) / count),
+      me: Math.round(groupEntries.reduce((sum, e) => sum + e.me, 0) / count),
+      mc: Math.round(groupEntries.reduce((sum, e) => sum + e.mc, 0) / count),
+      bre: Math.round(groupEntries.reduce((sum, e) => sum + e.bre, 0) / count),
+      brc: Math.round(groupEntries.reduce((sum, e) => sum + e.brc, 0) / count),
+      bwe: Math.round(groupEntries.reduce((sum, e) => sum + e.bwe, 0) / count),
+      bwc: Math.round(groupEntries.reduce((sum, e) => sum + e.bwc, 0) / count),
+      ce: Math.round(groupEntries.reduce((sum, e) => sum + e.ce, 0) / count),
+      cc: Math.round(groupEntries.reduce((sum, e) => sum + e.cc, 0) / count),
     };
     
     result.push(avgEntry);
