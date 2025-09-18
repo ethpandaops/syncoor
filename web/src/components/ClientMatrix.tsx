@@ -326,7 +326,12 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                               />
                                             </TooltipTrigger>
                                             <TooltipContent>
-                                              <span>{formatDuration(report.duration)}</span>
+                                              <div className="flex flex-col gap-1">
+                                                <span>Duration: {formatDuration(report.duration)}</span>
+                                                <span className="text-xs text-muted-foreground">
+                                                  {new Date(Number(report.report.timestamp) * 1000).toLocaleString()}
+                                                </span>
+                                              </div>
                                             </TooltipContent>
                                           </Tooltip>
                                         );
