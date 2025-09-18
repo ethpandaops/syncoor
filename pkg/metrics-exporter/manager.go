@@ -69,81 +69,21 @@ func (m *Manager) Start(ctx context.Context, enclaveName string, config Config) 
 		return fmt.Errorf("failed to pull latest metrics exporter image: %w", err)
 	}
 
-	// Discover services
-	services, err := m.discoverServicesForConfig(ctx, enclaveName, config)
+	// Prepare configuration
+	configData, services, err := m.prepareConfiguration(ctx, enclaveName, config)
 	if err != nil {
-		return fmt.Errorf("failed to discover services: %w", err)
+		return fmt.Errorf("failed to prepare configuration: %w", err)
 	}
 
-	// Validate discovered endpoints
-	if err := m.serviceDiscovery.ValidateEndpoints(ctx, services); err != nil {
-		return fmt.Errorf("service endpoint validation failed: %w", err)
+	// Setup and start container
+	if err := m.setupAndStartContainer(ctx, config, configData, services.NetworkName); err != nil {
+		return fmt.Errorf("failed to setup and start container: %w", err)
 	}
 
-	// Get monitored directories
-	monitoredDirs, err := m.serviceDiscovery.GetMonitoredDirectories(ctx, services)
-	if err != nil {
-		return fmt.Errorf("failed to get monitored directories: %w", err)
+	// Wait for container to become healthy and handle failures
+	if err := m.waitForContainerHealth(ctx, configData); err != nil {
+		return fmt.Errorf("metrics exporter container failed to start properly: %w", err)
 	}
-
-	// Prepare configuration data
-	configData := ConfigTemplateData{
-		MetricsPort:     config.MetricsPort,
-		ConsensusURL:    m.serviceDiscovery.BuildConsensusURL(services),
-		ExecutionURL:    m.serviceDiscovery.BuildExecutionURL(services),
-		MonitoredDirs:   monitoredDirs,
-		LogLevel:        config.LogLevel,
-		ELContainerName: services.ELEndpoint.ContainerID,
-		CLContainerName: services.CLEndpoint.ContainerID,
-	}
-
-	// Validate configuration data
-	if err := m.configGenerator.ValidateConfigData(configData); err != nil {
-		return fmt.Errorf("invalid configuration data: %w", err)
-	}
-
-	// Set up temporary configuration directory
-	if config.ConfigDir == "" {
-		tempDir, err := os.MkdirTemp("", "syncoor-metrics-exporter-*")
-		if err != nil {
-			return fmt.Errorf("failed to create temporary config directory: %w", err)
-		}
-		config.ConfigDir = tempDir
-		m.configDir = tempDir
-	}
-
-	// Generate configuration file
-	configPath, err := m.configGenerator.WriteConfigFile(config.ConfigDir, configData)
-	if err != nil {
-		return fmt.Errorf("failed to write configuration file: %w", err)
-	}
-
-	m.logger.WithField("config_path", configPath).Debug("Generated metrics exporter configuration")
-
-	// Prepare Docker container configuration
-	containerConfig := m.buildContainerConfig(config, services.NetworkName)
-
-	// Start the container
-	containerInfo, err := m.dockerManager.StartContainer(ctx, containerConfig)
-	if err != nil {
-		return fmt.Errorf("failed to start metrics exporter container: %w", err)
-	}
-
-	m.containerID = containerInfo.ID
-
-	// Wait for container to become healthy
-	if err := m.dockerManager.WaitForHealthy(ctx, m.containerID, 60*time.Second); err != nil {
-		m.logger.WithError(err).Warn("Container did not become healthy within timeout, but proceeding")
-		// Don't fail here as the container might still be functional
-	}
-
-	m.logger.WithFields(logrus.Fields{
-		"container_id":   m.containerID[:12],
-		"metrics_url":    m.GetMetricsEndpoint(),
-		"consensus_url":  configData.ConsensusURL,
-		"execution_url":  configData.ExecutionURL,
-		"monitored_dirs": len(monitoredDirs),
-	}).Info("Metrics exporter started successfully")
 
 	return nil
 }
@@ -375,4 +315,129 @@ func (m *Manager) buildContainerConfig(config Config, _ string) docker.Container
 		// Note: We don't set Networks here as we want the container to run on the default bridge network
 		// This allows it to access both the host and the Kurtosis enclave network
 	}
+}
+
+// prepareConfiguration prepares the configuration data for the metrics exporter
+func (m *Manager) prepareConfiguration(ctx context.Context, enclaveName string, config Config) (ConfigTemplateData, *DiscoveredServices, error) {
+	// Discover services
+	services, err := m.discoverServicesForConfig(ctx, enclaveName, config)
+	if err != nil {
+		return ConfigTemplateData{}, nil, fmt.Errorf("failed to discover services: %w", err)
+	}
+
+	// Validate discovered endpoints
+	if err := m.serviceDiscovery.ValidateEndpoints(ctx, services); err != nil {
+		return ConfigTemplateData{}, nil, fmt.Errorf("service endpoint validation failed: %w", err)
+	}
+
+	// Get monitored directories
+	monitoredDirs, err := m.serviceDiscovery.GetMonitoredDirectories(ctx, services)
+	if err != nil {
+		return ConfigTemplateData{}, nil, fmt.Errorf("failed to get monitored directories: %w", err)
+	}
+
+	// Prepare configuration data
+	configData := ConfigTemplateData{
+		MetricsPort:     config.MetricsPort,
+		ConsensusURL:    m.serviceDiscovery.BuildConsensusURL(services),
+		ExecutionURL:    m.serviceDiscovery.BuildExecutionURL(services),
+		MonitoredDirs:   monitoredDirs,
+		LogLevel:        config.LogLevel,
+		ELContainerName: services.ELEndpoint.ContainerID,
+		CLContainerName: services.CLEndpoint.ContainerID,
+	}
+
+	// Log configuration details for debugging
+	m.logger.WithFields(logrus.Fields{
+		"metrics_port":    configData.MetricsPort,
+		"consensus_url":   configData.ConsensusURL,
+		"execution_url":   configData.ExecutionURL,
+		"monitored_dirs":  len(configData.MonitoredDirs),
+		"log_level":       configData.LogLevel,
+		"el_container_id": configData.ELContainerName,
+		"cl_container_id": configData.CLContainerName,
+		"config_dir":      config.ConfigDir,
+	}).Debug("Metrics exporter configuration prepared")
+
+	// Validate configuration data
+	if err := m.configGenerator.ValidateConfigData(configData); err != nil {
+		return ConfigTemplateData{}, nil, fmt.Errorf("invalid configuration data: %w", err)
+	}
+
+	return configData, services, nil
+}
+
+// setupAndStartContainer sets up configuration files and starts the container
+func (m *Manager) setupAndStartContainer(ctx context.Context, config Config, configData ConfigTemplateData, networkName string) error {
+	// Set up temporary configuration directory
+	if config.ConfigDir == "" {
+		tempDir, err := os.MkdirTemp("", "syncoor-metrics-exporter-*")
+		if err != nil {
+			return fmt.Errorf("failed to create temporary config directory: %w", err)
+		}
+		config.ConfigDir = tempDir
+		m.configDir = tempDir
+	}
+
+	// Generate configuration file
+	configPath, err := m.configGenerator.WriteConfigFile(config.ConfigDir, configData)
+	if err != nil {
+		return fmt.Errorf("failed to write configuration file: %w", err)
+	}
+
+	m.logger.WithField("config_path", configPath).Debug("Generated metrics exporter configuration")
+
+	// Prepare Docker container configuration
+	containerConfig := m.buildContainerConfig(config, networkName)
+
+	// Log container configuration for debugging
+	m.logger.WithFields(logrus.Fields{
+		"container_image":  containerConfig.Image,
+		"container_name":   containerConfig.Name,
+		"port_bindings":    len(containerConfig.PortBindings),
+		"volume_binds":     len(containerConfig.Binds),
+		"command_args":     containerConfig.Cmd,
+		"environment_vars": len(containerConfig.Env),
+	}).Debug("Starting metrics exporter container with configuration")
+
+	// Start the container
+	containerInfo, err := m.dockerManager.StartContainer(ctx, containerConfig)
+	if err != nil {
+		return fmt.Errorf("failed to start metrics exporter container: %w", err)
+	}
+
+	m.containerID = containerInfo.ID
+	return nil
+}
+
+// waitForContainerHealth waits for the container to become healthy and handles failures
+func (m *Manager) waitForContainerHealth(ctx context.Context, configData ConfigTemplateData) error {
+	// Wait for container to become healthy
+	if err := m.dockerManager.WaitForHealthy(ctx, m.containerID, 60*time.Second); err != nil {
+		m.logger.WithError(err).Error("Metrics exporter container failed to become healthy")
+
+		// Get container logs for debugging
+		if logs, logErr := m.dockerManager.GetContainerLogs(ctx, m.containerID, 50); logErr == nil {
+			m.logger.WithField("container_logs", logs).Error("Metrics exporter container logs")
+		} else {
+			m.logger.WithError(logErr).Warn("Failed to retrieve container logs")
+		}
+
+		// Clean up the failed container
+		if stopErr := m.dockerManager.StopContainer(ctx, m.containerID); stopErr != nil {
+			m.logger.WithError(stopErr).Warn("Failed to stop failed metrics exporter container")
+		}
+
+		return fmt.Errorf("container health check failed: %w", err)
+	}
+
+	m.logger.WithFields(logrus.Fields{
+		"container_id":   m.containerID[:12],
+		"metrics_url":    m.GetMetricsEndpoint(),
+		"consensus_url":  configData.ConsensusURL,
+		"execution_url":  configData.ExecutionURL,
+		"monitored_dirs": len(configData.MonitoredDirs),
+	}).Info("Metrics exporter started successfully")
+
+	return nil
 }

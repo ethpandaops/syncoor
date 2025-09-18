@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -374,6 +375,33 @@ func (m *ContainerManager) EnsureImageLatest(ctx context.Context, imageName stri
 		return fmt.Errorf("failed to pull latest image: %w", err)
 	}
 	return nil
+}
+
+// GetContainerLogs retrieves logs from a container
+func (m *ContainerManager) GetContainerLogs(ctx context.Context, containerID string, tail int) (string, error) {
+	options := container.LogsOptions{
+		ShowStdout: true,
+		ShowStderr: true,
+		Tail:       strconv.Itoa(tail),
+		Timestamps: true,
+	}
+
+	logs, err := m.dockerClient.ContainerLogs(ctx, containerID, options)
+	if err != nil {
+		return "", fmt.Errorf("failed to get container logs: %w", err)
+	}
+	defer func() {
+		if closeErr := logs.Close(); closeErr != nil {
+			m.logger.WithError(closeErr).Warn("Failed to close logs reader")
+		}
+	}()
+
+	logBytes, err := io.ReadAll(logs)
+	if err != nil {
+		return "", fmt.Errorf("failed to read container logs: %w", err)
+	}
+
+	return string(logBytes), nil
 }
 
 // logPullProgress logs significant pull status updates
