@@ -2,12 +2,16 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"time"
 
 	"github.com/docker/go-connections/nat"
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/image"
 	"github.com/moby/moby/api/types/network"
 	"github.com/moby/moby/client"
 	"github.com/sirupsen/logrus"
@@ -16,6 +20,7 @@ import (
 var (
 	ErrContainerNotHealthy = errors.New("container did not become healthy within timeout")
 	ErrContainerNotRunning = errors.New("container is not running")
+	ErrImagePullFailed     = errors.New("image pull failed")
 )
 
 // Port represents a port mapping
@@ -285,5 +290,101 @@ func (m *ContainerManager) WaitForHealthy(ctx context.Context, containerID strin
 			m.logger.WithField("container_id", containerID[:12]).Debug("Container is running (no health check)")
 			return nil
 		}
+	}
+}
+
+// ImageExists checks if a Docker image exists locally
+func (m *ContainerManager) ImageExists(ctx context.Context, imageName string) (bool, error) {
+	_, err := m.dockerClient.ImageInspect(ctx, imageName)
+	if err != nil {
+		if strings.Contains(err.Error(), "No such image") {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to inspect image %s: %w", imageName, err)
+	}
+	return true, nil
+}
+
+// PullImage pulls a Docker image from the registry
+func (m *ContainerManager) PullImage(ctx context.Context, imageName string) error {
+	m.logger.WithField("image", imageName).Info("Pulling Docker image")
+
+	pullOptions := image.PullOptions{}
+	reader, err := m.dockerClient.ImagePull(ctx, imageName, pullOptions)
+	if err != nil {
+		return fmt.Errorf("failed to start image pull for %s: %w", imageName, err)
+	}
+	defer func() {
+		if closeErr := reader.Close(); closeErr != nil {
+			m.logger.WithError(closeErr).Warn("Failed to close image pull reader")
+		}
+	}()
+
+	// Parse pull progress
+	decoder := json.NewDecoder(reader)
+	for {
+		var pullMsg struct {
+			Status   string `json:"status"`
+			Progress string `json:"progress"`
+			Error    string `json:"error"`
+		}
+
+		if err := decoder.Decode(&pullMsg); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return fmt.Errorf("failed to decode pull response: %w", err)
+		}
+
+		if pullMsg.Error != "" {
+			return fmt.Errorf("%w: %s", ErrImagePullFailed, pullMsg.Error)
+		}
+
+		// Log significant status updates
+		m.logPullProgress(imageName, pullMsg.Status)
+	}
+
+	m.logger.WithField("image", imageName).Info("Successfully pulled Docker image")
+	return nil
+}
+
+// EnsureImageExists checks if an image exists locally and pulls it if it doesn't
+func (m *ContainerManager) EnsureImageExists(ctx context.Context, imageName string) error {
+	exists, err := m.ImageExists(ctx, imageName)
+	if err != nil {
+		return fmt.Errorf("failed to check if image exists: %w", err)
+	}
+
+	if !exists {
+		m.logger.WithField("image", imageName).Info("Image not found locally, pulling from registry")
+		if err := m.PullImage(ctx, imageName); err != nil {
+			return fmt.Errorf("failed to pull image: %w", err)
+		}
+	} else {
+		m.logger.WithField("image", imageName).Debug("Image already exists locally")
+	}
+
+	return nil
+}
+
+// EnsureImageLatest always pulls the latest version of an image from the registry
+func (m *ContainerManager) EnsureImageLatest(ctx context.Context, imageName string) error {
+	m.logger.WithField("image", imageName).Info("Pulling latest version of image from registry")
+	if err := m.PullImage(ctx, imageName); err != nil {
+		return fmt.Errorf("failed to pull latest image: %w", err)
+	}
+	return nil
+}
+
+// logPullProgress logs significant pull status updates
+func (m *ContainerManager) logPullProgress(imageName, status string) {
+	if strings.Contains(status, "Pulling") ||
+		strings.Contains(status, "Downloaded") ||
+		strings.Contains(status, "Extracting") ||
+		strings.Contains(status, "Pull complete") {
+		m.logger.WithFields(logrus.Fields{
+			"image":  imageName,
+			"status": status,
+		}).Debug("Image pull progress")
 	}
 }

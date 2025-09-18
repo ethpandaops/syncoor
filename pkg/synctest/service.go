@@ -123,6 +123,15 @@ func (s *service) Start(ctx context.Context) error {
 	ctx, cancel := context.WithCancel(ctx)
 	s.cancel = cancel
 
+	// Pre-pull latest metrics exporter image early to avoid delays later
+	if s.dockerManager != nil {
+		s.log.WithField("image", s.cfg.MetricsExporterImage).Info("Pre-pulling latest metrics exporter image")
+		if err := s.dockerManager.EnsureImageLatest(ctx, s.cfg.MetricsExporterImage); err != nil {
+			s.log.WithError(err).Warn("Failed to pre-pull latest metrics exporter image, will retry when starting metrics exporter")
+			// Don't fail here, just warn - the image will be pulled again when the metrics exporter starts
+		}
+	}
+
 	// Start reporting client if configured
 	if s.reportingClient != nil {
 		s.reportingClient.Start(ctx)

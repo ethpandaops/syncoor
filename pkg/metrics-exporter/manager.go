@@ -64,6 +64,11 @@ func (m *Manager) Start(ctx context.Context, enclaveName string, config Config) 
 		"port":    config.MetricsPort,
 	}).Info("Starting metrics exporter")
 
+	// Always pull the latest version of the metrics exporter image
+	if err := m.dockerManager.EnsureImageLatest(ctx, config.Image); err != nil {
+		return fmt.Errorf("failed to pull latest metrics exporter image: %w", err)
+	}
+
 	// Discover services
 	services, err := m.discoverServicesForConfig(ctx, enclaveName, config)
 	if err != nil {
