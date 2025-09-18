@@ -53,9 +53,9 @@ const CPUUsageChart: React.FC<CPUUsageChartProps> = ({
       .map((entry) => ({
         timestamp: entry.t,
         formattedTime: formatTimestamp(entry.t),
-        execution: Math.max(0, Math.min(100, entry.ce)), // Clamp between 0-100%
-        consensus: Math.max(0, Math.min(100, entry.cc)), // Clamp between 0-100%
-        total: Math.max(0, Math.min(200, entry.ce + entry.cc)), // Combined can go up to 200%
+        execution: Math.max(0, entry.ce), // No upper limit - can go above 100%
+        consensus: Math.max(0, entry.cc), // No upper limit - can go above 100%
+        total: Math.max(0, entry.ce + entry.cc), // Combined total
       }));
   }, [data]);
 
@@ -148,7 +148,7 @@ const CPUUsageChart: React.FC<CPUUsageChartProps> = ({
           />
           
           <YAxis
-            domain={[0, 100]}
+            domain={[0, 'auto']}
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
             fontSize={12}
