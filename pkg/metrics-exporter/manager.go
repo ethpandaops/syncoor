@@ -12,6 +12,7 @@ import (
 	"github.com/docker/go-connections/nat"
 	"github.com/ethpandaops/syncoor/pkg/docker"
 	"github.com/moby/moby/api/types/container"
+	"github.com/moby/moby/api/types/network"
 	"github.com/sirupsen/logrus"
 )
 
@@ -262,7 +263,7 @@ func (m *Manager) discoverServicesForConfig(
 }
 
 // buildContainerConfig builds the Docker container configuration for the metrics exporter
-func (m *Manager) buildContainerConfig(config Config, _ string) docker.ContainerConfig {
+func (m *Manager) buildContainerConfig(config Config, networkName string) docker.ContainerConfig {
 	// Set up port mappings
 	exposedPorts := nat.PortSet{
 		nat.Port(fmt.Sprintf("%d/tcp", config.MetricsPort)): {},
@@ -303,6 +304,16 @@ func (m *Manager) buildContainerConfig(config Config, _ string) docker.Container
 		"com.ethpandaops.syncoor.type": "standalone",
 	}
 
+	// Configure container networks
+	var networks map[string]*network.EndpointSettings
+	if networkName != "" {
+		// Add the container to the same network as EL/CL containers
+		networks = map[string]*network.EndpointSettings{
+			networkName: {},
+		}
+		m.logger.WithField("network", networkName).Debug("Configuring metrics exporter to use EL/CL network")
+	}
+
 	return docker.ContainerConfig{
 		Image:         config.Image,
 		Name:          "syncoor-metrics-exporter",
@@ -311,9 +322,8 @@ func (m *Manager) buildContainerConfig(config Config, _ string) docker.Container
 		ExposedPorts:  exposedPorts,
 		PortBindings:  portBindings,
 		Labels:        labels,
+		Networks:      networks,
 		RestartPolicy: container.RestartPolicy{Name: "no"},
-		// Note: We don't set Networks here as we want the container to run on the default bridge network
-		// This allows it to access both the host and the Kurtosis enclave network
 	}
 }
 
