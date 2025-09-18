@@ -23,7 +23,7 @@ jobs:
         repository: https://github.com/${{ github.repository }}.git
         git-ref: ${{ github.event.pull_request.head.sha }}
         log-force-colors: true
-        client-logs: false
+        client-logs: true
         network: hoodi
         el-client: reth
         el-extra-args: >-
@@ -40,4 +40,4 @@ jobs:
         check-interval: 30s
         public: true
         log-level: debug
-        run-timeout: 5m # We expect the run to timeout. It will still be marked as success in CI.
+        run-timeout: 2m # We expect the run to timeout. It will still be marked as success in CI.
