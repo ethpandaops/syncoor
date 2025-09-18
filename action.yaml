@@ -379,6 +379,9 @@ runs:
         # Mount report directory
         DOCKER_CMD="$DOCKER_CMD -v ${{ runner.temp }}/reports:/app/reports"
 
+        # Mount temp directory (for metrics exporter config file)
+        DOCKER_CMD="$DOCKER_CMD -v /tmp:/tmp"
+
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
 
