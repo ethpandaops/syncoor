@@ -27,6 +27,14 @@ export interface ProgressMetrics {
   cons_sync_percent: number;
   exec_version?: string;
   cons_version?: string;
+  exec_memory_usage?: number;
+  cons_memory_usage?: number;
+  exec_block_io_read?: number;
+  cons_block_io_read?: number;
+  exec_block_io_write?: number;
+  cons_block_io_write?: number;
+  exec_cpu_usage_percent?: number;
+  cons_cpu_usage_percent?: number;
 }
 
 /**
