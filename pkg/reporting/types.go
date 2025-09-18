@@ -16,10 +16,10 @@ type TestKeepaliveRequest struct {
 }
 
 type ClientConfig struct {
-	Type      string            `json:"type"`
-	Image     string            `json:"image"`
-	ExtraArgs []string          `json:"extra_args,omitempty"`
-	EnvVars   map[string]string `json:"env_vars,omitempty"`
+	Type    string            `json:"type"`
+	Image   string            `json:"image"`
+	Cmd     []string          `json:"cmd,omitempty"`
+	EnvVars map[string]string `json:"env_vars,omitempty"`
 }
 
 type ProgressUpdateRequest struct {

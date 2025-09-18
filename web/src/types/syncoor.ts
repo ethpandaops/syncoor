@@ -98,7 +98,7 @@ export interface ProgressPoint {
 export interface ClientConfig {
   type: string;
   image: string;
-  extra_args?: string[];
+  cmd?: string[];
   env_vars?: Record<string, string>;
 }
 

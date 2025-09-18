@@ -34,11 +34,11 @@ func (s *Server) handleTestKeepalive(w http.ResponseWriter, r *http.Request) {
 		"labels":          req.Labels,
 		"el_client_type":  req.ELClient.Type,
 		"el_client_image": req.ELClient.Image,
-		"el_client_args":  len(req.ELClient.ExtraArgs),
+		"el_client_args":  len(req.ELClient.Cmd),
 		"el_client_envs":  len(req.ELClient.EnvVars),
 		"cl_client_type":  req.CLClient.Type,
 		"cl_client_image": req.CLClient.Image,
-		"cl_client_args":  len(req.CLClient.ExtraArgs),
+		"cl_client_args":  len(req.CLClient.Cmd),
 		"cl_client_envs":  len(req.CLClient.EnvVars),
 	}).Debug("Test keepalive received")
 

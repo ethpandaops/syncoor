@@ -146,10 +146,10 @@ func (s *Store) UpdateTestKeepalive(req reporting.TestKeepaliveRequest) error {
 	test.LastUpdate = time.Unix(req.Timestamp, 0)
 
 	// Update client configurations if provided (allows for updates after container inspection)
-	if req.ELClient.Image != "" || len(req.ELClient.ExtraArgs) > 0 || len(req.ELClient.EnvVars) > 0 {
+	if req.ELClient.Image != "" || len(req.ELClient.Cmd) > 0 || len(req.ELClient.EnvVars) > 0 {
 		test.ELClient = req.ELClient
 	}
-	if req.CLClient.Image != "" || len(req.CLClient.ExtraArgs) > 0 || len(req.CLClient.EnvVars) > 0 {
+	if req.CLClient.Image != "" || len(req.CLClient.Cmd) > 0 || len(req.CLClient.EnvVars) > 0 {
 		test.CLClient = req.CLClient
 	}
 
