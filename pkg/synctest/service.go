@@ -216,7 +216,18 @@ func (s *service) Start(ctx context.Context) error {
 		}).Info("Public port publishing enabled")
 	}
 
+	// Parse ethereum package version
+	repo, version, err := s.cfg.ParseEthereumPackage()
+	if err != nil {
+		return err
+	}
+	s.log.WithFields(logrus.Fields{
+		"repo":    repo,
+		"version": version,
+	}).Info("Setting ethereum package version")
+
 	runOpts := []ethereum.RunOption{
+		ethereum.WithPackageRepo(repo, version),
 		ethereum.WithOrphanOnExit(),
 		ethereum.WithReuse(s.cfg.EnclaveName),
 		ethereum.WithEnclaveName(s.cfg.EnclaveName),

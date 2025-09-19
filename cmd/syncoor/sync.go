@@ -47,6 +47,7 @@ func NewSyncCommand() *cobra.Command {
 		publicIP              string
 		clientLogsLevelEL     string
 		clientLogsLevelCL     string
+		ethereumPackage       string
 		// Metrics exporter flags
 		metricsExporterImage    string
 		metricsExporterPort     int
@@ -106,6 +107,7 @@ Exit codes:
 				PublicIP:                publicIP,
 				ClientLogsLevelEL:       clientLogsLevelEL,
 				ClientLogsLevelCL:       clientLogsLevelCL,
+				EthereumPackage:         ethereumPackage,
 				MetricsExporterImage:    metricsExporterImage,
 				MetricsExporterPort:     metricsExporterPort,
 				MetricsExporterLogLevel: metricsExporterLogLevel,
@@ -198,6 +200,8 @@ Exit codes:
 	}
 
 	// Sync command flags
+	cmd.Flags().StringVar(&ethereumPackage, "ethereum-package", "github.com/ethpandaops/ethereum-package@main",
+		"Ethereum package repository and version (e.g., github.com/ethpandaops/ethereum-package@main)")
 	cmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
 	cmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute,
 		"Timeout for sync operation - will cancel sync and generate report marked as 'timeout' if exceeded (exits with code 124)")
