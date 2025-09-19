@@ -1,6 +1,9 @@
 name: 'Syncoor Test'
 description: 'Run Ethereum client synchronization tests using syncoor'
 author: 'ethpandaops'
+branding:
+  icon: 'activity'
+  color: 'gray-dark'
 
 inputs:
   github-token:
@@ -28,6 +31,11 @@ inputs:
     default: 'true'
 
   # Syncoor arguments
+  ethereum-package:
+    description: 'Ethereum package repository and version (e.g., github.com/ethpandaops/ethereum-package@main)'
+    required: false
+    default: 'github.com/ethpandaops/ethereum-package@main'
+
   check-interval:
     description: 'Interval in seconds between sync status checks'
     required: false
@@ -389,6 +397,7 @@ runs:
         DOCKER_CMD="$DOCKER_CMD sync"
 
         # Add CLI flags
+        DOCKER_CMD="$DOCKER_CMD --ethereum-package=${{ inputs.ethereum-package }}"
         DOCKER_CMD="$DOCKER_CMD --check-interval=${{ inputs.check-interval }}"
         DOCKER_CMD="$DOCKER_CMD --run-timeout=${{ inputs.run-timeout }}"
         DOCKER_CMD="$DOCKER_CMD --el-client=${{ inputs.el-client }}"
