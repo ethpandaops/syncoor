@@ -94,21 +94,21 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
   // Format percentage tick values for right Y-axis
   const formatPercentageTick = (value: number): string => {
     if (!chartData || chartData.length === 0) return '';
-    
+
     const firstValue = chartData[0].slots;
     const lastValue = chartData[chartData.length - 1].slots;
     const range = lastValue - firstValue;
-    
+
     if (range === 0) return '0%';
-    
+
     const percentage = ((value - firstValue) / range) * 100;
     return `${Math.round(percentage)}%`;
   };
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No slot progress data available</p>
           <p className="text-sm">Data will appear here once slot sync progress is recorded</p>
         </div>
@@ -131,7 +131,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -140,7 +140,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             yAxisId="left"
             domain={chartData && chartData.length > 0 ? [chartData[0].slots, chartData[chartData.length - 1].slots] : ['auto', 'auto']}
@@ -150,7 +150,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           {showPercentageAxis && chartData && chartData.length > 0 && (() => {
             const firstValue = chartData[0].slots;
             const lastValue = chartData[chartData.length - 1].slots;
@@ -163,7 +163,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
               firstValue + step * 3,
               lastValue
             ];
-            
+
             return (
               <YAxis
                 yAxisId="right"
@@ -179,9 +179,9 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
               />
             );
           })()}
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -191,7 +191,7 @@ const SlotProgressChart: React.FC<SlotProgressChartProps> = ({
               }}
             />
           )}
-          
+
           <Line
             yAxisId="left"
             type="monotone"

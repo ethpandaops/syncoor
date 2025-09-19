@@ -45,7 +45,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   title = 'EL Disk Usage Over Time',
 }) => {
   const navigate = useNavigate();
-  
+
   // State for controlling line visibility
   const [visibleLines, setVisibleLines] = useState({
     diskUsage: true,
@@ -157,8 +157,8 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-sm font-medium">No disk usage data available</p>
           <p className="text-xs">Data will appear here once disk usage is recorded</p>
         </div>
@@ -185,7 +185,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -197,7 +197,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             textAnchor="end"
             height={60}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -206,9 +206,9 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             tickLine={{ stroke: '#d1d5db' }}
             width={60}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           <Legend
             wrapperStyle={{
               paddingTop: '10px',
@@ -218,7 +218,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             }}
             onClick={handleLegendClick}
           />
-          
+
           <Line
             type="monotone"
             dataKey="diskUsage"
@@ -227,14 +227,14 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
             name="Actual Disk Usage"
             dot={false}
             hide={!visibleLines.diskUsage}
-            activeDot={{ 
-              r: 6, 
-              stroke: color, 
-              strokeWidth: 2, 
+            activeDot={{
+              r: 6,
+              stroke: color,
+              strokeWidth: 2,
               cursor: 'pointer'
             }}
           />
-          
+
           {/* Moving Average Line */}
           {chartData.length >= 3 && chartData[0].movingAverage !== undefined && (
             <Line
@@ -250,7 +250,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               opacity={0.7}
             />
           )}
-          
+
           {/* Confidence Band Area */}
           {chartData.length >= 3 && chartData[0].upperBand !== undefined && (
             <Area
@@ -263,7 +263,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
               legendType="none"
             />
           )}
-          
+
         </ComposedChart>
       </ResponsiveContainer>
     </div>

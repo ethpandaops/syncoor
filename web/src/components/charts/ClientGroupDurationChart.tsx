@@ -45,7 +45,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   title = 'Test Duration Over Time',
 }) => {
   const navigate = useNavigate();
-  
+
   // State for controlling line visibility
   const [visibleLines, setVisibleLines] = useState({
     duration: true,
@@ -155,8 +155,8 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-sm font-medium">No duration data available</p>
           <p className="text-xs">Data will appear here once tests are completed</p>
         </div>
@@ -183,7 +183,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -195,7 +195,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             textAnchor="end"
             height={60}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -204,9 +204,9 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             tickLine={{ stroke: '#d1d5db' }}
             width={60}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           <Legend
             wrapperStyle={{
               paddingTop: '10px',
@@ -216,7 +216,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             }}
             onClick={handleLegendClick}
           />
-          
+
           <Line
             type="monotone"
             dataKey="duration"
@@ -225,14 +225,14 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
             name="Actual Duration"
             dot={false}
             hide={!visibleLines.duration}
-            activeDot={{ 
-              r: 6, 
-              stroke: '#3b82f6', 
-              strokeWidth: 2, 
+            activeDot={{
+              r: 6,
+              stroke: '#3b82f6',
+              strokeWidth: 2,
               cursor: 'pointer'
             }}
           />
-          
+
           {/* Moving Average Line */}
           {chartData.length >= 3 && chartData[0].movingAverage !== undefined && (
             <Line
@@ -248,7 +248,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               opacity={0.7}
             />
           )}
-          
+
           {/* Confidence Band Area */}
           {chartData.length >= 3 && chartData[0].upperBand !== undefined && (
             <Area
@@ -261,7 +261,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
               legendType="none"
             />
           )}
-          
+
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -55,10 +55,10 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
     if (!data || data.length === 0) return [];
 
     const filteredData = data
-      .filter((entry) => 
-        entry.bre !== undefined && 
-        entry.bwe !== undefined && 
-        entry.brc !== undefined && 
+      .filter((entry) =>
+        entry.bre !== undefined &&
+        entry.bwe !== undefined &&
+        entry.brc !== undefined &&
         entry.bwc !== undefined
       )
       .sort((a, b) => a.t - b.t);
@@ -70,7 +70,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
     for (let i = 1; i < filteredData.length; i++) {
       const current = filteredData[i];
       const previous = filteredData[i - 1];
-      
+
       const timeDiff = current.t - previous.t;
       if (timeDiff <= 0) continue; // Skip if no time difference
 
@@ -124,7 +124,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
                 {formatBytes(data.executionWriteRate)}/s
               </span>
             </div>
-            
+
             <div className="text-sm font-medium text-gray-700 mb-1 mt-2">Consensus Client:</div>
             <div className="flex items-center gap-2 text-sm ml-3">
               <div
@@ -146,7 +146,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
                 {formatBytes(data.consensusWriteRate)}/s
               </span>
             </div>
-            
+
             <div className="flex items-center gap-4 text-sm pt-2 border-t">
               <div className="flex items-center gap-1">
                 <span className="text-gray-600 font-medium">Total Read:</span>
@@ -181,8 +181,8 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No block I/O rate data available</p>
           <p className="text-sm">Data will appear here once sufficient block I/O metrics are recorded</p>
         </div>
@@ -205,7 +205,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -214,7 +214,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -222,9 +222,9 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -234,7 +234,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
               }}
             />
           )}
-          
+
           <Line
             type="monotone"
             dataKey="executionReadRate"
@@ -243,7 +243,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
             dot={false}
             name="EL Read"
           />
-          
+
           <Line
             type="monotone"
             dataKey="executionWriteRate"
@@ -253,7 +253,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
             strokeDasharray="5 5"
             name="EL Write"
           />
-          
+
           <Line
             type="monotone"
             dataKey="consensusReadRate"
@@ -262,7 +262,7 @@ const BlockIOChart: React.FC<BlockIOChartProps> = ({
             dot={false}
             name="CL Read"
           />
-          
+
           <Line
             type="monotone"
             dataKey="consensusWriteRate"

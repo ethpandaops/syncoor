@@ -48,8 +48,8 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
     if (!data || data.length === 0) return [];
 
     const filteredData = data
-      .filter((entry) => 
-        entry.bre !== undefined && 
+      .filter((entry) =>
+        entry.bre !== undefined &&
         entry.brc !== undefined
       )
       .sort((a, b) => a.t - b.t);
@@ -61,7 +61,7 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
     for (let i = 1; i < filteredData.length; i++) {
       const current = filteredData[i];
       const previous = filteredData[i - 1];
-      
+
       const timeDiff = current.t - previous.t;
       if (timeDiff <= 0) continue; // Skip if no time difference
 
@@ -135,8 +135,8 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No block read rate data available</p>
           <p className="text-sm">Data will appear here once sufficient block read metrics are recorded</p>
         </div>
@@ -159,7 +159,7 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -168,7 +168,7 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -176,9 +176,9 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -188,7 +188,7 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
               }}
             />
           )}
-          
+
           <Area
             type="monotone"
             dataKey="executionReadRate"
@@ -198,7 +198,7 @@ const BlockIOReadChart: React.FC<BlockIOReadChartProps> = ({
             fillOpacity={0.6}
             name="Execution Client"
           />
-          
+
           <Area
             type="monotone"
             dataKey="consensusReadRate"

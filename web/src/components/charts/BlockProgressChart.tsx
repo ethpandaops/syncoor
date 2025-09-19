@@ -93,21 +93,21 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
   // Format percentage tick values for right Y-axis
   const formatPercentageTick = (value: number): string => {
     if (!chartData || chartData.length === 0) return '';
-    
+
     const firstValue = chartData[0].blocks;
     const lastValue = chartData[chartData.length - 1].blocks;
     const range = lastValue - firstValue;
-    
+
     if (range === 0) return '0%';
-    
+
     const percentage = ((value - firstValue) / range) * 100;
     return `${Math.round(percentage)}%`;
   };
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No block progress data available</p>
           <p className="text-sm">Data will appear here once block sync progress is recorded</p>
         </div>
@@ -149,7 +149,7 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           {showPercentageAxis && chartData && chartData.length > 0 && (() => {
             const firstValue = chartData[0].blocks;
             const lastValue = chartData[chartData.length - 1].blocks;
@@ -162,7 +162,7 @@ const BlockProgressChart: React.FC<BlockProgressChartProps> = ({
               firstValue + step * 3, // 75%
               lastValue        // 100%
             ];
-            
+
             return (
               <YAxis
                 yAxisId="right"

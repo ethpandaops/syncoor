@@ -76,8 +76,8 @@ const PerformanceMatrix: React.FC<PerformanceMatrixProps> = ({
               displayValue = `${value.toFixed(2)} b/s`;
               break;
             case 'disk_usage': {
-              const lastProgress = report.progress && report.progress.length > 0 
-                ? report.progress[report.progress.length - 1] 
+              const lastProgress = report.progress && report.progress.length > 0
+                ? report.progress[report.progress.length - 1]
                 : null;
               value = lastProgress ? (lastProgress.de + lastProgress.dc) : 0;
               displayValue = value > 0 ? `${(value / (1024 ** 3)).toFixed(1)} GB` : 'N/A';
@@ -133,7 +133,7 @@ const PerformanceMatrix: React.FC<PerformanceMatrixProps> = ({
     }
 
     const normalizedValue = (value - minValue) / (maxValue - minValue);
-    
+
     // For duration, lower is better (green), higher is worse (red)
     // For sync_rate and peer_count, higher is better (green), lower is worse (red)
     const reversed = metric === 'duration' || metric === 'disk_usage';
@@ -170,8 +170,8 @@ const PerformanceMatrix: React.FC<PerformanceMatrixProps> = ({
 
   if (matrixData.executionClients.length === 0 || matrixData.consensusClients.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg p-8 ${className}`}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg p-8 ${className}`}>
+        <div className="text-center">
           <p className="text-lg font-medium">No performance data available</p>
           <p className="text-sm">Data will appear here once test results are available</p>
         </div>
@@ -232,7 +232,7 @@ const PerformanceMatrix: React.FC<PerformanceMatrixProps> = ({
                   </td>
                   {matrixData.consensusClients.map((consensusClient) => {
                     const cell = matrixData.cells.find(
-                      c => c.executionClient === executionClient && 
+                      c => c.executionClient === executionClient &&
                            c.consensusClient === consensusClient
                     );
 

@@ -48,8 +48,8 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
     if (!data || data.length === 0) return [];
 
     const filteredData = data
-      .filter((entry) => 
-        entry.bwe !== undefined && 
+      .filter((entry) =>
+        entry.bwe !== undefined &&
         entry.bwc !== undefined
       )
       .sort((a, b) => a.t - b.t);
@@ -61,7 +61,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
     for (let i = 1; i < filteredData.length; i++) {
       const current = filteredData[i];
       const previous = filteredData[i - 1];
-      
+
       const timeDiff = current.t - previous.t;
       if (timeDiff <= 0) continue; // Skip if no time difference
 
@@ -135,8 +135,8 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No block write rate data available</p>
           <p className="text-sm">Data will appear here once sufficient block write metrics are recorded</p>
         </div>
@@ -159,7 +159,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -168,7 +168,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -176,9 +176,9 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -188,7 +188,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
               }}
             />
           )}
-          
+
           <Area
             type="monotone"
             dataKey="executionWriteRate"
@@ -198,7 +198,7 @@ const BlockIOWriteChart: React.FC<BlockIOWriteChartProps> = ({
             fillOpacity={0.6}
             name="Execution Client"
           />
-          
+
           <Area
             type="monotone"
             dataKey="consensusWriteRate"
