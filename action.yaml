@@ -1,6 +1,9 @@
 name: 'Syncoor Test'
 description: 'Run Ethereum client synchronization tests using syncoor'
 author: 'ethpandaops'
+branding:
+  icon: 'activity'
+  color: 'gray-dark'
 
 inputs:
   github-token:
