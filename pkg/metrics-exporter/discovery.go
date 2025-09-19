@@ -85,6 +85,16 @@ func (s *ServiceDiscovery) DiscoverServices(ctx context.Context, enclaveName str
 		return nil, fmt.Errorf("failed to discover CL client endpoint: %w", err)
 	}
 
+	// Special handling for Prysm - use HTTP port (3500) instead of RPC port (4000)
+	if s.isPrysmClient(clEndpoint.ServiceName) {
+		clEndpoint.InternalPort = 3500 // Prysm HTTP API port
+		clEndpoint.Protocol = ProtocolHTTP
+		s.logger.WithFields(logrus.Fields{
+			"service": clEndpoint.ServiceName,
+			"port":    clEndpoint.InternalPort,
+		}).Debug("Using Prysm HTTP port for metrics")
+	}
+
 	// Get data volumes for both clients
 	kurtosisDataVolumes, err := s.kurtosisClient.GetClientDataVolumes(ctx, enclaveName)
 	if err != nil {
@@ -157,7 +167,12 @@ func (s *ServiceDiscovery) DiscoverServicesWithNames(
 
 	// Set default ports if not populated
 	if clEndpoint.InternalPort == 0 {
-		clEndpoint.InternalPort = 4000 // Default CL beacon port
+		// Special handling for Prysm - use HTTP port (3500) instead of RPC port (4000)
+		if s.isPrysmClient(clServiceName) {
+			clEndpoint.InternalPort = 3500 // Prysm HTTP API port
+		} else {
+			clEndpoint.InternalPort = 4000 // Default CL beacon port
+		}
 		clEndpoint.Protocol = ProtocolHTTP
 	}
 
@@ -446,4 +461,10 @@ func (s *ServiceDiscovery) convertVolumeMounts(kurtosisVols []kurtosis.VolumeMou
 	}
 
 	return dockerVols
+}
+
+// isPrysmClient checks if a service name indicates it's a Prysm consensus client
+func (s *ServiceDiscovery) isPrysmClient(serviceName string) bool {
+	// Check if the service name contains "prysm" (case-insensitive)
+	return strings.Contains(strings.ToLower(serviceName), "prysm")
 }
