@@ -3,6 +3,7 @@ package synctest
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -13,6 +14,8 @@ var (
 	ErrInvalidMetricsExporterLogLevel = errors.New("invalid metrics exporter log level")
 	ErrInvalidMetricsExporterPort     = errors.New("invalid metrics exporter port")
 	ErrInvalidMetricsExporterInterval = errors.New("invalid metrics exporter disk usage interval")
+	ErrInvalidEthereumPackageFormat   = errors.New("invalid ethereum package format: expected format 'repo@version'")
+	ErrEmptyEthereumPackageComponent  = errors.New("invalid ethereum package format: both repo and version must be non-empty")
 )
 
 // Config contains the configuration for the synctest service
@@ -43,6 +46,7 @@ type Config struct {
 	PublicIP              string // Public IP for port publishing (default: 'auto')
 	ClientLogsLevelEL     string // Log level for execution layer client (default: 'info')
 	ClientLogsLevelCL     string // Log level for consensus layer client (default: 'info')
+	EthereumPackage       string // Ethereum package to use (default: 'github.com/ethpandaops/ethereum-package@main')
 
 	// Metrics Exporter Options
 	MetricsExporterImage     string `json:"metrics_exporter_image"      yaml:"metrics_exporter_image"`
@@ -153,6 +157,30 @@ func (c *Config) setMetricsExporterDefaults() {
 		c.MetricsExporterLogLevel = "info"
 	}
 	// MetricsExporterConfigDir is left empty to be auto-generated
+}
+
+// ParseEthereumPackage parses the ethereum package string and returns repo and version
+func (c *Config) ParseEthereumPackage() (string, string, error) {
+	// If empty use default
+	if c.EthereumPackage == "" {
+		c.EthereumPackage = "github.com/ethpandaops/ethereum-package@main"
+	}
+
+	// Parse the package string to extract repo and version
+	parts := strings.Split(c.EthereumPackage, "@")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("%w: '%s' (e.g., github.com/ethpandaops/ethereum-package@main)", ErrInvalidEthereumPackageFormat, c.EthereumPackage)
+	}
+
+	repo := parts[0]
+	version := parts[1]
+
+	// Validate that neither component is empty
+	if repo == "" || version == "" {
+		return "", "", fmt.Errorf("%w: '%s'", ErrEmptyEthereumPackageComponent, c.EthereumPackage)
+	}
+
+	return repo, version, nil
 }
 
 // validateMetricsExporterConfig validates the metrics exporter configuration
