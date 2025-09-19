@@ -110,8 +110,8 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No peer count data available</p>
           <p className="text-sm">Data will appear here once peer connections are recorded</p>
         </div>
@@ -134,7 +134,7 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -143,7 +143,7 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -151,9 +151,9 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -163,7 +163,7 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
               }}
             />
           )}
-          
+
           <Line
             type="monotone"
             dataKey="execution"
@@ -174,7 +174,7 @@ const PeerCountChart: React.FC<PeerCountChartProps> = ({
             name="Execution Peers"
             connectNulls={false}
           />
-          
+
           <Line
             type="monotone"
             dataKey="consensus"

@@ -112,8 +112,8 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No disk usage data available</p>
           <p className="text-sm">Data will appear here once disk usage is recorded</p>
         </div>
@@ -136,7 +136,7 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -145,7 +145,7 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             tickFormatter={formatYAxisTick}
             stroke="#6b7280"
@@ -153,9 +153,9 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -165,7 +165,7 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
               }}
             />
           )}
-          
+
           <Area
             type="monotone"
             dataKey="execution"
@@ -175,7 +175,7 @@ const DiskUsageChart: React.FC<DiskUsageChartProps> = ({
             fillOpacity={0.6}
             name="Execution Client"
           />
-          
+
           <Area
             type="monotone"
             dataKey="consensus"

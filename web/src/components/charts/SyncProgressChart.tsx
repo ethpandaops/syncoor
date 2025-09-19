@@ -102,8 +102,8 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
 
   if (!chartData || chartData.length === 0) {
     return (
-      <div className={`flex items-center justify-center bg-gray-50 rounded-lg ${className}`} style={{ height }}>
-        <div className="text-center text-gray-500">
+      <div className={`flex items-center justify-center rounded-lg ${className}`} style={{ height }}>
+        <div className="text-center">
           <p className="text-lg font-medium">No sync progress data available</p>
           <p className="text-sm">Data will appear here once sync progress is recorded</p>
         </div>
@@ -126,7 +126,7 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
           {showGrid && (
             <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" opacity={0.5} />
           )}
-          
+
           <XAxis
             dataKey="timestamp"
             tickFormatter={formatXAxisTick}
@@ -135,7 +135,7 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             yAxisId="left"
             orientation="left"
@@ -145,7 +145,7 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <YAxis
             yAxisId="right"
             orientation="right"
@@ -155,9 +155,9 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
             axisLine={{ stroke: '#d1d5db' }}
             tickLine={{ stroke: '#d1d5db' }}
           />
-          
+
           <Tooltip content={<CustomTooltip />} />
-          
+
           {showLegend && (
             <Legend
               wrapperStyle={{
@@ -167,7 +167,7 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
               }}
             />
           )}
-          
+
           <Line
             yAxisId="left"
             type="monotone"
@@ -179,7 +179,7 @@ const SyncProgressChart: React.FC<SyncProgressChartProps> = ({
             name="Blocks"
             connectNulls={false}
           />
-          
+
           <Line
             yAxisId="right"
             type="monotone"
