@@ -1,20 +1,34 @@
 {
   "directories": [
     {
+      "name": "fusaka-devnet-5",
+      "displayName": "Fusaka Devnet 5 - Checkpoint Sync + CL Fullnode",
+      "url": "https://syncoor-data.ethpandaops.io/devnets/fusaka-devnet-5"
+    },
+    {
+      "name": "fusaka-devnet-5-clsupernode",
+      "displayName": "Fusaka Devnet 5 - CL Supernode",
+      "url": "https://syncoor-data.ethpandaops.io/devnets/fusaka-devnet-5-clsupernode"
+    },
+    {
       "name": "fusaka-devnet-3",
+      "displayName": "Fusaka Devnet 3",
       "url": "https://syncoor-data.ethpandaops.io/devnets/fusaka-devnet-3"
     },
     {
       "name": "test-reports",
+      "displayName": "Test Reports Archive",
       "url": "https://syncoor-data.ethpandaops.io/test-reports"
     },
     {
       "name": "Mock Reports",
+      "displayName": "Mock Test Data",
       "url": "http://localhost:3000/reports/mock/",
       "enabled": true
     },
     {
-      "name": "ZLocal Dev",
+      "name": "Local Dev",
+      "displayName": "Local Development",
       "url": "http://localhost:3000/reports/",
       "enabled": true
     }
@@ -27,11 +41,6 @@
     {
       "name": "PerfDevnet-2",
       "url": "https://syncoor-api.perf-devnet-2.ethpandaops.io"
-    },
-    {
-      "name": "Local Syncoor",
-      "url": "http://localhost:8080",
-      "enabled": true
     },
     {
       "name": "Docker Syncoor",

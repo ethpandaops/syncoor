@@ -527,7 +527,7 @@ export default function TestDetails() {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">Source</span>
-                <Badge variant="secondary">{testReport.source_directory}</Badge>
+                <Badge variant="secondary">{testReport.source_display_name || testReport.source_directory}</Badge>
               </div>
             </div>
             <div className="space-y-3">

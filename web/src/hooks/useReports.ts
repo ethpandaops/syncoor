@@ -8,8 +8,10 @@ import { TestFilterParams, PaginationParams } from '../types/api';
  * Combined report entry with source directory information
  */
 export interface ReportEntry extends IndexEntry {
-  /** Source directory name */
+  /** Source directory name (used in URLs) */
   source_directory: string;
+  /** Source directory display name (used in UI) */
+  source_display_name?: string;
   /** Source directory URL */
   source_url: string;
 }
@@ -141,7 +143,7 @@ export function useReports(params: UseReportsParams): UseReportsResult {
   const enabledDirectories = directories.filter(dir => dir.enabled);
   
   const query = useQuery({
-    queryKey: ['reports', enabledDirectories.map(d => d.url), filters, pagination],
+    queryKey: ['reports', enabledDirectories.map(d => ({ url: d.url, name: d.name, displayName: d.displayName })), filters, pagination],
     queryFn: async () => {
       // Fetch indexes from all enabled directories
       const indexPromises = enabledDirectories.map(async (directory) => {
@@ -173,6 +175,7 @@ export function useReports(params: UseReportsParams): UseReportsResult {
           const reportsWithSource = result.index.entries.map(entry => ({
             ...entry,
             source_directory: result.directory.name,
+            source_display_name: result.directory.displayName || result.directory.name,
             source_url: result.directory.url,
           }));
           allReports.push(...reportsWithSource);

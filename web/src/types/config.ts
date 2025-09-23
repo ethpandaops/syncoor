@@ -6,8 +6,10 @@
  * Represents a directory entry in the configuration
  */
 export interface Directory {
-  /** Display name for the directory */
+  /** Unique identifier/key for the directory (used in URLs) */
   name: string;
+  /** Display name for the directory (used in UI) */
+  displayName?: string;
   /** URL endpoint for the directory */
   url: string;
   /** Whether this directory is enabled */

@@ -109,7 +109,7 @@ export function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm">
                       <div className="flex items-center justify-between">
-                        <span className="truncate">{directory.name}</span>
+                        <span className="truncate">{directory.displayName || directory.name}</span>
                         <StatusIndicator 
                           status={directory.enabled ? "online" : "offline"}
                         />

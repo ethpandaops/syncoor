@@ -62,10 +62,17 @@ export default function TestList() {
   };
 
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
-  const { 
-    data: allReports, 
-    isLoading: reportsLoading, 
-    error: reportsError 
+
+  // Helper function to get display name for a directory
+  const getDirectoryDisplayName = (directoryName: string) => {
+    if (!config?.directories) return directoryName;
+    const dir = config.directories.find(d => d.name === directoryName);
+    return dir?.displayName || dir?.name || directoryName;
+  };
+  const {
+    data: allReports,
+    isLoading: reportsLoading,
+    error: reportsError
   } = useReports({
     directories: config?.directories || [],
     pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
@@ -245,7 +252,7 @@ export default function TestList() {
               <SelectContent>
                 <SelectItem value="__all__">All Directories</SelectItem>
                 {uniqueValues.directories.map(dir => (
-                  <SelectItem key={dir} value={dir}>{dir}</SelectItem>
+                  <SelectItem key={dir} value={dir}>{getDirectoryDisplayName(dir)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -640,7 +647,7 @@ export default function TestList() {
                         >
                           <div className="flex items-center gap-2">
                             <Badge variant="outline">{report.network}</Badge>
-                            <Badge variant="secondary">{report.source_directory}</Badge>
+                            <Badge variant="secondary">{report.source_display_name || report.source_directory}</Badge>
                           </div>
                           <div className="text-xs text-muted-foreground mt-1">{report.run_id}</div>
                         </Link>
