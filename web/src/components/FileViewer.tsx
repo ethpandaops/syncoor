@@ -23,13 +23,13 @@ interface FileViewerProps {
   onFullWindowToggle?: (fullWindow: boolean) => void;
 }
 
-export function FileViewer({ 
-  sourceUrl, 
-  runId, 
-  network, 
-  elClient, 
-  clClient, 
-  filePath, 
+export function FileViewer({
+  sourceUrl,
+  runId,
+  network,
+  elClient,
+  clClient,
+  filePath,
   fileSize,
   onClose,
   initialFullWindow = false,
@@ -102,11 +102,11 @@ export function FileViewer({
         const firstHighlightedLine = Math.min(...highlightedLines);
         // Try multiple selectors to find the line element
         let lineElement = contentRef.current?.querySelector(`[data-line-number="${firstHighlightedLine}"]`) as HTMLElement;
-        
+
         if (!lineElement) {
           lineElement = document.querySelector(`[data-line-number="${firstHighlightedLine}"]`) as HTMLElement;
         }
-        
+
         if (lineElement) {
           lineElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
@@ -120,13 +120,13 @@ export function FileViewer({
   const handleLineClick = (lineNumber: number, event: React.MouseEvent) => {
     event.preventDefault();
     const newParams = new URLSearchParams(searchParams);
-    
+
     if (event.metaKey || event.ctrlKey) {
       // Multi-select with Ctrl/Cmd
       const currentLines = highlightedLines.includes(lineNumber)
         ? highlightedLines.filter(l => l !== lineNumber)
         : [...highlightedLines, lineNumber].sort((a, b) => a - b);
-      
+
       if (currentLines.length === 0) {
         newParams.delete('lines');
       } else {
@@ -139,7 +139,7 @@ export function FileViewer({
       const start = Math.min(lineNumber, lastSelected);
       const end = Math.max(lineNumber, lastSelected);
       const rangeLines = Array.from({ length: end - start + 1 }, (_, i) => start + i);
-      
+
       newParams.set('lines', `${start}-${end}`);
       setHighlightedLines(rangeLines);
     } else {
@@ -147,9 +147,9 @@ export function FileViewer({
       newParams.set('lines', lineNumber.toString());
       setHighlightedLines([lineNumber]);
     }
-    
+
     setSearchParams(newParams);
-    
+
     // Copy permalink to clipboard
     const url = `${window.location.origin}${window.location.pathname}#${window.location.hash.split('?')[0]}?${newParams.toString()}`;
     navigator.clipboard.writeText(url).catch(() => {
@@ -159,12 +159,12 @@ export function FileViewer({
 
   const getFileType = (path: string): string => {
     const fileName = path.split('/').pop()?.toLowerCase() || '';
-    
+
     // Check for specific filenames first
     if (fileName === 'jwtsecret') {
       return 'text';
     }
-    
+
     const ext = path.split('.').pop()?.toLowerCase();
     switch (ext) {
       case 'log':
@@ -211,20 +211,20 @@ export function FileViewer({
 
   const loadFile = async () => {
     const requestId = filePath; // Capture current filePath
-    
+
     try {
       setLoading(true);
       setError(null);
-      
+
       const blob = await extractFileFromDump(sourceUrl, runId, network, elClient, clClient, filePath);
-      
+
       // Check if this request is still current
       if (currentRequestRef.current !== requestId) {
         return; // Request was superseded, ignore the result
       }
-      
+
       setLoadedSize(blob.size);
-      
+
       // Check if file is too large (limit to 5MB for text viewing)
       if (blob.size > 5 * 1024 * 1024) {
         if (currentRequestRef.current === requestId) {
@@ -232,10 +232,10 @@ export function FileViewer({
         }
         return;
       }
-      
+
       // Try to read as text
       const text = await blob.text();
-      
+
       // Check again if this request is still current before setting content
       if (currentRequestRef.current === requestId) {
         setContent(text);
@@ -257,9 +257,9 @@ export function FileViewer({
     try {
       setLoading(true);
       setError(null);
-      
+
       const blob = await extractFileFromDump(sourceUrl, runId, network, elClient, clClient, filePath);
-      
+
       // Create download link
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -278,7 +278,7 @@ export function FileViewer({
 
   const copyContent = async () => {
     if (!content) return;
-    
+
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
@@ -291,11 +291,11 @@ export function FileViewer({
   // Function to render content with line numbers
   const renderContentWithLineNumbers = (text: string, isFullWindow = false) => {
     const lines = text.split('\n');
-    
+
     const heightClass = isFullWindow
       ? "h-full"
-      : "max-h-[calc(100vh-28rem)]";
-    
+      : "max-h-[calc(100vh-26rem)]";
+
     return (
       <div ref={contentRef} className={`text-xs font-mono bg-muted overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
         <div className="flex min-w-fit">
@@ -307,8 +307,8 @@ export function FileViewer({
                   key={index}
                   data-line-number={index + 1}
                   className={`cursor-pointer hover:bg-muted-foreground/20 px-2 py-0.5 text-right min-w-[3rem] ${
-                    highlightedLines.includes(index + 1) 
-                      ? 'bg-blue-500/20 text-blue-600 font-semibold' 
+                    highlightedLines.includes(index + 1)
+                      ? 'bg-blue-500/20 text-blue-600 font-semibold'
                       : 'text-muted-foreground'
                   }`}
                   onClick={(e) => handleLineClick(index + 1, e)}
@@ -320,7 +320,7 @@ export function FileViewer({
               ))}
             </div>
           </div>
-          
+
           {/* Content */}
           <div className="flex-1 px-4 py-4 min-w-0">
             {renderContentByType(text, lines)}
@@ -335,7 +335,7 @@ export function FileViewer({
     // Check if the first line contains ANSI escape sequences (for performance)
     const firstLine = text.split('\n')[0];
     const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m');
-    
+
     // Handle ANSI content line by line
     if (ansiRegex.test(firstLine)) {
       return (
@@ -343,7 +343,7 @@ export function FileViewer({
           {lines.map((line, index) => {
             const lineNumber = index + 1;
             const isHighlighted = highlightedLines.includes(lineNumber);
-            
+
             const convert = new Convert({
               fg: '#000',
               bg: '#FFF',
@@ -351,9 +351,9 @@ export function FileViewer({
               escapeXML: true,
               stream: false
             });
-            
+
             const htmlContent = convert.toHtml(line);
-            
+
             return (
               <div
                 key={index}
@@ -362,7 +362,7 @@ export function FileViewer({
               >
                 <span
                   dangerouslySetInnerHTML={{ __html: htmlContent }}
-                  style={{ 
+                  style={{
                     whiteSpace: 'pre',
                     wordWrap: 'normal'
                   }}
@@ -373,13 +373,13 @@ export function FileViewer({
         </div>
       );
     }
-    
+
     // Handle JSON and YAML with full-file syntax highlighting
     if (fileType === 'json') {
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.json, 'json');
         const htmlLines = highlightedHtml.split('\n');
-        
+
         return (
           <div>
             <style dangerouslySetInnerHTML={{
@@ -395,14 +395,14 @@ export function FileViewer({
             {htmlLines.map((htmlLine, index) => {
               const lineNumber = index + 1;
               const isHighlighted = highlightedLines.includes(lineNumber);
-              
+
               return (
                 <div
                   key={index}
                   className={`syntax-json ${isHighlighted ? 'bg-blue-500/10' : ''}`}
-                  style={{ 
-                    height: '1.25rem', 
-                    lineHeight: '1.25rem', 
+                  style={{
+                    height: '1.25rem',
+                    lineHeight: '1.25rem',
                     textShadow: 'none',
                     whiteSpace: 'pre',
                     overflow: 'visible'
@@ -418,12 +418,12 @@ export function FileViewer({
         return renderPlainText(lines);
       }
     }
-    
+
     if (fileType === 'yaml') {
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.yaml, 'yaml');
         const htmlLines = highlightedHtml.split('\n');
-        
+
         return (
           <div>
             <style dangerouslySetInnerHTML={{
@@ -440,14 +440,14 @@ export function FileViewer({
             {htmlLines.map((htmlLine, index) => {
               const lineNumber = index + 1;
               const isHighlighted = highlightedLines.includes(lineNumber);
-              
+
               return (
                 <div
                   key={index}
                   className={`syntax-yaml ${isHighlighted ? 'bg-blue-500/10' : ''}`}
-                  style={{ 
-                    height: '1.25rem', 
-                    lineHeight: '1.25rem', 
+                  style={{
+                    height: '1.25rem',
+                    lineHeight: '1.25rem',
                     textShadow: 'none',
                     whiteSpace: 'pre',
                     overflow: 'visible'
@@ -463,7 +463,7 @@ export function FileViewer({
         return renderPlainText(lines);
       }
     }
-    
+
     // Regular text rendering
     return renderPlainText(lines);
   };
@@ -475,7 +475,7 @@ export function FileViewer({
         {lines.map((line, index) => {
           const lineNumber = index + 1;
           const isHighlighted = highlightedLines.includes(lineNumber);
-          
+
           return (
             <div
               key={index}
@@ -501,9 +501,9 @@ export function FileViewer({
               {loadedSize && <Badge variant="outline">{formatBytes(loadedSize)}</Badge>}
             </div>
             <div className="flex gap-2">
-              <Button 
-                onClick={copyContent} 
-                size="sm" 
+              <Button
+                onClick={copyContent}
+                size="sm"
                 variant="outline"
                 className={copied ? 'text-green-600' : ''}
               >
@@ -541,9 +541,9 @@ export function FileViewer({
               </Badge>
             )}
             {content && (
-              <Button 
-                onClick={copyContent} 
-                size="sm" 
+              <Button
+                onClick={copyContent}
+                size="sm"
                 variant="outline"
                 className={copied ? 'text-green-600' : ''}
               >

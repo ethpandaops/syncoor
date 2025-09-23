@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { getDumpFileInfo } from '../lib/api';
+import { getDumpFileInfo, extractFileFromDump } from '../lib/api';
 import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
@@ -87,6 +87,24 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     setSelectedFile(file);
     if (onFileSelect) {
       onFileSelect(file ? file.name : null);
+    }
+  };
+
+  const downloadFile = async (entry: ZipFileEntry) => {
+    try {
+      const blob = await extractFileFromDump(sourceUrl, runId, network, elClient, clClient, entry.name);
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entry.name.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download file:', err);
     }
   };
 
@@ -466,14 +484,16 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const renderFileEntry = (entry: ZipFileEntry, index: number) => {
     const isFolder = entry.is_directory;
     const iconComponent = getFileIconComponent(entry.name, isFolder);
-    
+
     return (
-      <div 
-        key={index} 
-        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50 ${!isFolder ? 'cursor-pointer' : ''}`}
-        onClick={() => !isFolder && handleFileSelect(entry)}
+      <div
+        key={index}
+        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50`}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div
+          className={`flex items-center gap-2 flex-1 min-w-0 ${!isFolder ? 'cursor-pointer' : ''}`}
+          onClick={() => !isFolder && handleFileSelect(entry)}
+        >
           <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
             {iconComponent}
           </div>
@@ -482,9 +502,27 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
           </span>
           {isFolder && <Badge variant="outline" className="text-xs">folder</Badge>}
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {!isFolder && (
-            <span>{formatBytes(entry.size)}</span>
+            <>
+              <span>{formatBytes(entry.size)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-1 px-0 hover:bg-muted text-foreground flex items-center justify-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadFile(entry);
+                }}
+                title={`Download ${entry.name}`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </Button>
+            </>
           )}
           <span>{new Date(entry.modified).toLocaleDateString()}</span>
         </div>
