@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { getDumpFileInfo } from '../lib/api';
+import { getDumpFileInfo, extractFileFromDump } from '../lib/api';
 import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
@@ -87,6 +87,24 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     setSelectedFile(file);
     if (onFileSelect) {
       onFileSelect(file ? file.name : null);
+    }
+  };
+
+  const downloadFile = async (entry: ZipFileEntry) => {
+    try {
+      const blob = await extractFileFromDump(sourceUrl, runId, network, elClient, clClient, entry.name);
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = entry.name.split('/').pop() || 'download';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to download file:', err);
     }
   };
 
@@ -466,14 +484,16 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const renderFileEntry = (entry: ZipFileEntry, index: number) => {
     const isFolder = entry.is_directory;
     const iconComponent = getFileIconComponent(entry.name, isFolder);
-    
+
     return (
-      <div 
-        key={index} 
-        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50 ${!isFolder ? 'cursor-pointer' : ''}`}
-        onClick={() => !isFolder && handleFileSelect(entry)}
+      <div
+        key={index}
+        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50`}
       >
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div
+          className={`flex items-center gap-2 flex-1 min-w-0 ${!isFolder ? 'cursor-pointer' : ''}`}
+          onClick={() => !isFolder && handleFileSelect(entry)}
+        >
           <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
             {iconComponent}
           </div>
@@ -482,9 +502,27 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
           </span>
           {isFolder && <Badge variant="outline" className="text-xs">folder</Badge>}
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
           {!isFolder && (
-            <span>{formatBytes(entry.size)}</span>
+            <>
+              <span>{formatBytes(entry.size)}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-1 px-0 hover:bg-muted text-foreground flex items-center justify-center"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadFile(entry);
+                }}
+                title={`Download ${entry.name}`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7,10 12,15 17,10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+              </Button>
+            </>
           )}
           <span>{new Date(entry.modified).toLocaleDateString()}</span>
         </div>
@@ -536,166 +574,129 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   }
 
   return (
-    <div className="space-y-4">
-      {/* Quick Access Logs Section */}
-      {(elLogFile || clLogFile) && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <span>📋</span>
-              <span>Quick Access Logs</span>
+    <div className="flex gap-4 h-full">
+      {/* Left Sidebar - Quick Access and File List */}
+      <div className="w-1/3 min-w-80 flex flex-col space-y-4 overflow-hidden">
+        {/* Quick Access Logs Section */}
+        {(elLogFile || clLogFile) && (
+          <Card className="flex-shrink-0">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <span>📋</span>
+                <span>Quick Access</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {elLogFile && (
+                  <div
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => handleFileSelect(elLogFile)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
+                        {getFileIconComponent(elLogFile.name, false)}
+                      </div>
+                      <Badge variant="outline" className="text-xs flex-shrink-0">EL</Badge>
+                      <span className="font-mono text-sm truncate">
+                        output.log
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                      {formatBytes(elLogFile.size)}
+                    </span>
+                  </div>
+                )}
+                {clLogFile && (
+                  <div
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
+                    onClick={() => handleFileSelect(clLogFile)}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
+                        {getFileIconComponent(clLogFile.name, false)}
+                      </div>
+                      <Badge variant="outline" className="text-xs flex-shrink-0">CL</Badge>
+                      <span className="font-mono text-sm truncate">
+                        output.log
+                      </span>
+                    </div>
+                    <span className="text-xs text-muted-foreground flex-shrink-0">
+                      {formatBytes(clLogFile.size)}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* File Browser */}
+        <Card className="flex-1 flex flex-col min-h-0">
+          <CardHeader className="pb-3 flex-shrink-0">
+            <CardTitle className="flex items-center justify-between text-base">
+              <div className="flex items-center gap-2 min-w-0">
+                <span>Files</span>
+                <Badge variant="secondary" className="text-xs">
+                  {zipInfo.entries?.filter(entry => !entry.is_directory).length || 0}
+                </Badge>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                {showExpandLink && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link to={`/dump/${runId}?sourceUrl=${encodeURIComponent(sourceUrl)}&network=${network}&elClient=${elClient}&clClient=${clClient}`}>
+                      Expand
+                    </Link>
+                  </Button>
+                )}
+                <Button asChild size="sm">
+                  <a href={downloadUrl} download>
+                    Download
+                  </a>
+                </Button>
+                {onClose && <Button variant="ghost" size="sm" onClick={onClose}>×</Button>}
+              </div>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {elLogFile && (
-                <div 
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => handleFileSelect(elLogFile)}
+          <CardContent className="flex-1 flex flex-col min-h-0">
+            {/* Search input */}
+            <div className="mb-3 flex-shrink-0">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-                      {getFileIconComponent(elLogFile.name, false)}
-                    </div>
-                    <Badge variant="outline" className="text-xs">EL</Badge>
-                    <span className="font-mono text-sm">
-                      {elLogFile.name.split('/').slice(-2).join('/')}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ({formatBytes(elLogFile.size)})
-                    </span>
-                  </div>
-                  <Button size="sm" variant="ghost">
-                    View Log
-                  </Button>
-                </div>
-              )}
-              {clLogFile && (
-                <div 
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 cursor-pointer"
-                  onClick={() => handleFileSelect(clLogFile)}
-                >
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-                      {getFileIconComponent(clLogFile.name, false)}
-                    </div>
-                    <Badge variant="outline" className="text-xs">CL</Badge>
-                    <span className="font-mono text-sm">
-                      {clLogFile.name.split('/').slice(-2).join('/')}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      ({formatBytes(clLogFile.size)})
-                    </span>
-                  </div>
-                  <Button size="sm" variant="ghost">
-                    View Log
-                  </Button>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Main Dump File Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span>Kurtosis Enclave Dump</span>
-              <Badge variant="secondary">{runId}-{network}_{elClient}_{clClient}.main.dump.zip</Badge>
-            </div>
-            {onClose && <Button variant="ghost" size="sm" onClick={onClose}>×</Button>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-        <div className="space-y-4">
-          {/* File info */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              {zipInfo.size && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Size: </span>
-                  <span className="text-sm">{formatBytes(zipInfo.size)}</span>
-                </div>
-              )}
-              {zipInfo.entries && (
-                <div>
-                  <span className="text-sm font-medium text-muted-foreground">Files: </span>
-                  <span className="text-sm">{zipInfo.entries.filter(entry => !entry.is_directory).length}</span>
-                </div>
-              )}
-            </div>
-            <div className="flex gap-2">
-              {showExpandLink && (
-                <Button asChild variant="outline" size="sm">
-                  <Link to={`/dump/${runId}?sourceUrl=${encodeURIComponent(sourceUrl)}&network=${network}&elClient=${elClient}&clClient=${clClient}`}>
-                    Explore
-                  </Link>
-                </Button>
-              )}
-              <Button asChild size="sm">
-                <a href={downloadUrl} download>
-                  Download ZIP
-                </a>
-              </Button>
-            </div>
-          </div>
-
-          {/* File listing */}
-          {zipInfo.entries && zipInfo.entries.length > 0 && (
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h4 className="text-sm font-medium">
-                  Contents: 
-                  <span className="text-xs text-muted-foreground font-normal ml-1">
-                    (click files to view)
-                  </span>
-                </h4>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {searchQuery && `${filteredFiles.length} of `}
-                    {zipInfo.entries.filter(entry => !entry.is_directory).length} files
-                  </span>
-                </div>
-              </div>
-              
-              {/* Search input */}
-              <div className="mb-3">
-                <div className="relative">
-                  <svg 
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                    width="16" 
-                    height="16" 
-                    viewBox="0 0 16 16" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
+                  <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M10 10L13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <Input
+                  type="text"
+                  placeholder="Search files..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-10 text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label="Clear search"
                   >
-                    <circle cx="7" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M10 10L13 13" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                  <Input
-                    type="text"
-                    placeholder="Search files by name, path, or extension..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9 pr-10"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      aria-label="Clear search"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 4L4 12M4 4L12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                    </svg>
+                  </button>
+                )}
               </div>
-              
-              <div className="border rounded-lg max-h-96 overflow-y-auto">
+            </div>
+
+            {/* File listing */}
+            {zipInfo.entries && zipInfo.entries.length > 0 && (
+              <div className="border rounded-lg flex-1 min-h-0 max-h-[calc(100vh-40rem)] overflow-y-auto">
                 {filteredFiles.length > 0 ? (
                   filteredFiles.map((entry, index) => renderFileEntry(entry, index))
                 ) : (
@@ -711,35 +712,57 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
                   </div>
                 )}
               </div>
-              {zipInfo.error && (
-                <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                  {zipInfo.error}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+            )}
+            {zipInfo.error && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 flex-shrink-0">
+                {zipInfo.error}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
-    {/* File viewer */}
-    {selectedFile && (
-      <Card>
-        <FileViewer
-          sourceUrl={sourceUrl}
-          runId={runId}
-          network={network}
-          elClient={elClient}
-          clClient={clClient}
-          filePath={selectedFile.name}
-          fileSize={selectedFile.size}
-          onClose={() => handleFileSelect(null)}
-          initialFullWindow={initialFullWindow}
-          onFullWindowToggle={onFullWindowToggle}
-        />
-      </Card>
-    )}
-  </div>
+      {/* Right Content Area - File Viewer */}
+      <div className="flex-1 min-w-0">
+        {selectedFile ? (
+          <Card className="h-full">
+            <FileViewer
+              sourceUrl={sourceUrl}
+              runId={runId}
+              network={network}
+              elClient={elClient}
+              clClient={clClient}
+              filePath={selectedFile.name}
+              fileSize={selectedFile.size}
+              onClose={() => handleFileSelect(null)}
+              initialFullWindow={initialFullWindow}
+              onFullWindowToggle={onFullWindowToggle}
+            />
+          </Card>
+        ) : (
+          <Card className="h-full flex items-center justify-center">
+            <CardContent>
+              <div className="text-center text-muted-foreground">
+                <div className="mb-4">
+                  <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-medium mb-2">No file selected</h3>
+                <p className="text-sm">
+                  Select a file from the list on the left to view its contents
+                </p>
+                {(elLogFile || clLogFile) && (
+                  <p className="text-sm mt-2">
+                    Try the Quick Access section for common log files
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
   );
 }
 
