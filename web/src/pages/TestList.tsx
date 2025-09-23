@@ -123,6 +123,10 @@ export default function TestList() {
           aVal = a.network;
           bVal = b.network;
           break;
+        case 'directory':
+          aVal = a.source_display_name || a.source_directory;
+          bVal = b.source_display_name || b.source_directory;
+          break;
         case 'execution_client':
           aVal = a.execution_client_info.type;
           bVal = b.execution_client_info.type;
@@ -500,24 +504,35 @@ export default function TestList() {
                         )}
                       </button>
                     </th>
-                    <th className="text-center py-3 px-3">
-                      <button 
-                        onClick={() => handleSort('status')}
-                        className="flex items-center gap-1 hover:text-foreground font-medium mx-auto"
+                    <th className="text-left py-3 px-3">
+                      <button
+                        onClick={() => handleSort('network')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium"
                       >
-                        Status
-                        {sortBy === 'status' && (
+                        Network
+                        {sortBy === 'network' && (
                           <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                         )}
                       </button>
                     </th>
                     <th className="text-left py-3 px-3">
-                      <button 
-                        onClick={() => handleSort('network')}
+                      <button
+                        onClick={() => handleSort('directory')}
                         className="flex items-center gap-1 hover:text-foreground font-medium"
                       >
-                        Network/Directory
-                        {sortBy === 'network' && (
+                        Directory
+                        {sortBy === 'directory' && (
+                          <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
+                        )}
+                      </button>
+                    </th>
+                    <th className="text-center py-3 px-3">
+                      <button
+                        onClick={() => handleSort('status')}
+                        className="flex items-center gap-1 hover:text-foreground font-medium mx-auto"
+                      >
+                        Status
+                        {sortBy === 'status' && (
                           <span className="ml-1">{sortOrder === 'desc' ? '↓' : '↑'}</span>
                         )}
                       </button>
@@ -626,6 +641,22 @@ export default function TestList() {
                           {formatDuration(report.sync_info.duration)}
                         </Link>
                       </td>
+                      <td className="py-3 px-3">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          <Badge variant="outline">{report.network}</Badge>
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          <Badge variant="secondary">{report.source_display_name || report.source_directory}</Badge>
+                        </Link>
+                      </td>
                       <td className="py-3 px-3 text-center">
                         <Link
                           to={`/test/${report.source_directory}/${report.run_id}`}
@@ -638,18 +669,6 @@ export default function TestList() {
                             {getStatusIcon(report.sync_info.status)}
                             {getStatusBadgeInfo(report.sync_info.status).text}
                           </Badge>
-                        </Link>
-                      </td>
-                      <td className="py-3 px-3">
-                        <Link
-                          to={`/test/${report.source_directory}/${report.run_id}`}
-                          className="block -m-3 p-3"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{report.network}</Badge>
-                            <Badge variant="secondary">{report.source_display_name || report.source_directory}</Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">{report.run_id}</div>
                         </Link>
                       </td>
                     </tr>
