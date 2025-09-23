@@ -292,12 +292,12 @@ export function FileViewer({
   const renderContentWithLineNumbers = (text: string, isFullWindow = false) => {
     const lines = text.split('\n');
     
-    const heightClass = isFullWindow 
-      ? "h-full" 
-      : "max-h-96";
+    const heightClass = isFullWindow
+      ? "h-full"
+      : "max-h-[calc(100vh-28rem)]";
     
     return (
-      <div ref={contentRef} className={`text-xs font-mono bg-muted rounded-lg overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
+      <div ref={contentRef} className={`text-xs font-mono bg-muted overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
         <div className="flex min-w-fit">
           {/* Line numbers */}
           <div className="bg-muted-foreground/10 px-4 py-4 select-none border-r border-border sticky left-0 flex-shrink-0" style={{ minHeight: '100%' }}>
@@ -526,7 +526,7 @@ export function FileViewer({
   }
 
   return (
-    <Card>
+    <Card className="border-0">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">

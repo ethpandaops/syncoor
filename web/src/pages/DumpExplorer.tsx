@@ -59,9 +59,9 @@ export default function DumpExplorer() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between p-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div>
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold">Kurtosis Enclave Dump</h1>
@@ -76,19 +76,21 @@ export default function DumpExplorer() {
         </Link>
       </div>
 
-      {/* Dump File Viewer */}
-      <DumpFileViewer 
-        sourceUrl={decodeURIComponent(sourceUrl)} 
-        runId={id}
-        network={network}
-        elClient={elClient}
-        clClient={clClient}
-        showExpandLink={false}
-        initialSelectedFile={selectedFile || undefined}
-        onFileSelect={handleFileSelect}
-        initialFullWindow={fullWindow}
-        onFullWindowToggle={handleFullWindowToggle}
-      />
+      {/* Dump File Viewer - Full Width */}
+      <div className="flex-1 p-4">
+        <DumpFileViewer
+          sourceUrl={decodeURIComponent(sourceUrl)}
+          runId={id}
+          network={network}
+          elClient={elClient}
+          clClient={clClient}
+          showExpandLink={false}
+          initialSelectedFile={selectedFile || undefined}
+          onFileSelect={handleFileSelect}
+          initialFullWindow={fullWindow}
+          onFullWindowToggle={handleFullWindowToggle}
+        />
+      </div>
     </div>
   );
 }
