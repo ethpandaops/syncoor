@@ -6,13 +6,12 @@ import { Badge } from '../components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { formatDuration, formatTimestamp, formatBytes, groupReportsByDirectoryNetworkAndClient, calculateClientGroupStats, getUniqueConsensusClients, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
 import { ClientGroupDurationChart, ClientGroupDiskChart } from '../components/charts';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import LiveTests from '../components/LiveTests';
 import ClientMatrix from '../components/ClientMatrix';
 
 export default function Dashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const { data: config, isLoading: configLoading, error: configError } = useConfig();
   const { data: reports, isLoading: reportsLoading, error: reportsError, total } = useReports({
     directories: config?.directories || [],
@@ -400,14 +399,21 @@ export default function Dashboard() {
                                     {filteredClientReports.slice(0, 3).map((report) => (
                                       <tr
                                         key={report.run_id}
-                                        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-                                        onClick={() => navigate(`/test/${report.source_directory}/${report.run_id}`)}
+                                        className="border-b hover:bg-muted/50 transition-colors"
                                       >
                                         <td className="py-2 px-2 text-muted-foreground">
-                                          {formatTimestamp(Number(report.timestamp))}
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {formatTimestamp(Number(report.timestamp))}
+                                          </Link>
                                         </td>
                                         <td className="py-2 px-2">
-                                          <div className="flex items-center gap-1">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="flex items-center gap-1 -m-2 p-2"
+                                          >
                                             <img
                                               src={`img/clients/${report.execution_client_info.type}.jpg`}
                                               alt={`${report.execution_client_info.type} logo`}
@@ -417,10 +423,13 @@ export default function Dashboard() {
                                               }}
                                             />
                                             <span className="font-medium capitalize">{report.execution_client_info.type}</span>
-                                          </div>
+                                          </Link>
                                         </td>
                                         <td className="py-2 px-2">
-                                          <div className="flex items-center gap-1">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="flex items-center gap-1 -m-2 p-2"
+                                          >
                                             <img
                                               src={`img/clients/${report.consensus_client_info.type}.jpg`}
                                               alt={`${report.consensus_client_info.type} logo`}
@@ -430,25 +439,69 @@ export default function Dashboard() {
                                               }}
                                             />
                                             <span className="font-medium capitalize">{report.consensus_client_info.type}</span>
-                                          </div>
-                                        </td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">
-                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                                          </Link>
                                         </td>
                                         <td className="py-2 px-2 text-right text-muted-foreground">
-                                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.block.toLocaleString()}
+                                          </Link>
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.slot.toLocaleString()}
+                                          </Link>
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                                          </Link>
+                                        </td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                                          </Link>
                                         </td>
                                         <td className="py-2 px-2 text-center text-muted-foreground">
-                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                                          </Link>
                                         </td>
                                         <td className="py-2 px-2 text-center text-muted-foreground">
-                                          {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                                          </Link>
                                         </td>
-                                        <td className="py-2 px-2 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                                        <td className="py-2 px-2 text-right text-muted-foreground">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="block -m-2 p-2"
+                                          >
+                                            {formatDuration(report.sync_info.duration)}
+                                          </Link>
+                                        </td>
                                         <td className="py-2 px-2 text-center">
-                                          <div className="flex items-center justify-center">
+                                          <Link
+                                            to={`/test/${report.source_directory}/${report.run_id}`}
+                                            className="flex items-center justify-center -m-2 p-2"
+                                          >
                                             <Badge
                                               variant={getStatusBadgeInfo(report.sync_info.status).variant}
                                               className="flex items-center gap-1"
@@ -456,7 +509,7 @@ export default function Dashboard() {
                                               {getStatusIcon(report.sync_info.status)}
                                               {getStatusBadgeInfo(report.sync_info.status).text}
                                             </Badge>
-                                          </div>
+                                          </Link>
                                         </td>
                                       </tr>
                                     ))}

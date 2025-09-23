@@ -6,11 +6,10 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { formatDuration, formatTimestamp, formatBytes, getStatusBadgeInfo, getStatusIcon } from '../lib/utils';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 
 export default function TestList() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   
   // Get all params from URL with defaults
   const page = parseInt(searchParams.get('page') || '1');
@@ -520,18 +519,25 @@ export default function TestList() {
                 </thead>
                 <tbody>
                   {reports.map((report) => (
-                    <tr 
-                      key={report.run_id} 
-                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => navigate(`/test/${report.source_directory}/${report.run_id}`)}
+                    <tr
+                      key={report.run_id}
+                      className="border-b hover:bg-muted/50 transition-colors"
                     >
                       <td className="py-3 px-3 text-muted-foreground">
-                        {formatTimestamp(Number(report.timestamp))}
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {formatTimestamp(Number(report.timestamp))}
+                        </Link>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-1">
-                          <img 
-                            src={`img/clients/${report.execution_client_info.type}.jpg`} 
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="flex items-center gap-1 -m-3 p-3"
+                        >
+                          <img
+                            src={`img/clients/${report.execution_client_info.type}.jpg`}
                             alt={`${report.execution_client_info.type} logo`}
                             className="w-5 h-5 rounded"
                             onError={(e) => {
@@ -539,12 +545,15 @@ export default function TestList() {
                             }}
                           />
                           <span className="font-medium capitalize">{report.execution_client_info.type}</span>
-                        </div>
+                        </Link>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-1">
-                          <img 
-                            src={`img/clients/${report.consensus_client_info.type}.jpg`} 
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="flex items-center gap-1 -m-3 p-3"
+                        >
+                          <img
+                            src={`img/clients/${report.consensus_client_info.type}.jpg`}
                             alt={`${report.consensus_client_info.type} logo`}
                             className="w-5 h-5 rounded"
                             onError={(e) => {
@@ -552,40 +561,89 @@ export default function TestList() {
                             }}
                           />
                           <span className="font-medium capitalize">{report.consensus_client_info.type}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.block.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-right text-muted-foreground">{report.sync_info.slot.toLocaleString()}</td>
-                      <td className="py-3 px-3 text-right text-muted-foreground">
-                        {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                        </Link>
                       </td>
                       <td className="py-3 px-3 text-right text-muted-foreground">
-                        {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.block.toLocaleString()}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.slot.toLocaleString()}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.de, 1) : '-'}
+                        </Link>
+                      </td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.last_entry ? formatBytes(report.sync_info.last_entry.dc, 1) : '-'}
+                        </Link>
                       </td>
                       <td className="py-3 px-3 text-center text-muted-foreground">
-                        {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.last_entry ? report.sync_info.last_entry.pe : '-'}
+                        </Link>
                       </td>
                       <td className="py-3 px-3 text-center text-muted-foreground">
-                        {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {report.sync_info.last_entry ? report.sync_info.last_entry.pc : '-'}
+                        </Link>
                       </td>
-                      <td className="py-3 px-3 text-right text-muted-foreground">{formatDuration(report.sync_info.duration)}</td>
+                      <td className="py-3 px-3 text-right text-muted-foreground">
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          {formatDuration(report.sync_info.duration)}
+                        </Link>
+                      </td>
                       <td className="py-3 px-3 text-center">
-                        <div className="flex items-center justify-center">
-                          <Badge 
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="flex items-center justify-center -m-3 p-3"
+                        >
+                          <Badge
                             variant={getStatusBadgeInfo(report.sync_info.status).variant}
                             className="flex items-center gap-1"
                           >
                             {getStatusIcon(report.sync_info.status)}
                             {getStatusBadgeInfo(report.sync_info.status).text}
                           </Badge>
-                        </div>
+                        </Link>
                       </td>
                       <td className="py-3 px-3">
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline">{report.network}</Badge>
-                          <Badge variant="secondary">{report.source_directory}</Badge>
-                        </div>
-                        <div className="text-xs text-muted-foreground mt-1">{report.run_id}</div>
+                        <Link
+                          to={`/test/${report.source_directory}/${report.run_id}`}
+                          className="block -m-3 p-3"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline">{report.network}</Badge>
+                            <Badge variant="secondary">{report.source_directory}</Badge>
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-1">{report.run_id}</div>
+                        </Link>
                       </td>
                     </tr>
                   ))}
