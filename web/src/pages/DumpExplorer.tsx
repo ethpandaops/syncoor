@@ -13,6 +13,7 @@ export default function DumpExplorer() {
   const clClient = searchParams.get('clClient');
   const selectedFile = searchParams.get('file');
   const fullWindow = searchParams.get('fullWindow') === 'true';
+  const sourceDirectory = searchParams.get('directory');  // Get directory from search params
   
   const handleFileSelect = (filePath: string | null) => {
     const newParams = new URLSearchParams(searchParams);
@@ -70,7 +71,7 @@ export default function DumpExplorer() {
             Explore the contents of the Kurtosis enclave dump file
           </p>
         </div>
-        <Link to={`/test/${id}`}>
+        <Link to={sourceDirectory ? `/test/${sourceDirectory}/${id}` : `/test/${id}`}>
           <Button variant="outline">Back to Test</Button>
         </Link>
       </div>

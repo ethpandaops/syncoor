@@ -15,14 +15,20 @@ import { useDumpFileInfo } from '../hooks/useDumpFile';
 import ProgressCharts from '../components/ProgressCharts';
 
 export default function TestDetails() {
-  const { id } = useParams<{ id: string }>();
+  const { id, directory } = useParams<{ id: string; directory: string }>();
   const [showExecutionDetails, setShowExecutionDetails] = useState(false);
   const [showConsensusDetails, setShowConsensusDetails] = useState(false);
   const [showExecutionEnvVars, setShowExecutionEnvVars] = useState(false);
   const [showConsensusEnvVars, setShowConsensusEnvVars] = useState(false);
   const { data: config, isLoading: configLoading } = useConfig();
+
+  // If directory is provided in URL, only fetch from that directory
+  const targetDirectories = directory && config?.directories
+    ? config.directories.filter(dir => dir.name === directory)
+    : config?.directories || [];
+
   const { data: reports, isLoading: reportsLoading } = useReports({
-    directories: config?.directories || [],
+    directories: targetDirectories,
     pagination: { page: 1, limit: 1000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
 
@@ -111,7 +117,7 @@ export default function TestDetails() {
         <Card className="p-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold mb-2">Test Not Found</h3>
-            <p className="text-muted-foreground">The test with ID "{id}" could not be found.</p>
+            <p className="text-muted-foreground">The test with ID "{id}" could not be found{directory ? ` in directory "${directory}"` : ''}.</p>
           </div>
         </Card>
       </div>
@@ -280,7 +286,7 @@ export default function TestDetails() {
                 return elLog ? (
                   <Button asChild variant="outline" size="sm">
                     <a
-                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true`}
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true&directory=${testReport.source_directory}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -399,7 +405,7 @@ export default function TestDetails() {
                 return clLog ? (
                   <Button asChild variant="outline" size="sm">
                     <a
-                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true`}
+                      href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true&directory=${testReport.source_directory}`}
                       target="_blank"
                       rel="noopener noreferrer"
                     >
@@ -634,7 +640,7 @@ export default function TestDetails() {
                   <div className="flex items-center gap-2">
                     <Button asChild variant="outline" size="sm">
                       <a
-                        href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}`}
+                        href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&directory=${testReport.source_directory}`}
                         target="_blank"
                         rel="noopener noreferrer"
                       >
@@ -685,7 +691,7 @@ export default function TestDetails() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-xs">{formatBytes(elLog.size)}</span>
                                   <a
-                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true`}
+                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(elLog.name)}&fullWindow=true&directory=${testReport.source_directory}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-blue-600 hover:text-blue-800 hover:underline"
@@ -714,7 +720,7 @@ export default function TestDetails() {
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-xs">{formatBytes(clLog.size)}</span>
                                   <a
-                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true`}
+                                    href={`#/dump/${testReport.run_id}?sourceUrl=${encodeURIComponent(testReport.source_url)}&network=${testReport.network}&elClient=${testReport.execution_client_info.type}&clClient=${testReport.consensus_client_info.type}&file=${encodeURIComponent(clLog.name)}&fullWindow=true&directory=${testReport.source_directory}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-xs text-blue-600 hover:text-blue-800 hover:underline"

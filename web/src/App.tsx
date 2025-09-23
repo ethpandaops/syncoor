@@ -12,6 +12,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/tests" element={<TestList />} />
+          <Route path="/test/:directory/:id" element={<TestDetails />} />
           <Route path="/test/:id" element={<TestDetails />} />
           <Route path="/dump/:id" element={<DumpExplorer />} />
         </Routes>

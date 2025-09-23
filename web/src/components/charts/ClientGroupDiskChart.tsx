@@ -11,11 +11,10 @@ import {
   ComposedChart,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-import { IndexEntry } from '../../types/report';
 import { formatBytes, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
 
 interface ClientGroupDiskChartProps {
-  data: IndexEntry[];
+  data: any[];
   className?: string;
   height?: number;
   showGrid?: boolean;
@@ -29,6 +28,7 @@ interface ChartDataPoint {
   diskUsage: number;
   runId: string;
   network: string;
+  sourceDirectory?: string;
   movingAverage?: number;
   upperBand?: number;
   lowerBand?: number;
@@ -56,7 +56,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
   const handleDataPointClick = (data: { activePayload?: Array<{ payload: ChartDataPoint }> }) => {
     if (data && data.activePayload && data.activePayload[0]) {
       const payload = data.activePayload[0].payload as ChartDataPoint;
-      navigate(`/test/${payload.runId}`);
+      navigate(payload.sourceDirectory ? `/test/${payload.sourceDirectory}/${payload.runId}` : `/test/${payload.runId}`);
     }
   };
 
@@ -85,6 +85,7 @@ const ClientGroupDiskChart: React.FC<ClientGroupDiskChartProps> = ({
       diskUsage: entry.sync_info.last_entry!.de,
       runId: entry.run_id,
       network: entry.network,
+      sourceDirectory: entry.source_directory,
     }));
 
     // Calculate moving average and confidence bands only if we have enough data points
