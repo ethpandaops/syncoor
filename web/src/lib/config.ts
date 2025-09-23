@@ -58,8 +58,14 @@ function validateDirectory(dir: unknown, index: number): Directory {
 
   const enabled = dirObj.enabled !== false; // Default to true if not specified
 
+  // Handle optional displayName
+  const displayName = typeof dirObj.displayName === 'string' && dirObj.displayName.trim()
+    ? dirObj.displayName
+    : undefined;
+
   return {
     name: dirObj.name,
+    displayName,
     url: dirObj.url.endsWith('/') ? dirObj.url : `${dirObj.url}/`,
     enabled,
   };

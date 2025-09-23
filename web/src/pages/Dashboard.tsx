@@ -18,6 +18,13 @@ export default function Dashboard() {
     pagination: { page: 1, limit: 10000, sortBy: 'timestamp', sortOrder: 'desc' }
   });
 
+  // Helper function to get display name for a directory
+  const getDirectoryDisplayName = useCallback((directoryName: string) => {
+    if (!config?.directories) return directoryName;
+    const dir = config.directories.find(d => d.name === directoryName);
+    return dir?.displayName || dir?.name || directoryName;
+  }, [config]);
+
   // Get all unique directories in the order from config
   const availableDirectories = useMemo(() => {
     if (!reports || reports.length === 0) return [];
@@ -186,7 +193,7 @@ export default function Dashboard() {
               <TabsList className="mb-4">
                 {availableDirectories.map(directory => (
                   <TabsTrigger key={directory} value={directory}>
-                    {directory}
+                    {getDirectoryDisplayName(directory)}
                     <Badge variant="outline" className="ml-2">
                       {reports.filter(r => r.source_directory === directory).length}
                     </Badge>
