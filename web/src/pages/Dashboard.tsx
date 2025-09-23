@@ -401,7 +401,7 @@ export default function Dashboard() {
                                       <tr
                                         key={report.run_id}
                                         className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-                                        onClick={() => navigate(`/test/${report.run_id}`)}
+                                        onClick={() => navigate(`/test/${report.source_directory}/${report.run_id}`)}
                                       >
                                         <td className="py-2 px-2 text-muted-foreground">
                                           {formatTimestamp(Number(report.timestamp))}

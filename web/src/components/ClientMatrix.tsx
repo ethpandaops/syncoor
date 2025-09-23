@@ -321,7 +321,7 @@ const ClientMatrix: React.FC<ClientMatrixProps> = ({
                                           <Tooltip key={colIdx}>
                                             <TooltipTrigger asChild>
                                               <Link
-                                                to={`/test/${report.report.run_id}`}
+                                                to={`/test/${report.report.source_directory}/${report.report.run_id}`}
                                                 className={`block w-3 h-3 rounded-sm cursor-pointer transition-transform hover:scale-150 ${getStatusColor(report.status, report.duration, cell)}`}
                                               />
                                             </TooltipTrigger>

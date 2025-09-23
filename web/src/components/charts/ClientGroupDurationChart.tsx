@@ -11,11 +11,10 @@ import {
   ComposedChart,
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
-import { IndexEntry } from '../../types/report';
 import { formatDuration, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
 
 interface ClientGroupDurationChartProps {
-  data: IndexEntry[];
+  data: any[];
   className?: string;
   height?: number;
   showGrid?: boolean;
@@ -29,6 +28,7 @@ interface ChartDataPoint {
   duration: number;
   runId: string;
   network: string;
+  sourceDirectory?: string;
   movingAverage?: number;
   upperBand?: number;
   lowerBand?: number;
@@ -56,7 +56,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
   const handleDataPointClick = (data: { activePayload?: Array<{ payload: ChartDataPoint }> }) => {
     if (data && data.activePayload && data.activePayload[0]) {
       const payload = data.activePayload[0].payload as ChartDataPoint;
-      navigate(`/test/${payload.runId}`);
+      navigate(payload.sourceDirectory ? `/test/${payload.sourceDirectory}/${payload.runId}` : `/test/${payload.runId}`);
     }
   };
 
@@ -83,6 +83,7 @@ const ClientGroupDurationChart: React.FC<ClientGroupDurationChartProps> = ({
       duration: entry.sync_info.duration,
       runId: entry.run_id,
       network: entry.network,
+      sourceDirectory: entry.source_directory,
     }));
 
     // Calculate moving average and confidence bands only if we have enough data points
