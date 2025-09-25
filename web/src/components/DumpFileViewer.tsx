@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -9,6 +9,7 @@ import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
 import { FileIcon, defaultStyles } from 'react-file-icon';
+import { FolderTreeView } from './FolderTreeView';
 
 interface DumpFileViewerProps {
   sourceUrl: string;
@@ -32,6 +33,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const [elLogFile, setElLogFile] = useState<ZipFileEntry | null>(null);
   const [clLogFile, setClLogFile] = useState<ZipFileEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchZipInfo = async () => {
@@ -104,30 +106,10 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to download file:', err);
+      // Failed to download file
     }
   };
 
-  // Filter files based on search query
-  const filteredFiles = useMemo(() => {
-    if (!zipInfo?.entries || !searchQuery) {
-      return zipInfo?.entries?.filter(entry => !entry.is_directory) || [];
-    }
-
-    const query = searchQuery.toLowerCase();
-    return zipInfo.entries.filter(entry => {
-      if (entry.is_directory) return false;
-
-      // Search in file name and path
-      const fileName = entry.name.toLowerCase();
-      const fileNameOnly = entry.name.split('/').pop()?.toLowerCase() || '';
-
-      // Check if query matches file name, path, or extension
-      return fileName.includes(query) ||
-             fileNameOnly.includes(query) ||
-             fileName.split('.').pop()?.includes(query);
-    });
-  }, [zipInfo?.entries, searchQuery]);
 
   const getFileIconComponent = (fileName: string, isDirectory: boolean) => {
     if (isDirectory) {
@@ -481,54 +463,6 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     );
   };
 
-  const renderFileEntry = (entry: ZipFileEntry, index: number) => {
-    const isFolder = entry.is_directory;
-    const iconComponent = getFileIconComponent(entry.name, isFolder);
-
-    return (
-      <div
-        key={index}
-        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50`}
-      >
-        <div
-          className={`flex items-center gap-2 flex-1 min-w-0 ${!isFolder ? 'cursor-pointer' : ''}`}
-          onClick={() => !isFolder && handleFileSelect(entry)}
-        >
-          <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-            {iconComponent}
-          </div>
-          <span className="font-mono text-sm truncate" title={entry.name}>
-            {entry.name}
-          </span>
-          {isFolder && <Badge variant="outline" className="text-xs">folder</Badge>}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {!isFolder && (
-            <>
-              <span>{formatBytes(entry.size)}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 pl-0 pr-0 hover:bg-muted text-foreground flex items-center justify-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  downloadFile(entry);
-                }}
-                title={`Download ${entry.name}`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7,10 12,15 17,10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-              </Button>
-            </>
-          )}
-          <span>{new Date(entry.modified).toLocaleDateString()}</span>
-        </div>
-      </div>
-    );
-  };
 
   const downloadUrl = `${sourceUrl}${sourceUrl.endsWith('/') ? '' : '/'}${runId}-${network}_${elClient}_${clClient}.main.dump.zip`;
 
@@ -696,21 +630,16 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
 
             {/* File listing */}
             {zipInfo.entries && zipInfo.entries.length > 0 && (
-              <div className="border rounded-lg flex-1 min-h-0 max-h-[calc(100vh-40rem)] overflow-y-auto">
-                {filteredFiles.length > 0 ? (
-                  filteredFiles.map((entry, index) => renderFileEntry(entry, index))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? (
-                      <>
-                        <p className="font-medium">No files found</p>
-                        <p className="text-sm mt-1">Try a different search term</p>
-                      </>
-                    ) : (
-                      <p>No files in this dump</p>
-                    )}
-                  </div>
-                )}
+              <div className="border rounded-lg flex-1 min-h-0 max-h-[calc(100vh-40rem)] overflow-y-auto p-2">
+                <FolderTreeView
+                  entries={zipInfo.entries}
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  onDownload={downloadFile}
+                  searchQuery={searchQuery}
+                  defaultExpanded={expandedFolders}
+                  onExpandedChange={setExpandedFolders}
+                />
               </div>
             )}
             {zipInfo.error && (
