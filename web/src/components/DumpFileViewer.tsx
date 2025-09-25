@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -9,6 +9,8 @@ import { ZipFileInfo, ZipFileEntry } from '../types/report';
 import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
 import { FileIcon, defaultStyles } from 'react-file-icon';
+import { FolderTreeView } from './FolderTreeView';
+import { ResizablePanel } from './ResizablePanel';
 
 interface DumpFileViewerProps {
   sourceUrl: string;
@@ -32,6 +34,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const [elLogFile, setElLogFile] = useState<ZipFileEntry | null>(null);
   const [clLogFile, setClLogFile] = useState<ZipFileEntry | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchZipInfo = async () => {
@@ -40,32 +43,32 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         setError(null);
         const info = await getDumpFileInfo(sourceUrl, runId, network, elClient, clClient);
         setZipInfo(info);
-        
+
         if (!info.exists) {
           setError('Dump file not found');
         } else if (info.error) {
           setError(info.error);
         } else if (info.entries) {
           // Find EL and CL output.log files
-          const elLog = info.entries.find(entry => 
-            !entry.is_directory && 
-            entry.name.includes(`el-`) && 
-            entry.name.includes(`-${elClient}-`) && 
+          const elLog = info.entries.find(entry =>
+            !entry.is_directory &&
+            entry.name.includes(`el-`) &&
+            entry.name.includes(`-${elClient}-`) &&
             entry.name.endsWith('/output.log')
           );
-          const clLog = info.entries.find(entry => 
-            !entry.is_directory && 
-            entry.name.includes(`cl-`) && 
-            entry.name.includes(`-${clClient}-`) && 
+          const clLog = info.entries.find(entry =>
+            !entry.is_directory &&
+            entry.name.includes(`cl-`) &&
+            entry.name.includes(`-${clClient}-`) &&
             entry.name.endsWith('/output.log')
           );
-          
+
           setElLogFile(elLog || null);
           setClLogFile(clLog || null);
-          
+
           // Set initial selected file if provided
           if (initialSelectedFile && info.entries) {
-            const file = info.entries.find(entry => 
+            const file = info.entries.find(entry =>
               !entry.is_directory && entry.name === initialSelectedFile
             );
             if (file) {
@@ -104,45 +107,25 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Failed to download file:', err);
+      // Failed to download file
     }
   };
 
-  // Filter files based on search query
-  const filteredFiles = useMemo(() => {
-    if (!zipInfo?.entries || !searchQuery) {
-      return zipInfo?.entries?.filter(entry => !entry.is_directory) || [];
-    }
-    
-    const query = searchQuery.toLowerCase();
-    return zipInfo.entries.filter(entry => {
-      if (entry.is_directory) return false;
-      
-      // Search in file name and path
-      const fileName = entry.name.toLowerCase();
-      const fileNameOnly = entry.name.split('/').pop()?.toLowerCase() || '';
-      
-      // Check if query matches file name, path, or extension
-      return fileName.includes(query) || 
-             fileNameOnly.includes(query) ||
-             fileName.split('.').pop()?.includes(query);
-    });
-  }, [zipInfo?.entries, searchQuery]);
 
   const getFileIconComponent = (fileName: string, isDirectory: boolean) => {
     if (isDirectory) {
       return <span className="text-lg">📁</span>;
     }
-    
+
     const name = fileName.split('/').pop()?.toLowerCase() || '';
     let ext = fileName.split('.').pop()?.toLowerCase();
-    
+
     // Handle special cases and map to extensions that react-file-icon supports
     if (name === 'dockerfile') ext = 'docker';
     if (name === 'makefile') ext = 'make';
     if (name === 'readme' || name === 'readme.md') ext = 'md';
     if (name === 'jwtsecret') ext = 'key';
-    
+
     // Map some extensions to more common ones that react-file-icon supports
     switch (ext) {
       case 'yml':
@@ -181,19 +164,19 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         ext = 'zip';
         break;
     }
-    
+
     // Get default styles as base
     const baseIconProps = defaultStyles[ext as keyof typeof defaultStyles] || defaultStyles.txt;
-    
+
     // Define custom colors for different file types
     let customProps = { ...baseIconProps };
-    
+
     switch (ext) {
       // Programming languages
       case 'js':
       case 'jsx':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#f7df1e',      // JavaScript yellow
           gradientColor: '#f0db4f',   // Lighter JS yellow
           labelColor: '#323330'       // Dark gray for contrast
@@ -201,40 +184,40 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         break;
       case 'ts':
       case 'tsx':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#3178c6',      // TypeScript blue
           gradientColor: '#235a97',   // Darker TS blue
           labelColor: '#ffffff'       // White for contrast
         };
         break;
       case 'py':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#3776ab',      // Python blue
           gradientColor: '#ffd43b',   // Python yellow
           labelColor: '#646464'       // Gray
         };
         break;
       case 'go':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#00add8',      // Go cyan
           gradientColor: '#007d9c',   // Darker Go blue
           labelColor: '#ffffff'       // White
         };
         break;
       case 'rs':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#ce422b',      // Rust red
           gradientColor: '#000000',   // Black
           labelColor: '#ffffff'       // White
         };
         break;
       case 'java':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#f89820',      // Java orange
           gradientColor: '#5382a1',   // Java blue
           labelColor: '#ffffff'       // White
@@ -243,34 +226,34 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       case 'cpp':
       case 'c':
       case 'h':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#00599c',      // C++ blue
           gradientColor: '#004482',   // Darker C++ blue
           labelColor: '#ffffff'       // White
         };
         break;
       case 'rb':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#cc342d',      // Ruby red
           gradientColor: '#a91401',   // Darker ruby red
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Web files
       case 'html':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#e34c26',      // HTML orange
           gradientColor: '#f16529',   // Lighter HTML orange
           labelColor: '#ffffff'       // White
         };
         break;
       case 'css':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#1572b6',      // CSS blue
           gradientColor: '#33a9dc',   // Lighter CSS blue
           labelColor: '#ffffff'       // White
@@ -278,18 +261,18 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         break;
       case 'scss':
       case 'sass':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#cc6699',      // Sass pink
           gradientColor: '#bf4080',   // Darker Sass pink
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Data files
       case 'json':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#90a959',      // JSON green
           gradientColor: '#cbcb41',   // JSON yellow-green
           labelColor: '#3d3d3d'       // Dark gray
@@ -297,42 +280,42 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         break;
       case 'yaml':
       case 'yml':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#cb171e',      // YAML red
           gradientColor: '#ff6b6b',   // Lighter red
           labelColor: '#ffffff'       // White
         };
         break;
       case 'toml':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#9c4221',      // TOML brown
           gradientColor: '#e37933',   // TOML orange
           labelColor: '#ffffff'       // White
         };
         break;
       case 'xml':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#f97316',      // XML orange
           gradientColor: '#ff9800',   // Lighter orange
           labelColor: '#ffffff'       // White
         };
         break;
       case 'csv':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#22c55e',      // CSV green
           gradientColor: '#16a34a',   // Darker green
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Config files
       case 'env':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#ecd53f',      // ENV yellow
           gradientColor: '#f4e55d',   // Lighter yellow
           labelColor: '#3d3d3d'       // Dark gray
@@ -340,79 +323,79 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
         break;
       case 'config':
       case 'ini':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#6b7280',      // Config gray
           gradientColor: '#9ca3af',   // Lighter gray
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Shell scripts
       case 'sh':
       case 'bash':
       case 'zsh':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#4eaa25',      // Shell green
           gradientColor: '#89e051',   // Lighter green
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Docker
       case 'docker':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#2496ed',      // Docker blue
           gradientColor: '#0db7ed',   // Docker cyan
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Documentation
       case 'md':
       case 'markdown':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#083fa1',      // Markdown blue
           gradientColor: '#0e7fc1',   // Lighter blue
           labelColor: '#ffffff'       // White
         };
         break;
       case 'txt':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#6b7280',      // Text gray
           gradientColor: '#a8a8a8',   // Lighter gray
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Logs
       case 'log':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#f59e0b',      // Log amber
           gradientColor: '#fbbf24',   // Lighter amber
           labelColor: '#7c2d12'       // Dark amber
         };
         break;
-      
+
       // Archives
       case 'zip':
       case 'tar':
       case 'gz':
       case '7z':
       case 'rar':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#a855f7',      // Archive purple
           gradientColor: '#c084fc',   // Lighter purple
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Images
       case 'png':
       case 'jpg':
@@ -420,59 +403,59 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
       case 'gif':
       case 'svg':
       case 'webp':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#06b6d4',      // Image cyan
           gradientColor: '#22d3ee',   // Lighter cyan
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Certificates/Keys
       case 'key':
       case 'pem':
       case 'crt':
       case 'cert':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#ef4444',      // Security red
           gradientColor: '#dc2626',   // Darker red
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Database
       case 'db':
       case 'sqlite':
       case 'sql':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#336791',      // Database blue
           gradientColor: '#4e8bbf',   // Lighter database blue
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       // Build files
       case 'make':
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#427819',      // Make green
           gradientColor: '#6dad2a',   // Lighter green
           labelColor: '#ffffff'       // White
         };
         break;
-      
+
       default:
-        customProps = { 
-          ...baseIconProps, 
+        customProps = {
+          ...baseIconProps,
           glyphColor: '#9ca3af',      // Default gray
           gradientColor: '#d1d5db',   // Lighter gray
           labelColor: '#374151'       // Dark gray
         };
         break;
     }
-    
+
     return (
       <FileIcon
         extension={ext || 'txt'}
@@ -481,54 +464,6 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     );
   };
 
-  const renderFileEntry = (entry: ZipFileEntry, index: number) => {
-    const isFolder = entry.is_directory;
-    const iconComponent = getFileIconComponent(entry.name, isFolder);
-
-    return (
-      <div
-        key={index}
-        className={`flex items-center justify-between py-2 px-3 border-b last:border-b-0 hover:bg-muted/50`}
-      >
-        <div
-          className={`flex items-center gap-2 flex-1 min-w-0 ${!isFolder ? 'cursor-pointer' : ''}`}
-          onClick={() => !isFolder && handleFileSelect(entry)}
-        >
-          <div className="flex items-center justify-center" style={{ width: '16px', height: '16px' }}>
-            {iconComponent}
-          </div>
-          <span className="font-mono text-sm truncate" title={entry.name}>
-            {entry.name}
-          </span>
-          {isFolder && <Badge variant="outline" className="text-xs">folder</Badge>}
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          {!isFolder && (
-            <>
-              <span>{formatBytes(entry.size)}</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-1 px-0 hover:bg-muted text-foreground flex items-center justify-center"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  downloadFile(entry);
-                }}
-                title={`Download ${entry.name}`}
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-foreground">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7,10 12,15 17,10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-              </Button>
-            </>
-          )}
-          <span>{new Date(entry.modified).toLocaleDateString()}</span>
-        </div>
-      </div>
-    );
-  };
 
   const downloadUrl = `${sourceUrl}${sourceUrl.endsWith('/') ? '' : '/'}${runId}-${network}_${elClient}_${clClient}.main.dump.zip`;
 
@@ -573,10 +508,11 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     );
   }
 
-  return (
-    <div className="flex gap-4 h-full">
-      {/* Left Sidebar - Quick Access and File List */}
-      <div className="w-1/3 min-w-80 flex flex-col space-y-4 overflow-hidden">
+  // Generate a unique key for this dump file for persisting panel width
+  const panelStorageKey = `dump-${runId}-${network}`;
+
+  const leftPanel = (
+    <div className="h-full flex flex-col gap-4 p-4">
         {/* Quick Access Logs Section */}
         {(elLogFile || clLogFile) && (
           <Card className="flex-shrink-0">
@@ -696,21 +632,16 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
 
             {/* File listing */}
             {zipInfo.entries && zipInfo.entries.length > 0 && (
-              <div className="border rounded-lg flex-1 min-h-0 max-h-[calc(100vh-40rem)] overflow-y-auto">
-                {filteredFiles.length > 0 ? (
-                  filteredFiles.map((entry, index) => renderFileEntry(entry, index))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    {searchQuery ? (
-                      <>
-                        <p className="font-medium">No files found</p>
-                        <p className="text-sm mt-1">Try a different search term</p>
-                      </>
-                    ) : (
-                      <p>No files in this dump</p>
-                    )}
-                  </div>
-                )}
+              <div className="border rounded-lg flex-1 min-h-0 overflow-y-auto p-2">
+                <FolderTreeView
+                  entries={zipInfo.entries}
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  onDownload={downloadFile}
+                  searchQuery={searchQuery}
+                  defaultExpanded={expandedFolders}
+                  onExpandedChange={setExpandedFolders}
+                />
               </div>
             )}
             {zipInfo.error && (
@@ -720,12 +651,13 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
             )}
           </CardContent>
         </Card>
-      </div>
+    </div>
+  );
 
-      {/* Right Content Area - File Viewer */}
-      <div className="flex-1 min-w-0">
+  const rightPanel = (
+    <div className="h-full p-4 pl-0">
         {selectedFile ? (
-          <Card className="h-full">
+          <Card className="h-full overflow-hidden">
             <FileViewer
               sourceUrl={sourceUrl}
               runId={runId}
@@ -761,8 +693,18 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
+  );
+
+  return (
+    <ResizablePanel
+      leftPanel={leftPanel}
+      rightPanel={rightPanel}
+      defaultLeftWidth={33}
+      minLeftWidth={20}
+      maxLeftWidth={60}
+      storageKey={panelStorageKey}
+    />
   );
 }
 

@@ -59,25 +59,25 @@ export default function DumpExplorer() {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex-shrink-0 flex items-center justify-between p-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold">Kurtosis Enclave Dump</h1>
+            <h1 className="text-2xl font-bold">Kurtosis Enclave Dump</h1>
             <Badge variant="outline">{id}</Badge>
           </div>
-          <p className="text-muted-foreground mt-1">
+          <p className="text-muted-foreground text-sm mt-1">
             Explore the contents of the Kurtosis enclave dump file
           </p>
         </div>
         <Link to={sourceDirectory ? `/test/${sourceDirectory}/${id}` : `/test/${id}`}>
-          <Button variant="outline">Back to Test</Button>
+          <Button variant="outline" size="sm">Back to Test</Button>
         </Link>
       </div>
 
-      {/* Dump File Viewer - Full Width */}
-      <div className="flex-1 p-4">
+      {/* Dump File Viewer - Full Height */}
+      <div className="flex-1 overflow-hidden">
         <DumpFileViewer
           sourceUrl={decodeURIComponent(sourceUrl)}
           runId={id}

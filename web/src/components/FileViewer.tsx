@@ -294,7 +294,7 @@ export function FileViewer({
 
     const heightClass = isFullWindow
       ? "h-full"
-      : "max-h-[calc(100vh-26rem)]";
+      : "max-h-[calc(100vh-24rem)]";
 
     return (
       <div ref={contentRef} className={`text-xs font-mono bg-muted overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
