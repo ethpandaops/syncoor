@@ -83,12 +83,12 @@ export function ResizablePanel({
   return (
     <div
       ref={containerRef}
-      className="flex h-full"
+      className="flex h-full w-full"
       style={{ cursor: isDragging ? 'col-resize' : 'default' }}
     >
       {/* Left Panel */}
       <div
-        className="flex-shrink-0 overflow-hidden"
+        className="flex-shrink-0 h-full overflow-hidden"
         style={{ width: `${leftWidth}%` }}
       >
         {leftPanel}
@@ -96,7 +96,7 @@ export function ResizablePanel({
 
       {/* Resize Handle */}
       <div
-        className={`group flex-shrink-0 w-1 bg-border hover:bg-primary/30 cursor-col-resize transition-all relative ${
+        className={`group flex-shrink-0 w-1 bg-border hover:bg-primary/30 cursor-col-resize transition-all relative my-4 ${
           isDragging ? 'bg-primary/40 w-1.5' : ''
         }`}
         onMouseDown={handleMouseDown}
@@ -111,7 +111,7 @@ export function ResizablePanel({
       </div>
 
       {/* Right Panel */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 h-full overflow-hidden">
         {rightPanel}
       </div>
     </div>

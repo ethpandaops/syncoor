@@ -512,7 +512,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   const panelStorageKey = `dump-${runId}-${network}`;
 
   const leftPanel = (
-    <div className="h-full flex flex-col space-y-4 overflow-hidden pr-4">
+    <div className="h-full flex flex-col gap-4 p-4">
         {/* Quick Access Logs Section */}
         {(elLogFile || clLogFile) && (
           <Card className="flex-shrink-0">
@@ -632,7 +632,7 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
 
             {/* File listing */}
             {zipInfo.entries && zipInfo.entries.length > 0 && (
-              <div className="border rounded-lg flex-1 min-h-0 max-h-[calc(100vh-40rem)] overflow-y-auto p-2">
+              <div className="border rounded-lg flex-1 min-h-0 overflow-y-auto p-2">
                 <FolderTreeView
                   entries={zipInfo.entries}
                   selectedFile={selectedFile}
@@ -655,9 +655,9 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
   );
 
   const rightPanel = (
-    <div className="h-full">
+    <div className="h-full p-4 pl-0">
         {selectedFile ? (
-          <Card className="h-full">
+          <Card className="h-full overflow-hidden">
             <FileViewer
               sourceUrl={sourceUrl}
               runId={runId}
