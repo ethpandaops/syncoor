@@ -10,6 +10,7 @@ import { formatBytes } from '../lib/utils';
 import { FileViewer } from './FileViewer';
 import { FileIcon, defaultStyles } from 'react-file-icon';
 import { FolderTreeView } from './FolderTreeView';
+import { ResizablePanel } from './ResizablePanel';
 
 interface DumpFileViewerProps {
   sourceUrl: string;
@@ -507,10 +508,11 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
     );
   }
 
-  return (
-    <div className="flex gap-4 h-full">
-      {/* Left Sidebar - Quick Access and File List */}
-      <div className="w-1/3 min-w-80 flex flex-col space-y-4 overflow-hidden">
+  // Generate a unique key for this dump file for persisting panel width
+  const panelStorageKey = `dump-${runId}-${network}`;
+
+  const leftPanel = (
+    <div className="h-full flex flex-col space-y-4 overflow-hidden pr-4">
         {/* Quick Access Logs Section */}
         {(elLogFile || clLogFile) && (
           <Card className="flex-shrink-0">
@@ -649,10 +651,11 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
             )}
           </CardContent>
         </Card>
-      </div>
+    </div>
+  );
 
-      {/* Right Content Area - File Viewer */}
-      <div className="flex-1 min-w-0">
+  const rightPanel = (
+    <div className="h-full">
         {selectedFile ? (
           <Card className="h-full">
             <FileViewer
@@ -690,8 +693,18 @@ export function DumpFileViewer({ sourceUrl, runId, network, elClient, clClient, 
             </CardContent>
           </Card>
         )}
-      </div>
     </div>
+  );
+
+  return (
+    <ResizablePanel
+      leftPanel={leftPanel}
+      rightPanel={rightPanel}
+      defaultLeftWidth={33}
+      minLeftWidth={20}
+      maxLeftWidth={60}
+      storageKey={panelStorageKey}
+    />
   );
 }
 
