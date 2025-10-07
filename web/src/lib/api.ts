@@ -137,7 +137,7 @@ export async function fetchIndex(directory: Directory): Promise<ReportIndex> {
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       // 404 means no tests available, return empty index
-      return { entries: [] };
+      return { entries: [], generated: new Date().toISOString() };
     }
     if (error instanceof ApiError) {
       throw error;
