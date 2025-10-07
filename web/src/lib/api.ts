@@ -79,7 +79,11 @@ async function fetchWithRetry(url: string, options?: RequestInit): Promise<Respo
         url
       );
     } catch (error) {
-      // Network error or timeout
+      // If it's an ApiError (like 4xx), re-throw immediately without retrying
+      if (error instanceof ApiError) {
+        throw error;
+      }
+      // Network error or timeout - will retry
       lastError = error instanceof Error ? error : new Error('Unknown error');
     }
 
@@ -109,28 +113,32 @@ function buildUrl(directory: Directory, path: string): string {
  * Fetches the report index from a directory
  * @param directory - The directory to fetch from
  * @returns The report index
- * @throws ApiError if the fetch fails
+ * @throws ApiError if the fetch fails (except for 404, which returns empty index)
  */
 export async function fetchIndex(directory: Directory): Promise<ReportIndex> {
   const baseUrl = buildUrl(directory, 'index.json');
   // Add cache-busting parameter to ensure we get fresh data
   const url = `${baseUrl}?_t=${Date.now()}`;
-  
+
   try {
     const response = await fetchWithRetry(url);
     const data = await response.json();
-    
+
     // Basic validation
     if (!data || typeof data !== 'object') {
       throw new ApiError('Invalid index data: expected object', undefined, undefined, url);
     }
-    
+
     if (!Array.isArray(data.entries)) {
       throw new ApiError('Invalid index data: entries must be an array', undefined, undefined, url);
     }
-    
+
     return data as ReportIndex;
   } catch (error) {
+    if (error instanceof ApiError && error.status === 404) {
+      // 404 means no tests available, return empty index
+      return { entries: [] };
+    }
     if (error instanceof ApiError) {
       throw error;
     }
