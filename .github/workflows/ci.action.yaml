@@ -20,7 +20,6 @@ jobs:
       uses: ./
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        ethereum-package: github.com/ethpandaops/ethereum-package@fix-osaka-time-bug
         repository: https://github.com/${{ github.repository }}.git
         git-ref: ${{ github.event.pull_request.head.sha }}
         log-force-colors: true
