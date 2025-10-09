@@ -365,7 +365,7 @@ runs:
       run: |
         jobs=$(gh api -F per_page=100 -X GET repos/${{ github.repository }}/actions/runs/${{ github.run_id}}/attempts/${{ github.run_attempt }}/jobs)
         job_id=$(echo $jobs | jq -r '.jobs[] | select(.runner_name=="${{ runner.name }}") | .id')
-        echo "job_id=$job_id" >> $GITHUB_OUTPUT
+        echo "job_id=${job_id}" >> "$GITHUB_OUTPUT"
 
     - name: Run Syncoor test
       if: ${{ inputs.run-tests == 'true' }}
