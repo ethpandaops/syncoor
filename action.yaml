@@ -308,6 +308,10 @@ runs:
       shell: bash
       run: |
         kurtosis clean -a
+        rm -rf ${{ runner.temp }}/tmp_results
+        rm -rf ${{ runner.temp }}/reports
+        rm -rf ${{ runner.temp }}/kurtosis-enclave-dump
+        rm -rf ${{ runner.temp }}/*.dump.zip
 
     - name: Cleanup any existing named containers
       shell: bash
@@ -611,11 +615,11 @@ runs:
       shell: bash
       run: |
         set +e  # Disable exit on error to handle the exit code ourselves
-        kurtosis enclave dump ${{ inputs.enclave }} kurtosis-enclave-dump
+        kurtosis enclave dump ${{ inputs.enclave }} ${{ runner.temp }}/kurtosis-enclave-dump
         DUMP_EXIT_CODE=$?
         set -e  # Re-enable exit on error
 
-        if [ $DUMP_EXIT_CODE -eq 0 ] && [ -d "kurtosis-enclave-dump" ]; then
+        if [ $DUMP_EXIT_CODE -eq 0 ] && [ -d "${{ runner.temp }}/kurtosis-enclave-dump" ]; then
           echo "dump_created=true" >> $GITHUB_OUTPUT
           echo "✅ Kurtosis enclave dump created successfully"
         else
@@ -628,7 +632,7 @@ runs:
       if: steps.enclave-dump.outputs.dump_created == 'true'
       with:
         name: ${{ inputs.network }}-${{ inputs.el-client }}-${{ inputs.cl-client }}-kurtosis-dump-${{ steps.get-job-id.outputs.job_id }}
-        path: kurtosis-enclave-dump
+        path: ${{ runner.temp }}/kurtosis-enclave-dump
         retention-days: ${{ inputs.artifact-retention-days-enclave-dump }}
 
     - name: Upload enclave dump to S3
@@ -642,7 +646,7 @@ runs:
         echo "Uploading enclave dump to S3"
         set -x
         filename="${{ steps.run-test.outputs.main-report-file }}.dump.zip"
-        cd kurtosis-enclave-dump
+        cd ${{ runner.temp }}/kurtosis-enclave-dump
         zip -r ../$filename .
         cd ..
         rclone copy $filename s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}/
@@ -693,6 +697,7 @@ runs:
         rm -rf ${{ runner.temp }}/tmp_results
         rm -rf ${{ runner.temp }}/reports
         rm -rf ${{ runner.temp }}/kurtosis-enclave-dump
+        rm -rf ${{ runner.temp }}/*.dump.zip
         docker rm -f syncoor-run
         docker rm -f syncoor-index
         docker rm -f syncoor-md
