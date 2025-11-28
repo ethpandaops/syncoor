@@ -12,6 +12,7 @@ import (
 
 	io_prometheus_client "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/sirupsen/logrus"
 )
 
@@ -126,7 +127,7 @@ func (c *client) FetchMetrics(ctx context.Context) (*ParsedMetrics, error) {
 
 // parseMetrics parses the Prometheus-style metrics using official libraries
 func (c *client) parseMetrics(reader io.Reader) (*ParsedMetrics, error) {
-	parser := expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	metricFamilies, err := parser.TextToMetricFamilies(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse metrics: %w", err)
