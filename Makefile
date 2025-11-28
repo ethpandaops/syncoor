@@ -6,7 +6,7 @@ BINARY_PATH=./bin/$(BINARY_NAME)
 CMD_PATH=./cmd/syncoor
 
 # Go configuration
-GO_VERSION=1.23
+GO_VERSION=1.24
 
 # Version detection from git
 # Try to get version from git describe (tags) or fallback to commit hash
