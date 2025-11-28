@@ -12,9 +12,10 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { formatBytes, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
+import { ReportEntry } from '../../hooks';
 
 interface ClientGroupDiskChartProps {
-  data: any[];
+  data: ReportEntry[];
   className?: string;
   height?: number;
   showGrid?: boolean;

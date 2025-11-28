@@ -45,6 +45,7 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
     return () => {
       clearInterval(interval);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [test.is_running, testKey, onUpdateDetail]); // Removed detail?.data to prevent infinite loop
 
   // Update seconds since last fetch
