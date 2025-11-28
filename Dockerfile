@@ -10,7 +10,7 @@ ARG VERSION
 RUN make build
 
 FROM alpine:latest
-ARG KURTOSIS_VERSION=1.11.1
+ARG KURTOSIS_VERSION=1.13.2
 RUN apk add --no-cache ca-certificates bash docker-cli curl jq && \
     if [ "$KURTOSIS_VERSION" = "latest" ]; then \
         KURTOSIS_VERSION=$(curl -s https://api.github.com/repos/kurtosis-tech/kurtosis-cli-release-artifacts/releases/latest | jq -r .tag_name); \

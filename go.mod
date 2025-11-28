@@ -6,7 +6,7 @@ require (
 	github.com/docker/go-connections v0.5.0
 	github.com/ethpandaops/ethereum-package-go v0.8.1
 	github.com/fsnotify/fsnotify v1.9.0
-	github.com/kurtosis-tech/kurtosis/api/golang v1.11.1
+	github.com/kurtosis-tech/kurtosis/api/golang v1.13.2
 	github.com/moby/moby/api v1.52.0-alpha.1
 	github.com/moby/moby/client v0.1.0-alpha.0
 	github.com/prometheus/client_golang v1.23.0
