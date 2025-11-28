@@ -239,7 +239,7 @@ inputs:
   kurtosis-version:
     description: 'Kurtosis CLI version to use'
     required: false
-    default: '1.11.1'
+    default: '1.13.2'
 
 outputs:
   report-path:
