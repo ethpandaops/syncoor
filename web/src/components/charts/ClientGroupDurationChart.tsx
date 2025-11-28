@@ -12,9 +12,10 @@ import {
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 import { formatDuration, formatTimestamp, getOptimalMovingAverageWindow, calculateConfidenceBands } from '../../lib/utils';
+import { ReportEntry } from '../../hooks';
 
 interface ClientGroupDurationChartProps {
-  data: any[];
+  data: ReportEntry[];
   className?: string;
   height?: number;
   showGrid?: boolean;

@@ -320,11 +320,7 @@ export async function getDumpFileInfo(
 
     // Configure zip.js
     zip.configure({
-      useWebWorkers: true,
-      workerScripts: {
-        deflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js'],
-        inflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js']
-      }
+      useWebWorkers: true
     });
 
     let zipEntries;
@@ -460,11 +456,7 @@ export async function extractFileFromDump(
   try {
     // Configure zip.js
     zip.configure({
-      useWebWorkers: true,
-      workerScripts: {
-        deflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js'],
-        inflate: ['https://unpkg.com/@zip.js/zip.js@2.7.72/dist/z-worker.js']
-      }
+      useWebWorkers: true
     });
 
     let entries;
