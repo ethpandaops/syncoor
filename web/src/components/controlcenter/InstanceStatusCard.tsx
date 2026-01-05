@@ -66,7 +66,7 @@ const InstanceStatusCard: React.FC<InstanceStatusCardProps> = ({ instance }) => 
         <div className="space-y-2 text-xs">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Active Tests:</span>
-            <span className="font-medium text-green-600 dark:text-green-400">
+            <span className={`font-medium ${instance.active_tests > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
               {instance.active_tests}
             </span>
           </div>
