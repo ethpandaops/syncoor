@@ -68,32 +68,36 @@ export function Header() {
 
         {/* Navigation */}
         <nav className="flex items-center space-x-1">
-          {navigationItems.map((item) => (
-            <Button
-              key={item.name}
-              variant={location.pathname === item.href ? "default" : "ghost"}
-              size="sm"
-              asChild
-            >
-              <Link to={item.href}>
-                {item.name}
-              </Link>
-            </Button>
-          ))}
+          {navigationItems
+            .filter((item) => !(config?.mode === 'control-center' && item.name === 'Tests'))
+            .map((item) => (
+              <Button
+                key={item.name}
+                variant={location.pathname === item.href ? "default" : "ghost"}
+                size="sm"
+                asChild
+              >
+                <Link to={item.href}>
+                  {item.name}
+                </Link>
+              </Button>
+            ))}
         </nav>
 
         {/* Right side - Settings and Theme toggle */}
         <div className="ml-auto flex items-center space-x-2 relative" ref={dropdownRef}>
-          {/* Settings/Directories button */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowDirectories(!showDirectories)}
-            className="h-9 w-9"
-            aria-label="Toggle directories"
-          >
-            <CogIcon className="h-4 w-4" />
-          </Button>
+          {/* Settings/Directories button - hidden in control center mode */}
+          {config?.mode !== 'control-center' && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowDirectories(!showDirectories)}
+              className="h-9 w-9"
+              aria-label="Toggle directories"
+            >
+              <CogIcon className="h-4 w-4" />
+            </Button>
+          )}
 
           {/* Theme toggle */}
           <Button

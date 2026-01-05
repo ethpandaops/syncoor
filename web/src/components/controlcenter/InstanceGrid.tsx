@@ -39,16 +39,9 @@ const InstanceGrid: React.FC<InstanceGridProps> = ({ instances, isLoading, error
     );
   }
 
-  // Sort instances: healthy first, then by name
-  const sortedInstances = [...instances].sort((a, b) => {
-    if (a.status === 'healthy' && b.status !== 'healthy') return -1;
-    if (a.status !== 'healthy' && b.status === 'healthy') return 1;
-    return a.name.localeCompare(b.name);
-  });
-
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {sortedInstances.map((instance) => (
+      {instances.map((instance) => (
         <InstanceStatusCard key={instance.name} instance={instance} />
       ))}
     </div>

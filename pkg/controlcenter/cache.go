@@ -22,18 +22,20 @@ type InstanceCache struct {
 
 // Cache manages cached data from all Syncoor instances
 type Cache struct {
-	mu        sync.RWMutex
-	log       logrus.FieldLogger
-	client    *Client
-	cfg       *Config
-	instances map[string]*InstanceCache
-	stopCh    chan struct{}
-	wg        sync.WaitGroup
+	mu            sync.RWMutex
+	log           logrus.FieldLogger
+	client        *Client
+	cfg           *Config
+	instances     map[string]*InstanceCache
+	instanceOrder []string // preserves config order
+	stopCh        chan struct{}
+	wg            sync.WaitGroup
 
 	// GitHub workflow queue caching
-	githubClient    *GitHubClient
-	githubMu        sync.RWMutex
-	githubWorkflows map[string]*WorkflowQueueStatus // key: owner/repo/workflow_id
+	githubClient        *GitHubClient
+	githubMu            sync.RWMutex
+	githubWorkflows     map[string]*WorkflowQueueStatus // key: owner/repo/workflow_id
+	githubWorkflowOrder []string                        // preserves config order
 }
 
 // NewCache creates a new cache instance
@@ -98,6 +100,7 @@ func (c *Cache) AddInstance(config InstanceConfig) {
 			Status: StatusUnknown,
 		},
 	}
+	c.instanceOrder = append(c.instanceOrder, config.Name)
 }
 
 // RemoveInstance removes an instance from the cache
@@ -112,7 +115,7 @@ func (c *Cache) GetAllTests() []AggregatedTestSummary {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	var allTests []AggregatedTestSummary
+	allTests := []AggregatedTestSummary{}
 
 	for _, inst := range c.instances {
 		inst.mu.RLock()
@@ -130,16 +133,18 @@ func (c *Cache) GetAllTests() []AggregatedTestSummary {
 	return allTests
 }
 
-// GetInstanceHealth returns the health status of all instances
+// GetInstanceHealth returns the health status of all instances in config order
 func (c *Cache) GetInstanceHealth() []InstanceHealth {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	var health []InstanceHealth
-	for _, inst := range c.instances {
-		inst.mu.RLock()
-		health = append(health, inst.health)
-		inst.mu.RUnlock()
+	health := []InstanceHealth{}
+	for _, name := range c.instanceOrder {
+		if inst, ok := c.instances[name]; ok {
+			inst.mu.RLock()
+			health = append(health, inst.health)
+			inst.mu.RUnlock()
+		}
 	}
 
 	return health
@@ -395,15 +400,23 @@ func (c *Cache) refreshGitHubWorkflows(ctx context.Context) {
 		newWorkflows[key] = status
 	}
 
+	// Build order from config to preserve config order
+	order := make([]string, 0, len(workflows))
+	for _, wfCfg := range workflows {
+		key := wfCfg.Owner + "/" + wfCfg.Repo + "/" + wfCfg.WorkflowID
+		order = append(order, key)
+	}
+
 	// Update cache
 	c.githubMu.Lock()
 	c.githubWorkflows = newWorkflows
+	c.githubWorkflowOrder = order
 	c.githubMu.Unlock()
 
 	c.log.Debug("GitHub workflow queue refresh complete")
 }
 
-// GetGitHubQueueStatus returns the aggregated GitHub queue status
+// GetGitHubQueueStatus returns the aggregated GitHub queue status in config order
 func (c *Cache) GetGitHubQueueStatus() *GitHubQueueResponse {
 	c.githubMu.RLock()
 	defer c.githubMu.RUnlock()
@@ -417,10 +430,12 @@ func (c *Cache) GetGitHubQueueStatus() *GitHubQueueResponse {
 		response.RateLimitRemain = c.githubClient.RateLimitRemaining()
 	}
 
-	for _, status := range c.githubWorkflows {
-		response.Workflows = append(response.Workflows, *status)
-		response.TotalQueued += status.QueuedCount
-		response.TotalRunning += status.RunningCount
+	for _, key := range c.githubWorkflowOrder {
+		if status, ok := c.githubWorkflows[key]; ok {
+			response.Workflows = append(response.Workflows, *status)
+			response.TotalQueued += status.QueuedCount
+			response.TotalRunning += status.RunningCount
+		}
 	}
 
 	return response

@@ -5,9 +5,10 @@ import { WorkflowQueueStatus } from '../../types/controlCenter';
 
 interface WorkflowQueueCardProps {
   workflow: WorkflowQueueStatus;
+  connectedCount?: number;
 }
 
-const WorkflowQueueCard: React.FC<WorkflowQueueCardProps> = ({ workflow }) => {
+const WorkflowQueueCard: React.FC<WorkflowQueueCardProps> = ({ workflow, connectedCount = 0 }) => {
   const formatTimeAgo = (timestamp: string): string => {
     if (!timestamp) return 'Never';
     const now = new Date();
@@ -60,8 +61,16 @@ const WorkflowQueueCard: React.FC<WorkflowQueueCardProps> = ({ workflow }) => {
             </span>
           </div>
           <div className="flex justify-between">
+            <span className="text-muted-foreground">Connected:</span>
+            <span className={`font-medium ${connectedCount > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+              {connectedCount}
+            </span>
+          </div>
+          <div className="flex justify-between">
             <span className="text-muted-foreground">Last Check:</span>
-            <span>{formatTimeAgo(workflow.last_check)}</span>
+            <span title={workflow.last_check ? new Date(workflow.last_check).toLocaleString() : ''}>
+              {formatTimeAgo(workflow.last_check)}
+            </span>
           </div>
         </div>
 

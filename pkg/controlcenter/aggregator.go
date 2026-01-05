@@ -139,7 +139,7 @@ func (a *Aggregator) GetTests(filters TestListFilters) *AggregatedTestListRespon
 
 // filterTests applies filters to the test list
 func (a *Aggregator) filterTests(tests []AggregatedTestSummary, filters TestListFilters) []AggregatedTestSummary {
-	var result []AggregatedTestSummary
+	result := []AggregatedTestSummary{}
 
 	for _, t := range tests {
 		// Filter by active status

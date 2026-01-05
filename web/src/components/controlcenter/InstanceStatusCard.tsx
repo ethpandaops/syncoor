@@ -76,7 +76,9 @@ const InstanceStatusCard: React.FC<InstanceStatusCardProps> = ({ instance }) => 
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Last Check:</span>
-            <span>{formatTimeAgo(instance.last_check)}</span>
+            <span title={instance.last_check ? new Date(instance.last_check).toLocaleString() : ''}>
+              {formatTimeAgo(instance.last_check)}
+            </span>
           </div>
         </div>
 

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import InstanceGrid from '../components/controlcenter/InstanceGrid';
 import AggregatedTestTable from '../components/controlcenter/AggregatedTestTable';
 import GitHubQueueSection from '../components/controlcenter/GitHubQueueSection';
-import { useCCStatus, useCCTests } from '../hooks/useControlCenter';
+import { useCCStatus, useCCTests, useCCGitHubQueue } from '../hooks/useControlCenter';
 import { CCTestFilters } from '../types/controlCenter';
 
 interface ControlCenterProps {
@@ -23,12 +22,37 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [instanceFilter, setInstanceFilter] = useState<string>('all');
 
-  const { data: status, isLoading: statusLoading, error: statusError, refetch: refetchStatus } = useCCStatus(endpoint);
+  const { data: status, isLoading: statusLoading, error: statusError } = useCCStatus(endpoint);
   const { data: tests, isLoading: testsLoading, error: testsError } = useCCTests(endpoint, {
     ...filters,
     active: activeFilter === 'active' ? true : activeFilter === 'inactive' ? false : undefined,
     instance: instanceFilter !== 'all' ? instanceFilter : undefined,
   });
+  const { data: allTestsData } = useCCTests(endpoint, { page_size: 200 });
+  const { data: githubQueue } = useCCGitHubQueue(endpoint);
+
+  // Calculate connected count for stats card
+  const githubConnectedCount = useMemo(() => {
+    if (!allTestsData?.tests || !githubQueue?.workflows) return 0;
+
+    const connectedJobIds = new Set<string>();
+    for (const test of allTestsData.tests) {
+      const jobId = test.labels?.['github.job_id'];
+      if (jobId) {
+        connectedJobIds.add(jobId);
+      }
+    }
+
+    let count = 0;
+    for (const workflow of githubQueue.workflows) {
+      for (const job of workflow.jobs) {
+        if (connectedJobIds.has(String(job.id))) {
+          count++;
+        }
+      }
+    }
+    return count;
+  }, [allTestsData, githubQueue]);
 
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
@@ -44,60 +68,32 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
     setFilters(prev => ({ ...prev, page: 1 }));
   };
 
-  const handleRefresh = () => {
-    refetchStatus();
-  };
-
   // Get unique instance names for filter
   const instanceNames = status?.instances.map(i => i.name) || [];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Control Center</h1>
-          <p className="text-muted-foreground text-sm">
-            Aggregated view of all Syncoor instances
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={handleRefresh}>
-          <RefreshIcon className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+      <div>
+        <h1 className="text-2xl font-bold">Control Center</h1>
+        <p className="text-muted-foreground text-sm">
+          Aggregated view of all Syncoor instances
+        </p>
       </div>
 
       {/* Summary Stats */}
       {status && (() => {
         const hasGitHubJobs = status.github_queued > 0 || status.github_running > 0;
         return (
-          <div className={`grid grid-cols-2 gap-4 ${hasGitHubJobs ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+          <div className={`grid grid-cols-1 gap-4 ${hasGitHubJobs ? 'md:grid-cols-2' : ''}`}>
             <Card>
               <CardContent className="p-4">
-                <div className="text-2xl font-bold">{status.instances.length}</div>
-                <div className="text-xs text-muted-foreground">Instances</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                  {status.healthy_instances}
+                <div className="text-2xl font-bold flex items-baseline gap-1">
+                  <span className="text-green-600 dark:text-green-400">{status.healthy_instances}</span>
+                  <span className="text-muted-foreground text-lg">/</span>
+                  <span>{status.instances.length}</span>
                 </div>
-                <div className="text-xs text-muted-foreground">Healthy</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                  {status.active_tests}
-                </div>
-                <div className="text-xs text-muted-foreground">Active Tests</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-2xl font-bold">{status.total_tests}</div>
-                <div className="text-xs text-muted-foreground">Total Tests</div>
+                <div className="text-xs text-muted-foreground">Syncoor Instances<br />(Healthy/Total)</div>
               </CardContent>
             </Card>
             {hasGitHubJobs && (
@@ -107,8 +103,10 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
                     <span className="text-yellow-600 dark:text-yellow-400">{status.github_queued}</span>
                     <span className="text-muted-foreground text-lg">/</span>
                     <span className="text-blue-600 dark:text-blue-400">{status.github_running}</span>
+                    <span className="text-muted-foreground text-lg">/</span>
+                    <span className="text-green-600 dark:text-green-400">{githubConnectedCount}</span>
                   </div>
-                  <div className="text-xs text-muted-foreground">GitHub Jobs (Queued/Running)</div>
+                  <div className="text-xs text-muted-foreground">GitHub Jobs<br />(Queued/Running/Connected)</div>
                 </CardContent>
               </Card>
             )}
@@ -121,7 +119,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
             <ServerIcon className="h-5 w-5" />
-            Instances
+            Syncoor Instances
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-0">
@@ -142,7 +140,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
               <ListIcon className="h-5 w-5" />
-              All Tests
+              Connected Runs
             </CardTitle>
             <div className="flex items-center gap-2">
               <Select value={activeFilter} onValueChange={handleActiveFilterChange}>
@@ -184,22 +182,6 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
     </div>
   );
 };
-
-function RefreshIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path d="M23 4v6h-6" />
-      <path d="M1 20v-6h6" />
-      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-    </svg>
-  );
-}
 
 function ServerIcon({ className }: { className?: string }) {
   return (

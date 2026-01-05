@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import WorkflowQueueCard from './WorkflowQueueCard';
-import { useCCGitHubQueue } from '../../hooks/useControlCenter';
+import { useCCGitHubQueue, useCCTests } from '../../hooks/useControlCenter';
 import { GitHubJob, GitHubJobStatus } from '../../types/controlCenter';
 
 type StatusFilter = 'all' | 'queued' | 'in_progress';
@@ -15,8 +15,23 @@ interface GitHubQueueSectionProps {
 
 const GitHubQueueSection: React.FC<GitHubQueueSectionProps> = ({ endpoint }) => {
   const { data, isLoading, error } = useCCGitHubQueue(endpoint);
+  const { data: testsData } = useCCTests(endpoint, { page_size: 200 });
   const [showAllJobs, setShowAllJobs] = useState(false);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // Build set of job IDs that are connected to tests
+  const connectedJobIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (testsData?.tests) {
+      for (const test of testsData.tests) {
+        const jobId = test.labels?.['github.job_id'];
+        if (jobId) {
+          ids.add(jobId);
+        }
+      }
+    }
+    return ids;
+  }, [testsData]);
 
   if (isLoading) {
     return (
@@ -82,6 +97,15 @@ const GitHubQueueSection: React.FC<GitHubQueueSectionProps> = ({ endpoint }) => 
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
+  // Count connected jobs (total and per workflow)
+  const connectedCount = allJobs.filter((job) => connectedJobIds.has(String(job.id))).length;
+  const connectedCountByWorkflow = new Map<string, number>();
+  for (const workflow of data.workflows) {
+    const key = `${workflow.owner}/${workflow.repo}/${workflow.workflow_id}`;
+    const count = workflow.jobs.filter((job) => connectedJobIds.has(String(job.id))).length;
+    connectedCountByWorkflow.set(key, count);
+  }
+
   // Filter jobs by status
   const isQueuedStatus = (status: GitHubJobStatus) =>
     status === 'queued' || status === 'waiting' || status === 'pending';
@@ -115,15 +139,27 @@ const GitHubQueueSection: React.FC<GitHubQueueSectionProps> = ({ endpoint }) => 
                 {data.total_running} running
               </Badge>
             )}
+            {connectedCount > 0 && (
+              <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400">
+                {connectedCount} connected
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
         {/* Workflow cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {data.workflows.map((workflow) => (
-            <WorkflowQueueCard key={`${workflow.owner}/${workflow.repo}/${workflow.workflow_id}`} workflow={workflow} />
-          ))}
+          {data.workflows.map((workflow) => {
+            const key = `${workflow.owner}/${workflow.repo}/${workflow.workflow_id}`;
+            return (
+              <WorkflowQueueCard
+                key={key}
+                workflow={workflow}
+                connectedCount={connectedCountByWorkflow.get(key) || 0}
+              />
+            );
+          })}
         </div>
 
         {/* Job list */}
@@ -145,7 +181,7 @@ const GitHubQueueSection: React.FC<GitHubQueueSectionProps> = ({ endpoint }) => 
             <div className="space-y-2">
               {displayedJobs.length > 0 ? (
                 displayedJobs.map((job) => (
-                  <JobRow key={job.id} job={job} />
+                  <JobRow key={job.id} job={job} isConnected={connectedJobIds.has(String(job.id))} />
                 ))
               ) : (
                 <div className="text-sm text-muted-foreground text-center py-4">
@@ -180,35 +216,10 @@ const GitHubQueueSection: React.FC<GitHubQueueSectionProps> = ({ endpoint }) => 
 
 interface JobRowProps {
   job: GitHubJob & { workflowName: string };
+  isConnected: boolean;
 }
 
-const JobRow: React.FC<JobRowProps> = ({ job }) => {
-  const getStatusBadgeVariant = (status: GitHubJobStatus): 'default' | 'destructive' | 'outline' | 'success' => {
-    switch (status) {
-      case 'in_progress':
-        return 'default';
-      case 'queued':
-      case 'waiting':
-      case 'pending':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
-
-  const getStatusColor = (status: GitHubJobStatus): string => {
-    switch (status) {
-      case 'in_progress':
-        return 'bg-blue-500';
-      case 'queued':
-      case 'waiting':
-      case 'pending':
-        return 'bg-yellow-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
+const JobRow: React.FC<JobRowProps> = ({ job, isConnected }) => {
   const formatTimeAgo = (timestamp: string): string => {
     if (!timestamp) return '';
     const now = new Date();
@@ -227,10 +238,31 @@ const JobRow: React.FC<JobRowProps> = ({ job }) => {
     return `${diffDays}d ago`;
   };
 
+  // Determine the display type - Connected takes priority
+  const getTypeDisplay = () => {
+    if (isConnected) {
+      return { label: 'Connected', variant: 'success' as const, color: 'bg-green-500' };
+    }
+    if (job.status === 'in_progress') {
+      return { label: 'In Progress', variant: 'default' as const, color: 'bg-blue-500' };
+    }
+    return { label: 'Queued', variant: 'outline' as const, color: 'bg-yellow-500' };
+  };
+
+  const typeDisplay = getTypeDisplay();
+
   return (
-    <div className="flex items-center justify-between p-2 bg-muted/50 rounded-lg text-sm">
+    <div className="flex items-center p-2 bg-muted/50 rounded-lg text-sm gap-3">
+      {/* Type column */}
+      <div className="w-28 flex-shrink-0 flex items-center gap-2">
+        <div className={`w-2 h-2 rounded-full ${typeDisplay.color} flex-shrink-0`} />
+        <Badge variant={typeDisplay.variant} className="text-xs flex-1 justify-center">
+          {typeDisplay.label}
+        </Badge>
+      </div>
+
+      {/* Job info */}
       <div className="flex items-center gap-3 min-w-0 flex-1">
-        <div className={`w-2 h-2 rounded-full ${getStatusColor(job.status)} flex-shrink-0`} />
         {job.actor_avatar && (
           <img
             src={job.actor_avatar}
@@ -239,12 +271,7 @@ const JobRow: React.FC<JobRowProps> = ({ job }) => {
           />
         )}
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{job.name}</span>
-            <Badge variant={getStatusBadgeVariant(job.status)} className="text-xs capitalize flex-shrink-0">
-              {job.status.replace('_', ' ')}
-            </Badge>
-          </div>
+          <div className="font-medium truncate">{job.name}</div>
           <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
             <span>{job.workflowName}</span>
             <span>#{job.run_number}</span>
@@ -252,6 +279,8 @@ const JobRow: React.FC<JobRowProps> = ({ job }) => {
           </div>
         </div>
       </div>
+
+      {/* Time and link */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <span className="text-xs text-muted-foreground">
           {formatTimeAgo(job.created_at)}
