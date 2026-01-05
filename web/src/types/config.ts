@@ -29,9 +29,18 @@ export interface SyncoorApiEndpoint {
 }
 
 /**
+ * Application mode - default for normal Syncoor UI, control-center for aggregated view
+ */
+export type AppMode = 'default' | 'control-center';
+
+/**
  * Main configuration interface for the application
  */
 export interface Config {
+  /** Application mode: 'default' for normal UI, 'control-center' for aggregated view */
+  mode?: AppMode;
+  /** URL to Control Center API (only used in control-center mode) */
+  controlCenterEndpoint?: string;
   /** List of configured directories */
   directories: Directory[];
   /** List of syncoor API endpoints */

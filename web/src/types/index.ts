@@ -7,6 +7,7 @@ export type {
   Directory,
   Config,
   ThemeConfig,
+  AppMode,
 } from './config';
 
 // Report types
@@ -31,3 +32,17 @@ export type {
   WebSocketMessage,
   ApiError,
 } from './api';
+
+// Control Center types
+export type {
+  InstanceStatus,
+  InstanceHealth,
+  AggregatedTestSummary,
+  AggregatedTestDetail,
+  AggregatedTestListResponse,
+  InstanceListResponse,
+  CCStatusResponse,
+  CCHealthResponse,
+  CCTestFilters,
+  CCApiResponse,
+} from './controlCenter';

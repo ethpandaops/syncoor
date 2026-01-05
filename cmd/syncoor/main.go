@@ -48,6 +48,7 @@ func init() {
 	// Add commands to root
 	rootCmd.AddCommand(NewSyncCommand())
 	rootCmd.AddCommand(NewServerCommand())
+	rootCmd.AddCommand(NewControlCenterCommand())
 	rootCmd.AddCommand(NewReportIndexCommand())
 	rootCmd.AddCommand(NewReportToMdCommand())
 	rootCmd.AddCommand(newVersionCommand())

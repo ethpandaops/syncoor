@@ -1,0 +1,42 @@
+# Syncoor Control Center Configuration Example
+#
+# This file configures the Control Center mode which aggregates data from
+# multiple Syncoor API instances into a unified view.
+#
+# Usage:
+#   syncoor control-center --config control-center.yaml
+
+# Server settings
+listen: ":8080"
+cors_origins: "*"
+# auth_token: ""  # Optional: Bearer token for CC API authentication
+
+# Remote Syncoor instances to aggregate
+instances:
+  - name: "Hoodi"
+    api_url: "https://syncoor-api.hoodi.ethpandaops.io"
+    ui_url: "https://syncoor.hoodi.ethpandaops.io"
+    enabled: true
+  - name: "Sepolia"
+    api_url: "https://syncoor-api.sepolia.ethpandaops.io"
+    ui_url: "https://syncoor.sepolia.ethpandaops.io"
+    enabled: true
+  - name: "Perf Devet 2"
+    api_url: "https://syncoor-api.perf-devnet-2.ethpandaops.io"
+    ui_url: "https://syncoor.perf-devnet-2.ethpandaops.io"
+    enabled: true
+  - name: "BAL Devet 1"
+    api_url: "https://syncoor-api.bal-devnet-1.ethpandaops.io"
+    ui_url: "https://syncoor.bal-devnet-1.ethpandaops.io"
+    enabled: true
+
+# Caching and refresh settings
+cache:
+  refresh_interval: 30s   # How often to fetch data from remote APIs
+  stale_timeout: 5m       # How long to keep data if remote API is unavailable
+  max_tests_per_instance: 1000  # Maximum tests to keep per instance
+
+# Pagination defaults
+pagination:
+  default_page_size: 50
+  max_page_size: 200

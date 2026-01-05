@@ -1,4 +1,4 @@
-import { Config, Directory, ThemeConfig, SyncoorApiEndpoint } from '../types/config';
+import { Config, Directory, ThemeConfig, SyncoorApiEndpoint, AppMode } from '../types/config';
 
 /**
  * Validates that the theme config is properly structured
@@ -118,16 +118,40 @@ export function validateConfig(data: unknown): Config {
 
   const config = data as Record<string, unknown>;
 
-  // Validate directories
-  if (!Array.isArray(config.directories)) {
-    throw new Error('Configuration must have a directories array');
+  // Validate mode (optional, defaults to 'default')
+  let mode: AppMode = 'default';
+  if (config.mode) {
+    if (config.mode !== 'default' && config.mode !== 'control-center') {
+      throw new Error(`Invalid mode: ${config.mode}. Must be 'default' or 'control-center'`);
+    }
+    mode = config.mode as AppMode;
   }
 
-  if (config.directories.length === 0) {
+  // Validate controlCenterEndpoint (required in control-center mode)
+  let controlCenterEndpoint: string | undefined;
+  if (mode === 'control-center') {
+    if (typeof config.controlCenterEndpoint !== 'string' || !config.controlCenterEndpoint.trim()) {
+      throw new Error('controlCenterEndpoint is required when mode is control-center');
+    }
+    // Validate URL format
+    try {
+      new URL(config.controlCenterEndpoint);
+    } catch {
+      throw new Error(`Invalid controlCenterEndpoint URL: ${config.controlCenterEndpoint}`);
+    }
+    controlCenterEndpoint = config.controlCenterEndpoint;
+  }
+
+  // Validate directories (required in default mode, optional in control-center mode)
+  let directories: Directory[] = [];
+  if (Array.isArray(config.directories)) {
+    directories = config.directories.map((dir, index) => validateDirectory(dir, index));
+  }
+
+  // In default mode, require at least one directory
+  if (mode === 'default' && directories.length === 0) {
     throw new Error('Configuration must have at least one directory');
   }
-
-  const directories = config.directories.map((dir, index) => validateDirectory(dir, index));
 
   // Validate syncoor API endpoints (optional)
   let syncoorApiEndpoints: SyncoorApiEndpoint[] | undefined;
@@ -135,7 +159,7 @@ export function validateConfig(data: unknown): Config {
     if (!Array.isArray(config.syncoorApiEndpoints)) {
       throw new Error('syncoorApiEndpoints must be an array');
     }
-    syncoorApiEndpoints = config.syncoorApiEndpoints.map((endpoint, index) => 
+    syncoorApiEndpoints = config.syncoorApiEndpoints.map((endpoint, index) =>
       validateSyncoorApiEndpoint(endpoint, index)
     );
   }
@@ -153,6 +177,8 @@ export function validateConfig(data: unknown): Config {
   const theme = validateThemeConfig(config.theme || { mode: 'dark' });
 
   return {
+    mode,
+    controlCenterEndpoint,
     directories,
     syncoorApiEndpoints,
     refreshInterval,
