@@ -16,6 +16,7 @@ type Config struct {
 	Instances   []InstanceConfig `yaml:"instances"`
 	Cache       CacheConfig      `yaml:"cache"`
 	Pagination  PaginationConfig `yaml:"pagination"`
+	GitHub      GitHubConfig     `yaml:"github"`
 }
 
 // InstanceConfig represents a single Syncoor instance
@@ -39,6 +40,22 @@ type PaginationConfig struct {
 	MaxPageSize     int `yaml:"max_page_size"`
 }
 
+// GitHubConfig holds GitHub workflow monitoring configuration
+type GitHubConfig struct {
+	Token           string           `yaml:"token"`            // Optional, can use GITHUB_TOKEN env var
+	Workflows       []WorkflowConfig `yaml:"workflows"`
+	RefreshInterval time.Duration    `yaml:"refresh_interval"` // default: 30s
+}
+
+// WorkflowConfig represents a GitHub workflow to monitor
+type WorkflowConfig struct {
+	Name       string `yaml:"name"`        // Display name (e.g., "Syncoor Tests")
+	Owner      string `yaml:"owner"`       // GitHub org/user (e.g., "ethpandaops")
+	Repo       string `yaml:"repo"`        // Repository name (e.g., "syncoor-tests")
+	WorkflowID string `yaml:"workflow_id"` // Workflow file name (e.g., "syncoor.yaml")
+	Enabled    bool   `yaml:"enabled"`
+}
+
 // DefaultConfig returns a Config with sensible defaults
 func DefaultConfig() *Config {
 	return &Config{
@@ -53,6 +70,10 @@ func DefaultConfig() *Config {
 		Pagination: PaginationConfig{
 			DefaultPageSize: 50,
 			MaxPageSize:     200,
+		},
+		GitHub: GitHubConfig{
+			Workflows:       []WorkflowConfig{},
+			RefreshInterval: 30 * time.Second,
 		},
 	}
 }
@@ -119,6 +140,27 @@ func (c *Config) Validate() error {
 		c.Pagination.DefaultPageSize = c.Pagination.MaxPageSize
 	}
 
+	// Validate GitHub settings
+	if c.GitHub.RefreshInterval <= 0 {
+		c.GitHub.RefreshInterval = 30 * time.Second
+	}
+	for i, wf := range c.GitHub.Workflows {
+		if wf.Enabled {
+			if wf.Owner == "" {
+				return fmt.Errorf("github workflow %d: owner is required", i)
+			}
+			if wf.Repo == "" {
+				return fmt.Errorf("github workflow %d: repo is required", i)
+			}
+			if wf.WorkflowID == "" {
+				return fmt.Errorf("github workflow %d: workflow_id is required", i)
+			}
+			if wf.Name == "" {
+				c.GitHub.Workflows[i].Name = fmt.Sprintf("%s/%s", wf.Owner, wf.Repo)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -128,6 +170,25 @@ func (c *Config) GetEnabledInstances() []InstanceConfig {
 	for _, inst := range c.Instances {
 		if inst.Enabled {
 			enabled = append(enabled, inst)
+		}
+	}
+	return enabled
+}
+
+// GetGitHubToken returns the GitHub token, preferring env var over config
+func (c *Config) GetGitHubToken() string {
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		return token
+	}
+	return c.GitHub.Token
+}
+
+// GetEnabledWorkflows returns all enabled GitHub workflows
+func (c *Config) GetEnabledWorkflows() []WorkflowConfig {
+	var enabled []WorkflowConfig
+	for _, wf := range c.GitHub.Workflows {
+		if wf.Enabled {
+			enabled = append(enabled, wf)
 		}
 	}
 	return enabled

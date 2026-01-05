@@ -6,6 +6,7 @@ import {
   AggregatedTestDetail,
   CCHealthResponse,
   CCTestFilters,
+  GitHubQueueResponse,
 } from '../types/controlCenter';
 
 /**
@@ -322,6 +323,43 @@ export async function fetchCCHealth(endpoint: string): Promise<CCHealthResponse>
     }
     throw new ControlCenterApiError(
       `Failed to fetch CC health: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      undefined,
+      undefined,
+      url
+    );
+  }
+}
+
+/**
+ * Fetches GitHub workflow queue status from Control Center
+ */
+export async function fetchCCGitHubQueue(endpoint: string): Promise<GitHubQueueResponse> {
+  const url = buildUrl(endpoint, '/api/v1/cc/github/queue');
+
+  try {
+    const response = await ccFetchWithRetry(url);
+    const apiResponse: CCApiResponse<GitHubQueueResponse> = await response.json();
+
+    if (apiResponse.error) {
+      throw new ControlCenterApiError(
+        `API error: ${apiResponse.error.message}`,
+        undefined,
+        undefined,
+        url
+      );
+    }
+
+    if (!apiResponse.data || typeof apiResponse.data !== 'object') {
+      throw new ControlCenterApiError('Invalid GitHub queue data: expected object', undefined, undefined, url);
+    }
+
+    return apiResponse.data;
+  } catch (error) {
+    if (error instanceof ControlCenterApiError) {
+      throw error;
+    }
+    throw new ControlCenterApiError(
+      `Failed to fetch GitHub queue: ${error instanceof Error ? error.message : 'Unknown error'}`,
       undefined,
       undefined,
       url

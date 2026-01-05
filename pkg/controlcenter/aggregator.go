@@ -46,6 +46,7 @@ func (a *Aggregator) Stop() {
 func (a *Aggregator) GetStatus() *ControlCenterStatusResponse {
 	health := a.cache.GetInstanceHealth()
 	totalTests, activeTests, healthyInstances := a.cache.GetStats()
+	githubQueued, githubRunning := a.cache.GetGitHubStats()
 
 	return &ControlCenterStatusResponse{
 		Instances:        health,
@@ -53,7 +54,14 @@ func (a *Aggregator) GetStatus() *ControlCenterStatusResponse {
 		ActiveTests:      activeTests,
 		HealthyInstances: healthyInstances,
 		LastRefresh:      a.cache.GetLastRefresh(),
+		GitHubQueued:     githubQueued,
+		GitHubRunning:    githubRunning,
 	}
+}
+
+// GetGitHubQueueStatus returns the GitHub workflow queue status
+func (a *Aggregator) GetGitHubQueueStatus() *GitHubQueueResponse {
+	return a.cache.GetGitHubQueueStatus()
 }
 
 // GetInstances returns the list of all configured instances with health

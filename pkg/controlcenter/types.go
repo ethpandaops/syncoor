@@ -57,6 +57,8 @@ type ControlCenterStatusResponse struct {
 	ActiveTests      int              `json:"active_tests"`
 	HealthyInstances int              `json:"healthy_instances"`
 	LastRefresh      time.Time        `json:"last_refresh"`
+	GitHubQueued     int              `json:"github_queued"`
+	GitHubRunning    int              `json:"github_running"`
 }
 
 // HealthResponse is the health check response for the CC server
@@ -107,4 +109,42 @@ func ValidateSortBy(sortBy string) bool {
 // ValidateSortOrder checks if the sort order is valid
 func ValidateSortOrder(order string) bool {
 	return order == "asc" || order == "desc"
+}
+
+// WorkflowQueueStatus represents queue status for a single GitHub workflow
+type WorkflowQueueStatus struct {
+	Name         string      `json:"name"`
+	Owner        string      `json:"owner"`
+	Repo         string      `json:"repo"`
+	WorkflowID   string      `json:"workflow_id"`
+	WorkflowURL  string      `json:"workflow_url"`
+	QueuedCount  int         `json:"queued_count"`
+	RunningCount int         `json:"running_count"`
+	Jobs         []GitHubJob `json:"jobs"`
+	LastCheck    time.Time   `json:"last_check"`
+	Error        string      `json:"error,omitempty"`
+}
+
+// GitHubJob represents a single GitHub Actions job
+type GitHubJob struct {
+	ID          int64  `json:"id"`
+	RunID       int64  `json:"run_id"`
+	Name        string `json:"name"`
+	Status      string `json:"status"`    // queued, in_progress, completed, waiting
+	Conclusion  string `json:"conclusion"` // success, failure, etc. (only if completed)
+	StartedAt   string `json:"started_at,omitempty"`
+	CreatedAt   string `json:"created_at"`
+	HTMLURL     string `json:"html_url"`
+	Branch      string `json:"branch"`
+	Actor       string `json:"actor"`
+	ActorAvatar string `json:"actor_avatar"`
+	RunNumber   int    `json:"run_number"`
+}
+
+// GitHubQueueResponse is the API response for queue status
+type GitHubQueueResponse struct {
+	Workflows        []WorkflowQueueStatus `json:"workflows"`
+	TotalQueued      int                   `json:"total_queued"`
+	TotalRunning     int                   `json:"total_running"`
+	RateLimitRemain  int                   `json:"rate_limit_remaining"`
 }

@@ -29,23 +29,46 @@ type Cache struct {
 	instances map[string]*InstanceCache
 	stopCh    chan struct{}
 	wg        sync.WaitGroup
+
+	// GitHub workflow queue caching
+	githubClient    *GitHubClient
+	githubMu        sync.RWMutex
+	githubWorkflows map[string]*WorkflowQueueStatus // key: owner/repo/workflow_id
 }
 
 // NewCache creates a new cache instance
 func NewCache(log logrus.FieldLogger, client *Client, cfg *Config) *Cache {
 	return &Cache{
-		log:       log,
-		client:    client,
-		cfg:       cfg,
-		instances: make(map[string]*InstanceCache),
-		stopCh:    make(chan struct{}),
+		log:             log,
+		client:          client,
+		cfg:             cfg,
+		instances:       make(map[string]*InstanceCache),
+		stopCh:          make(chan struct{}),
+		githubWorkflows: make(map[string]*WorkflowQueueStatus),
 	}
 }
 
-// Start begins the background refresh goroutine
+// SetGitHubClient sets the GitHub client for workflow queue fetching
+func (c *Cache) SetGitHubClient(client *GitHubClient) {
+	c.githubClient = client
+}
+
+// Start begins the background refresh goroutines
 func (c *Cache) Start(ctx context.Context) {
+	// Do initial refresh synchronously to have data ready on first request
+	c.refreshAll(ctx)
+	if c.githubClient != nil && len(c.cfg.GetEnabledWorkflows()) > 0 {
+		c.refreshGitHubWorkflows(ctx)
+	}
+
+	// Start background refresh loops
 	c.wg.Add(1)
-	go c.refreshLoop(ctx)
+	go c.refreshLoopBackground(ctx)
+
+	if c.githubClient != nil && len(c.cfg.GetEnabledWorkflows()) > 0 {
+		c.wg.Add(1)
+		go c.refreshGitHubLoopBackground(ctx)
+	}
 }
 
 // Stop stops the background refresh goroutine
@@ -152,12 +175,9 @@ func (c *Cache) GetTestsForInstance(name string) ([]api.TestSummary, bool) {
 	return tests, true
 }
 
-// refreshLoop periodically refreshes cached data
-func (c *Cache) refreshLoop(ctx context.Context) {
+// refreshLoopBackground periodically refreshes cached data (initial refresh done in Start)
+func (c *Cache) refreshLoopBackground(ctx context.Context) {
 	defer c.wg.Done()
-
-	// Initial refresh
-	c.refreshAll(ctx)
 
 	ticker := time.NewTicker(c.cfg.Cache.RefreshInterval)
 	defer ticker.Stop()
@@ -290,6 +310,130 @@ func (c *Cache) GetStats() (totalTests, activeTests, healthyInstances int) {
 			healthyInstances++
 		}
 		inst.mu.RUnlock()
+	}
+	return
+}
+
+// refreshGitHubLoopBackground periodically refreshes GitHub workflow queue data (initial refresh done in Start)
+func (c *Cache) refreshGitHubLoopBackground(ctx context.Context) {
+	defer c.wg.Done()
+
+	ticker := time.NewTicker(c.cfg.GitHub.RefreshInterval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-c.stopCh:
+			return
+		case <-ticker.C:
+			c.refreshGitHubWorkflows(ctx)
+		}
+	}
+}
+
+// refreshGitHubWorkflows fetches queue status for all configured workflows
+func (c *Cache) refreshGitHubWorkflows(ctx context.Context) {
+	if c.githubClient == nil {
+		return
+	}
+
+	workflows := c.cfg.GetEnabledWorkflows()
+	if len(workflows) == 0 {
+		return
+	}
+
+	c.log.WithField("workflow_count", len(workflows)).Debug("Refreshing GitHub workflow queues")
+
+	// Fetch each workflow concurrently
+	var wg sync.WaitGroup
+	results := make(chan *WorkflowQueueStatus, len(workflows))
+
+	for _, wfCfg := range workflows {
+		wg.Add(1)
+		go func(cfg WorkflowConfig) {
+			defer wg.Done()
+
+			fetchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			defer cancel()
+
+			status, err := c.githubClient.FetchWorkflowQueue(fetchCtx, cfg)
+			if err != nil {
+				c.log.WithError(err).WithFields(logrus.Fields{
+					"workflow": cfg.Name,
+					"owner":    cfg.Owner,
+					"repo":     cfg.Repo,
+				}).Warn("Failed to fetch GitHub workflow queue")
+				// Return status with error set
+				status = &WorkflowQueueStatus{
+					Name:        cfg.Name,
+					Owner:       cfg.Owner,
+					Repo:        cfg.Repo,
+					WorkflowID:  cfg.WorkflowID,
+					WorkflowURL: "https://github.com/" + cfg.Owner + "/" + cfg.Repo + "/actions/workflows/" + cfg.WorkflowID,
+					LastCheck:   time.Now(),
+					Error:       err.Error(),
+					Jobs:        []GitHubJob{},
+				}
+			}
+
+			results <- status
+		}(wfCfg)
+	}
+
+	// Close results channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results
+	newWorkflows := make(map[string]*WorkflowQueueStatus)
+	for status := range results {
+		key := status.Owner + "/" + status.Repo + "/" + status.WorkflowID
+		newWorkflows[key] = status
+	}
+
+	// Update cache
+	c.githubMu.Lock()
+	c.githubWorkflows = newWorkflows
+	c.githubMu.Unlock()
+
+	c.log.Debug("GitHub workflow queue refresh complete")
+}
+
+// GetGitHubQueueStatus returns the aggregated GitHub queue status
+func (c *Cache) GetGitHubQueueStatus() *GitHubQueueResponse {
+	c.githubMu.RLock()
+	defer c.githubMu.RUnlock()
+
+	response := &GitHubQueueResponse{
+		Workflows:       make([]WorkflowQueueStatus, 0, len(c.githubWorkflows)),
+		RateLimitRemain: -1,
+	}
+
+	if c.githubClient != nil {
+		response.RateLimitRemain = c.githubClient.RateLimitRemaining()
+	}
+
+	for _, status := range c.githubWorkflows {
+		response.Workflows = append(response.Workflows, *status)
+		response.TotalQueued += status.QueuedCount
+		response.TotalRunning += status.RunningCount
+	}
+
+	return response
+}
+
+// GetGitHubStats returns total queued and running GitHub jobs
+func (c *Cache) GetGitHubStats() (queued, running int) {
+	c.githubMu.RLock()
+	defer c.githubMu.RUnlock()
+
+	for _, status := range c.githubWorkflows {
+		queued += status.QueuedCount
+		running += status.RunningCount
 	}
 	return
 }

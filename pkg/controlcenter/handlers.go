@@ -119,6 +119,17 @@ func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	s.writeJSON(w, http.StatusOK, health)
 }
 
+// handleGitHubQueue handles GET /api/v1/cc/github/queue
+func (s *Server) handleGitHubQueue(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.writeError(w, http.ErrNotSupported, http.StatusMethodNotAllowed)
+		return
+	}
+
+	queueStatus := s.aggregator.GetGitHubQueueStatus()
+	s.writeJSON(w, http.StatusOK, Response{Data: queueStatus})
+}
+
 // parseTestFilters parses query parameters into TestListFilters
 func (s *Server) parseTestFilters(r *http.Request) TestListFilters {
 	q := r.URL.Query()

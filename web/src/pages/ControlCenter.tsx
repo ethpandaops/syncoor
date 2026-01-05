@@ -4,6 +4,7 @@ import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import InstanceGrid from '../components/controlcenter/InstanceGrid';
 import AggregatedTestTable from '../components/controlcenter/AggregatedTestTable';
+import GitHubQueueSection from '../components/controlcenter/GitHubQueueSection';
 import { useCCStatus, useCCTests } from '../hooks/useControlCenter';
 import { CCTestFilters } from '../types/controlCenter';
 
@@ -67,38 +68,53 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
       </div>
 
       {/* Summary Stats */}
-      {status && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{status.instances.length}</div>
-              <div className="text-xs text-muted-foreground">Instances</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-green-600 dark:text-green-400">
-                {status.healthy_instances}
-              </div>
-              <div className="text-xs text-muted-foreground">Healthy</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {status.active_tests}
-              </div>
-              <div className="text-xs text-muted-foreground">Active Tests</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{status.total_tests}</div>
-              <div className="text-xs text-muted-foreground">Total Tests</div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+      {status && (() => {
+        const hasGitHubJobs = status.github_queued > 0 || status.github_running > 0;
+        return (
+          <div className={`grid grid-cols-2 gap-4 ${hasGitHubJobs ? 'md:grid-cols-5' : 'md:grid-cols-4'}`}>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{status.instances.length}</div>
+                <div className="text-xs text-muted-foreground">Instances</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                  {status.healthy_instances}
+                </div>
+                <div className="text-xs text-muted-foreground">Healthy</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                  {status.active_tests}
+                </div>
+                <div className="text-xs text-muted-foreground">Active Tests</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-2xl font-bold">{status.total_tests}</div>
+                <div className="text-xs text-muted-foreground">Total Tests</div>
+              </CardContent>
+            </Card>
+            {hasGitHubJobs && (
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold flex items-baseline gap-1">
+                    <span className="text-yellow-600 dark:text-yellow-400">{status.github_queued}</span>
+                    <span className="text-muted-foreground text-lg">/</span>
+                    <span className="text-blue-600 dark:text-blue-400">{status.github_running}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground">GitHub Jobs (Queued/Running)</div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Instance Grid */}
       <Card>
@@ -108,7 +124,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
             Instances
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <InstanceGrid
             instances={status?.instances || []}
             isLoading={statusLoading}
@@ -116,6 +132,9 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
           />
         </CardContent>
       </Card>
+
+      {/* GitHub Queue Section */}
+      <GitHubQueueSection endpoint={endpoint} />
 
       {/* Tests Table */}
       <Card>
@@ -152,7 +171,7 @@ const ControlCenter: React.FC<ControlCenterProps> = ({ endpoint }) => {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <AggregatedTestTable
             data={tests}
             isLoading={testsLoading}

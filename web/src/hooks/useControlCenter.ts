@@ -5,6 +5,7 @@ import {
   fetchCCTests,
   fetchCCTestDetail,
   fetchCCHealth,
+  fetchCCGitHubQueue,
 } from '../lib/controlCenterApi';
 import {
   CCStatusResponse,
@@ -13,6 +14,7 @@ import {
   AggregatedTestDetail,
   CCHealthResponse,
   CCTestFilters,
+  GitHubQueueResponse,
 } from '../types/controlCenter';
 
 /**
@@ -104,6 +106,26 @@ export function useCCHealth(endpoint: string | undefined) {
     queryFn: () => {
       if (!endpoint) throw new Error('No Control Center endpoint configured');
       return fetchCCHealth(endpoint);
+    },
+    enabled: !!endpoint,
+    staleTime: 30 * 1000,
+    gcTime: 5 * 60 * 1000,
+    retry: 2,
+    retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 2000),
+    refetchInterval: 30 * 1000,
+    refetchOnWindowFocus: true,
+  });
+}
+
+/**
+ * Hook to fetch GitHub workflow queue status from Control Center
+ */
+export function useCCGitHubQueue(endpoint: string | undefined) {
+  return useQuery<GitHubQueueResponse, Error>({
+    queryKey: ['cc-github-queue', endpoint],
+    queryFn: () => {
+      if (!endpoint) throw new Error('No Control Center endpoint configured');
+      return fetchCCGitHubQueue(endpoint);
     },
     enabled: !!endpoint,
     staleTime: 30 * 1000,

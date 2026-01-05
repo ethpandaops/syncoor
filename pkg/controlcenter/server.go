@@ -30,6 +30,14 @@ type Server struct {
 func NewServer(log logrus.FieldLogger, cfg *Config) *Server {
 	client := NewClient(log)
 	cache := NewCache(log, client, cfg)
+
+	// Initialize GitHub client if token is available and workflows are configured
+	if token := cfg.GetGitHubToken(); token != "" && len(cfg.GetEnabledWorkflows()) > 0 {
+		githubClient := NewGitHubClient(log.WithField("component", "github"), token)
+		cache.SetGitHubClient(githubClient)
+		log.WithField("workflow_count", len(cfg.GetEnabledWorkflows())).Info("GitHub workflow monitoring enabled")
+	}
+
 	aggregator := NewAggregator(log, cfg, cache)
 
 	s := &Server{
@@ -118,6 +126,7 @@ func (s *Server) setupRoutes() {
 	s.router.HandleFunc("/api/v1/cc/instances", s.corsMiddleware(s.handleInstances))
 	s.router.HandleFunc("/api/v1/cc/tests", s.corsMiddleware(s.handleTests))
 	s.router.HandleFunc("/api/v1/cc/tests/", s.corsMiddleware(s.handleTestDetail))
+	s.router.HandleFunc("/api/v1/cc/github/queue", s.corsMiddleware(s.handleGitHubQueue))
 
 	// Health and metrics
 	s.router.HandleFunc("/health", s.corsMiddleware(s.handleHealth))

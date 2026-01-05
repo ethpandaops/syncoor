@@ -71,6 +71,57 @@ export interface CCStatusResponse {
   active_tests: number;
   healthy_instances: number;
   last_refresh: string;
+  github_queued: number;
+  github_running: number;
+}
+
+/**
+ * GitHub job status
+ */
+export type GitHubJobStatus = 'queued' | 'in_progress' | 'waiting' | 'completed' | 'pending';
+
+/**
+ * A single GitHub Actions job
+ */
+export interface GitHubJob {
+  id: number;
+  run_id: number;
+  name: string;
+  status: GitHubJobStatus;
+  conclusion?: string;
+  started_at?: string;
+  created_at: string;
+  html_url: string;
+  branch: string;
+  actor: string;
+  actor_avatar: string;
+  run_number: number;
+}
+
+/**
+ * Queue status for a single GitHub workflow
+ */
+export interface WorkflowQueueStatus {
+  name: string;
+  owner: string;
+  repo: string;
+  workflow_id: string;
+  workflow_url: string;
+  queued_count: number;
+  running_count: number;
+  jobs: GitHubJob[];
+  last_check: string;
+  error?: string;
+}
+
+/**
+ * Response for GitHub queue status
+ */
+export interface GitHubQueueResponse {
+  workflows: WorkflowQueueStatus[];
+  total_queued: number;
+  total_running: number;
+  rate_limit_remaining: number;
 }
 
 /**

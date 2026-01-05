@@ -13,6 +13,10 @@ cors_origins: "*"
 
 # Remote Syncoor instances to aggregate
 instances:
+  - name: "Mainnet"
+    api_url: "https://syncoor-api.mainnet.ethpandaops.io"
+    ui_url: "https://syncoor.mainnet.ethpandaops.io"
+    enabled: true
   - name: "Hoodi"
     api_url: "https://syncoor-api.hoodi.ethpandaops.io"
     ui_url: "https://syncoor.hoodi.ethpandaops.io"
@@ -40,3 +44,21 @@ cache:
 pagination:
   default_page_size: 50
   max_page_size: 200
+
+# GitHub workflow queue monitoring
+# Shows queued/pending/in-progress GitHub Actions jobs
+github:
+  # token: "ghp_xxx"  # Optional: GitHub token for API access
+                      # Can also use GITHUB_TOKEN environment variable (takes precedence)
+  refresh_interval: 30s
+  workflows:
+    - name: "General"
+      owner: "ethpandaops"
+      repo: "syncoor-tests"
+      workflow_id: "syncoor.yaml"
+      enabled: true
+    - name: "BAL Devnet 0"
+      owner: "ethpandaops"
+      repo: "bal-devnets"
+      workflow_id: "syncoor-devnet-0.yaml"
+      enabled: true
