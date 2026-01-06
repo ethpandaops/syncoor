@@ -8,15 +8,63 @@ import (
 
 // InstanceHealth represents the health status of a remote Syncoor instance
 type InstanceHealth struct {
-	Name         string    `json:"name"`
-	APIUrl       string    `json:"api_url"`
-	UIUrl        string    `json:"ui_url"`
-	Status       string    `json:"status"` // "healthy", "unhealthy", "unknown"
-	ActiveTests  int       `json:"active_tests"`
-	TotalTests   int       `json:"total_tests"`
-	LastCheck    time.Time `json:"last_check"`
-	LastSuccess  time.Time `json:"last_success,omitempty"`
-	ErrorMessage string    `json:"error_message,omitempty"`
+	Name         string          `json:"name"`
+	APIUrl       string          `json:"api_url"`
+	UIUrl        string          `json:"ui_url"`
+	Status       string          `json:"status"` // "healthy", "unhealthy", "unknown"
+	ActiveTests  int             `json:"active_tests"`
+	TotalTests   int             `json:"total_tests"`
+	LastCheck    time.Time       `json:"last_check"`
+	LastSuccess  time.Time       `json:"last_success,omitempty"`
+	ErrorMessage string          `json:"error_message,omitempty"`
+	Directories  []DirectoryInfo `json:"directories,omitempty"`
+}
+
+// DirectoryInfo represents aggregated info from a directory's index.json
+type DirectoryInfo struct {
+	Name         string         `json:"name"`
+	DisplayName  string         `json:"display_name"`
+	URL          string         `json:"url"`
+	Generated    int64          `json:"generated"`
+	TotalTests   int            `json:"total_tests"`
+	StatusCounts map[string]int `json:"status_counts"`
+	FetchError   string         `json:"fetch_error,omitempty"`
+	RecentRuns   []RecentRun    `json:"recent_runs,omitempty"`
+}
+
+// RecentRun represents a recent test run from a directory index
+type RecentRun struct {
+	RunID    string `json:"run_id"`
+	Status   string `json:"status"`
+	ELClient string `json:"el_client"`
+	CLClient string `json:"cl_client"`
+	Time     int64  `json:"time"`
+}
+
+// DirectoryIndex represents the structure of index.json from a directory
+type DirectoryIndex struct {
+	Generated int64                 `json:"generated"`
+	Entries   []DirectoryIndexEntry `json:"entries"`
+}
+
+// DirectoryIndexEntry represents a single entry in index.json
+type DirectoryIndexEntry struct {
+	RunID               string              `json:"run_id"`
+	Timestamp           int64               `json:"timestamp"`
+	SyncInfo            DirectorySyncInfo   `json:"sync_info"`
+	ExecutionClientInfo DirectoryClientInfo `json:"execution_client_info"`
+	ConsensusClientInfo DirectoryClientInfo `json:"consensus_client_info"`
+}
+
+// DirectorySyncInfo contains sync status information
+type DirectorySyncInfo struct {
+	Status string `json:"status"`
+}
+
+// DirectoryClientInfo contains client information
+type DirectoryClientInfo struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // InstanceStatus constants

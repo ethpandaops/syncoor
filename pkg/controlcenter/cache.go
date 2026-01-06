@@ -2,6 +2,7 @@ package controlcenter
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -236,8 +237,25 @@ func (c *Cache) refreshInstance(ctx context.Context, inst *InstanceCache) {
 	fetchCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
-	// Fetch tests
-	tests, err := c.client.FetchTests(fetchCtx, config.APIUrl)
+	// Fetch tests and directories concurrently
+	var tests *api.TestListResponse
+	var testsErr error
+	var directories []DirectoryInfo
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		tests, testsErr = c.client.FetchTests(fetchCtx, config.APIUrl)
+	}()
+
+	go func() {
+		defer wg.Done()
+		directories = c.fetchDirectories(fetchCtx, config.UIUrl, log)
+	}()
+
+	wg.Wait()
 	now := time.Now()
 
 	inst.mu.Lock()
@@ -245,16 +263,17 @@ func (c *Cache) refreshInstance(ctx context.Context, inst *InstanceCache) {
 
 	inst.lastFetch = now
 
-	if err != nil {
-		inst.fetchError = err
-		log.WithError(err).Warn("Failed to fetch tests from instance")
+	if testsErr != nil {
+		inst.fetchError = testsErr
+		log.WithError(testsErr).Warn("Failed to fetch tests from instance")
 
 		// Check if cached data is still valid (within stale timeout)
 		if time.Since(inst.lastSuccess) > c.cfg.Cache.StaleTimeout {
 			inst.health.Status = StatusUnhealthy
 		}
-		inst.health.ErrorMessage = err.Error()
+		inst.health.ErrorMessage = testsErr.Error()
 		inst.health.LastCheck = now
+		inst.health.Directories = directories // Still update directories even if tests fail
 		return
 	}
 
@@ -278,11 +297,13 @@ func (c *Cache) refreshInstance(ctx context.Context, inst *InstanceCache) {
 		TotalTests:  tests.TotalCount,
 		LastCheck:   now,
 		LastSuccess: now,
+		Directories: directories,
 	}
 
 	log.WithFields(logrus.Fields{
 		"total_tests":  tests.TotalCount,
 		"active_tests": tests.ActiveCount,
+		"directories":  len(directories),
 	}).Debug("Refreshed instance data")
 }
 
@@ -451,4 +472,122 @@ func (c *Cache) GetGitHubStats() (queued, running int) {
 		running += status.RunningCount
 	}
 	return
+}
+
+// fetchDirectories fetches config.json and all directory index.json files for an instance
+func (c *Cache) fetchDirectories(ctx context.Context, uiURL string, log logrus.FieldLogger) []DirectoryInfo {
+	if uiURL == "" {
+		return nil
+	}
+
+	// Fetch UI config.json
+	uiConfig, err := c.client.FetchUIConfig(ctx, uiURL)
+	if err != nil {
+		log.WithError(err).WithField("ui_url", uiURL).Debug("Failed to fetch UI config for directories")
+		return nil
+	}
+
+	if len(uiConfig.Directories) == 0 {
+		log.WithField("ui_url", uiURL).Debug("No directories found in UI config")
+		return nil
+	}
+
+	log.WithFields(logrus.Fields{
+		"ui_url":      uiURL,
+		"directories": len(uiConfig.Directories),
+	}).Debug("Found directories in UI config")
+
+	// Fetch each directory's index.json concurrently
+	var wg sync.WaitGroup
+	results := make(chan DirectoryInfo, len(uiConfig.Directories))
+
+	for _, dir := range uiConfig.Directories {
+		if !dir.IsEnabled() {
+			continue
+		}
+
+		wg.Add(1)
+		go func(d UIDirectory) {
+			defer wg.Done()
+
+			info := DirectoryInfo{
+				Name:         d.Name,
+				DisplayName:  d.DisplayName,
+				URL:          d.URL,
+				StatusCounts: make(map[string]int),
+			}
+
+			indexCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+
+			index, err := c.client.FetchDirectoryIndex(indexCtx, d.URL)
+			if err != nil {
+				// Check if it's a 404 error
+				var httpErr *HTTPError
+				if errors.As(err, &httpErr) && httpErr.StatusCode == 404 {
+					info.FetchError = "The directory test result index doesn't exist"
+				} else {
+					info.FetchError = err.Error()
+				}
+				results <- info
+				return
+			}
+
+			info.Generated = index.Generated
+			info.TotalTests = len(index.Entries)
+
+			// Capture last 5 entries as recent runs (entries are ordered oldest to newest)
+			recentRuns := make([]RecentRun, 0, 5)
+			startIdx := len(index.Entries) - 5
+			if startIdx < 0 {
+				startIdx = 0
+			}
+			// Iterate in reverse to get newest first
+			for i := len(index.Entries) - 1; i >= startIdx; i-- {
+				entry := index.Entries[i]
+				recentRuns = append(recentRuns, RecentRun{
+					RunID:    entry.RunID,
+					Status:   entry.SyncInfo.Status,
+					ELClient: entry.ExecutionClientInfo.Type,
+					CLClient: entry.ConsensusClientInfo.Type,
+					Time:     entry.Timestamp,
+				})
+			}
+			info.RecentRuns = recentRuns
+
+			for _, entry := range index.Entries {
+				status := entry.SyncInfo.Status
+				if status == "" {
+					status = "unknown"
+				}
+				info.StatusCounts[status]++
+			}
+
+			results <- info
+		}(dir)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results in config order
+	resultMap := make(map[string]DirectoryInfo)
+	for info := range results {
+		resultMap[info.Name] = info
+	}
+
+	// Build ordered slice
+	directories := make([]DirectoryInfo, 0, len(uiConfig.Directories))
+	for _, dir := range uiConfig.Directories {
+		if !dir.IsEnabled() {
+			continue
+		}
+		if info, ok := resultMap[dir.Name]; ok {
+			directories = append(directories, info)
+		}
+	}
+
+	return directories
 }

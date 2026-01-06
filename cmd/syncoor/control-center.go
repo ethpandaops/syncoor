@@ -37,10 +37,8 @@ If both are provided, command-line flags override config file values.`,
 }
 
 func runControlCenter(ctx context.Context, configPath, listen, corsOrigins string) error {
-	log := logrus.New()
-	log.SetFormatter(&logrus.TextFormatter{
-		FullTimestamp: true,
-	})
+	// Use the standard logger which has already been configured by the root command
+	log := logrus.StandardLogger()
 
 	var cfg *controlcenter.Config
 	var err error

@@ -10,6 +10,31 @@ import { TestSummary, TestDetail } from './syncoor';
 export type InstanceStatus = 'healthy' | 'unhealthy' | 'unknown';
 
 /**
+ * A recent test run from a directory
+ */
+export interface RecentRun {
+  run_id: string;
+  status: string;
+  el_client: string;
+  cl_client: string;
+  time: number;
+}
+
+/**
+ * Directory information from config.json and index.json
+ */
+export interface DirectoryInfo {
+  name: string;
+  display_name: string;
+  url: string;
+  generated: number;
+  total_tests: number;
+  status_counts: Record<string, number>;
+  fetch_error?: string;
+  recent_runs?: RecentRun[];
+}
+
+/**
  * Health information for a Syncoor instance
  */
 export interface InstanceHealth {
@@ -22,6 +47,7 @@ export interface InstanceHealth {
   last_check: string;
   last_success?: string;
   error_message?: string;
+  directories?: DirectoryInfo[];
 }
 
 /**

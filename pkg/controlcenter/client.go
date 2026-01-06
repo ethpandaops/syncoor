@@ -104,7 +104,15 @@ type UIDirectory struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"displayName,omitempty"`
 	URL         string `json:"url"`
-	Enabled     bool   `json:"enabled"`
+	Enabled     *bool  `json:"enabled"` // Pointer to distinguish between false and not set
+}
+
+// IsEnabled returns true if the directory is enabled (defaults to true if not set)
+func (d UIDirectory) IsEnabled() bool {
+	if d.Enabled == nil {
+		return true // Default to enabled if not specified
+	}
+	return *d.Enabled
 }
 
 // UIApiEndpoint represents a Syncoor API endpoint in the UI config
@@ -120,6 +128,18 @@ func (e UIApiEndpoint) IsEnabled() bool {
 		return true // Default to enabled if not specified
 	}
 	return *e.Enabled
+}
+
+// FetchDirectoryIndex fetches the index.json from a directory URL
+func (c *Client) FetchDirectoryIndex(ctx context.Context, directoryURL string) (*DirectoryIndex, error) {
+	url := strings.TrimSuffix(directoryURL, "/") + "/index.json"
+
+	var result DirectoryIndex
+	if err := c.fetchWithRetry(ctx, url, &result); err != nil {
+		return nil, fmt.Errorf("failed to fetch directory index from %s: %w", directoryURL, err)
+	}
+
+	return &result, nil
 }
 
 // fetchWithRetry performs an HTTP GET with retry logic

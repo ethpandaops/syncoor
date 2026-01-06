@@ -1,7 +1,12 @@
 import React from 'react';
-import { Card, CardContent } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { InstanceHealth } from '../../types/controlCenter';
+import { Card } from '../ui/card';
+import { InstanceHealth, DirectoryInfo, RecentRun } from '../../types/controlCenter';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../ui/tooltip';
 
 interface InstanceStatusCardProps {
   instance: InstanceHealth;
@@ -19,17 +24,6 @@ const InstanceStatusCard: React.FC<InstanceStatusCardProps> = ({ instance }) => 
     }
   };
 
-  const getStatusVariant = (status: string): 'default' | 'destructive' | 'outline' | 'success' => {
-    switch (status) {
-      case 'healthy':
-        return 'success';
-      case 'unhealthy':
-        return 'destructive';
-      default:
-        return 'outline';
-    }
-  };
-
   const formatTimeAgo = (timestamp: string): string => {
     if (!timestamp) return 'Never';
     const now = new Date();
@@ -38,71 +32,223 @@ const InstanceStatusCard: React.FC<InstanceStatusCardProps> = ({ instance }) => 
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
 
     if (diffMinutes < 1) return 'Just now';
-    if (diffMinutes === 1) return '1 minute ago';
-    if (diffMinutes < 60) return `${diffMinutes} minutes ago`;
+    if (diffMinutes === 1) return '1m ago';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours === 1) return '1 hour ago';
-    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return '1 day ago';
-    return `${diffDays} days ago`;
+    return `${diffDays}d ago`;
+  };
+
+  const formatUnixTimeAgo = (timestamp: number): string => {
+    if (!timestamp) return 'Unknown';
+    const now = Date.now();
+    const diffMs = now - (timestamp * 1000);
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+
+    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes === 1) return '1m ago';
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   };
 
   return (
-    <Card className="hover:shadow-md transition-shadow">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${getStatusColor(instance.status)}`} />
-            <h3 className="font-semibold text-sm">{instance.name}</h3>
-          </div>
-          <Badge variant={getStatusVariant(instance.status)} className="text-xs capitalize">
-            {instance.status}
-          </Badge>
+    <Card className="overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+        <div className="flex items-center gap-3">
+          <TooltipProvider delayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className={`w-3 h-3 rounded-full ${getStatusColor(instance.status)} cursor-default`} />
+              </TooltipTrigger>
+              <TooltipContent side="top" className="text-xs capitalize">
+                {instance.status}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <h3 className="font-semibold">{instance.name}</h3>
         </div>
-
-        <div className="space-y-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Active Tests:</span>
-            <span className={`font-medium ${instance.active_tests > 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
-              {instance.active_tests}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Total Tests:</span>
-            <span className="font-medium">{instance.total_tests}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Last Check:</span>
-            <span title={instance.last_check ? new Date(instance.last_check).toLocaleString() : ''}>
-              {formatTimeAgo(instance.last_check)}
-            </span>
-          </div>
+        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+          <span>
+            Active: <span className={instance.active_tests > 0 ? 'text-green-600 dark:text-green-400 font-medium' : ''}>{instance.active_tests}</span>
+          </span>
+          <span className="text-muted-foreground/50">|</span>
+          <span title={instance.last_check ? new Date(instance.last_check).toLocaleString() : ''}>
+            Last Check: {formatTimeAgo(instance.last_check)}
+          </span>
+          {instance.ui_url && (
+            <>
+              <span className="text-muted-foreground/50">|</span>
+              <a
+                href={instance.ui_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline flex items-center gap-1"
+              >
+                <ExternalLinkIcon className="h-3.5 w-3.5" />
+                Dashboard
+              </a>
+            </>
+          )}
         </div>
+      </div>
 
-        {instance.error_message && (
-          <div className="mt-2 p-2 bg-red-50 dark:bg-red-900/20 rounded text-xs text-red-600 dark:text-red-400">
-            {instance.error_message}
-          </div>
-        )}
+      {/* Error message */}
+      {instance.error_message && (
+        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400 border-b">
+          {instance.error_message}
+        </div>
+      )}
 
-        {instance.ui_url && (
-          <div className="mt-3 pt-3 border-t">
-            <a
-              href={instance.ui_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline flex items-center gap-1"
-            >
-              <ExternalLinkIcon className="h-3 w-3" />
-              View Dashboard
-            </a>
+      {/* Directories - filter out ones with fetch errors (e.g., 404) */}
+      {(() => {
+        const validDirectories = instance.directories?.filter(dir => !dir.fetch_error) || [];
+        return validDirectories.length > 0 ? (
+          <div className="divide-y">
+            {validDirectories.map((dir) => (
+              <DirectoryRow
+                key={dir.name}
+                directory={dir}
+                instanceUiUrl={instance.ui_url}
+                formatUnixTimeAgo={formatUnixTimeAgo}
+              />
+            ))}
           </div>
-        )}
-      </CardContent>
+        ) : (
+          <div className="px-4 py-3 text-sm text-muted-foreground">
+            No directories configured
+          </div>
+        );
+      })()}
     </Card>
+  );
+};
+
+interface DirectoryRowProps {
+  directory: DirectoryInfo;
+  instanceUiUrl?: string;
+  formatUnixTimeAgo: (ts: number) => string;
+}
+
+const DirectoryRow: React.FC<DirectoryRowProps> = ({ directory, instanceUiUrl, formatUnixTimeAgo }) => {
+  const displayName = directory.display_name || directory.name;
+  const directoryUiUrl = instanceUiUrl
+    ? `${instanceUiUrl}#/?directory=${encodeURIComponent(directory.name)}`
+    : undefined;
+
+  return (
+    <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors">
+      <div className="flex items-center gap-2">
+        {directoryUiUrl ? (
+          <a
+            href={directoryUiUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+          >
+            {displayName}
+          </a>
+        ) : (
+          <span className="font-medium">{displayName}</span>
+        )}
+        <span className="text-muted-foreground text-sm">({directory.total_tests} tests)</span>
+      </div>
+
+      {/* Recent runs badges */}
+      {directory.recent_runs && directory.recent_runs.length > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Recent:</span>
+          {directory.recent_runs.map((run, i) => (
+            <RecentRunBadge key={i} run={run} formatUnixTimeAgo={formatUnixTimeAgo} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface RecentRunBadgeProps {
+  run: RecentRun;
+  formatUnixTimeAgo: (ts: number) => string;
+}
+
+const RecentRunBadge: React.FC<RecentRunBadgeProps> = ({ run, formatUnixTimeAgo }) => {
+  const getStatusBorderColor = (status: string): string => {
+    switch (status) {
+      case 'success':
+        return 'border-green-500';
+      case 'timeout':
+        return 'border-yellow-500';
+      case 'failed':
+        return 'border-red-500';
+      default:
+        return 'border-gray-400';
+    }
+  };
+
+  const getStatusBgColor = (status: string): string => {
+    switch (status) {
+      case 'success':
+        return 'bg-green-500/10';
+      case 'timeout':
+        return 'bg-yellow-500/10';
+      case 'failed':
+        return 'bg-red-500/10';
+      default:
+        return 'bg-gray-500/10';
+    }
+  };
+
+  const getClientLogo = (clientName: string): string => {
+    return `img/clients/${clientName.toLowerCase()}.jpg`;
+  };
+
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-md border-2 ${getStatusBorderColor(run.status)} ${getStatusBgColor(run.status)} cursor-default hover:shadow-sm transition-all`}
+          >
+            {/* Client logos */}
+            <div className="flex items-center gap-1">
+              <img
+                src={getClientLogo(run.el_client)}
+                alt={run.el_client}
+                className="w-4 h-4 rounded"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+              <span className="text-muted-foreground text-xs">+</span>
+              <img
+                src={getClientLogo(run.cl_client)}
+                alt={run.cl_client}
+                className="w-4 h-4 rounded"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+            {/* Time ago */}
+            <span className="text-[10px] text-muted-foreground leading-none">
+              {formatUnixTimeAgo(run.time)}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs">
+          {run.el_client}/{run.cl_client} • {run.status}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 

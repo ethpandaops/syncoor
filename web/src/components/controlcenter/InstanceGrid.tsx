@@ -11,11 +11,11 @@ interface InstanceGridProps {
 const InstanceGrid: React.FC<InstanceGridProps> = ({ instances, isLoading, error }) => {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {[1, 2, 3, 4].map((i) => (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-32 bg-muted/50 rounded-lg animate-pulse"
+            className="h-40 bg-muted/50 rounded-lg animate-pulse"
           />
         ))}
       </div>
@@ -40,7 +40,7 @@ const InstanceGrid: React.FC<InstanceGridProps> = ({ instances, isLoading, error
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className="space-y-4">
       {instances.map((instance) => (
         <InstanceStatusCard key={instance.name} instance={instance} />
       ))}
