@@ -11,7 +11,7 @@ inputs:
     required: true
 
   image:
-    description: 'Docker image for syncoor (e.g., docker.ethquokkaops.io/dh/ethpandaops/syncoor:master). If not provided, will build locally.'
+    description: 'Docker image for syncoor (e.g., ghcr.io/ethpandaops/syncoor:master). If not provided, will build locally.'
     required: false
     default: ''
 
