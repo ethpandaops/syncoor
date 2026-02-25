@@ -307,6 +307,8 @@ runs:
       if: ${{ inputs.run-tests == 'true' }}
       shell: bash
       run: |
+        docker rm kurtosis-github-auth-storage-creator >/dev/null 2>&1 || true # sometimes kurtosis complains about this container
+        docker rm kurtosis-docker-config-storage-creator >/dev/null 2>&1 || true # sometimes kurtosis complains about this container
         kurtosis clean -a
         rm -rf ${{ runner.temp }}/tmp_results
         rm -rf ${{ runner.temp }}/reports
