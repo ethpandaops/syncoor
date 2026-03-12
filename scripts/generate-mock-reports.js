@@ -58,7 +58,7 @@ const CLIENT_VERSIONS = {
 const CLIENT_IMAGES = {
   geth: 'ethereum/client-go:latest',
   nethermind: 'ethpandaops/nethermind:master',
-  besu: 'hyperledger/besu:latest',
+  besu: 'besu-eth/besu:latest',
   erigon: 'ethpandaops/erigon:latest',
   reth: 'ghcr.io/paradigmxyz/reth:latest',
   teku: 'consensys/teku:latest',
