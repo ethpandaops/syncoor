@@ -145,7 +145,7 @@ runs:
           if [[ "$OSTYPE" == "linux-gnu"* ]]; then
             # Linux - assume Ubuntu/Debian
             if [ "$DESIRED_VERSION" = "latest" ]; then
-              echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+              echo "deb [trusted=yes] https://sdk.kurtosis.com/kurtosis-cli-release-artifacts/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
               sudo apt update
               sudo apt install -y kurtosis-cli
             else
@@ -153,7 +153,7 @@ runs:
               echo "Installing specific version $DESIRED_VERSION on Linux..."
               # Note: This approach may need adjustment based on Kurtosis packaging
               # For now, we'll try the repository approach and hope the version is available
-              echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
+              echo "deb [trusted=yes] https://sdk.kurtosis.com/kurtosis-cli-release-artifacts/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
               sudo apt update
               # Try to install specific version
               sudo apt install -y kurtosis-cli=$DESIRED_VERSION || sudo apt install -y kurtosis-cli
