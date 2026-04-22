@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/docker/go-connections v0.7.0
-	github.com/ethpandaops/ethereum-package-go v0.9.1-0.20260422164037-c62bddc24d06
+	github.com/ethpandaops/ethereum-package-go v0.10.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.18.1
 	github.com/moby/moby/api v1.52.0-alpha.1
