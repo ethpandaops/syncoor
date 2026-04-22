@@ -3,7 +3,7 @@ module github.com/ethpandaops/syncoor
 go 1.26.0
 
 require (
-	github.com/docker/go-connections v0.5.0
+	github.com/docker/go-connections v0.7.0
 	github.com/ethpandaops/ethereum-package-go v0.9.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.18.1
@@ -11,10 +11,10 @@ require (
 	github.com/moby/moby/client v0.1.0-alpha.0
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.67.4
+	github.com/prometheus/common v0.67.5
 	github.com/r3labs/sse/v2 v2.10.0
 	github.com/sirupsen/logrus v1.9.4
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 	github.com/zcalusic/sysinfo v1.1.3
 	golang.org/x/text v0.36.0
