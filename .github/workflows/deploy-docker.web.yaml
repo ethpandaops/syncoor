@@ -19,12 +19,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Deploy docker images
+      - name: Deploy to GHCR
         uses: ethpandaops/actions/docker-build-push@7d7b7bfe36fe4cfa538acd0e23706a23ce07c3ac # master
         with:
           registry: ghcr.io
           registry_username: ${{ github.actor }}
           registry_password: ${{ secrets.GITHUB_TOKEN }}
+          image_name: ${{ github.repository }}-web
+          push: true
+          platforms: linux/amd64,linux/arm64
+          file: Dockerfile.web
+
+      - name: Deploy to Docker Hub
+        uses: ethpandaops/actions/docker-build-push@7d7b7bfe36fe4cfa538acd0e23706a23ce07c3ac # master
+        with:
+          registry: docker.io
+          registry_username: ${{ secrets.DOCKERHUB_USERNAME }}
+          registry_password: ${{ secrets.DOCKERHUB_TOKEN }}
           image_name: ${{ github.repository }}-web
           push: true
           platforms: linux/amd64,linux/arm64
