@@ -247,7 +247,7 @@ func (s *Streamer) logClientMessage(clientType, message string) {
 	// Determine emoji based on client type
 	var emoji string
 	switch strings.ToLower(clientType) {
-	case "geth", "nethermind", "besu", "erigon", "reth", "nimbusel":
+	case "geth", "nethermind", "besu", "erigon", "reth", "ethrex", "nimbusel":
 		emoji = "🔵" // Execution layer clients
 	case "lighthouse", "prysm", "teku", "nimbus", "lodestar", "grandine":
 		emoji = "🟣" // Consensus layer clients

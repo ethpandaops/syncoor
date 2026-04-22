@@ -66,8 +66,8 @@ github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707/go.mod h1:qssHWj6
 github.com/dsnet/golib v0.0.0-20171103203638-1ea166775780/go.mod h1:Lj+Z9rebOhdfkVLjJ8T6VcRQv3SXugXy999NBtR9aFY=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
 github.com/envoyproxy/protoc-gen-validate v0.1.0/go.mod h1:iSmxcyjqTsJpI2R4NaDN7+kN2VEUnK/pcBlmesArF7c=
-github.com/ethpandaops/ethereum-package-go v0.9.0 h1:3LXo8tHV/GQ81hE8laEwcpxOT/GJW2PeAaMiQ9adsGA=
-github.com/ethpandaops/ethereum-package-go v0.9.0/go.mod h1:t/JxwHlHCATh0FfQTiE5+kn1yg6wQ3NJtiBQ0n5MW84=
+github.com/ethpandaops/ethereum-package-go v0.10.0 h1:q/TTZGWMjZmcuweASv14TEXxdPczCXMV2dAgCldQieA=
+github.com/ethpandaops/ethereum-package-go v0.10.0/go.mod h1:t/JxwHlHCATh0FfQTiE5+kn1yg6wQ3NJtiBQ0n5MW84=
 github.com/ethpandaops/go-eth2-client v0.1.0 h1:migUQIIL3fcWWMmIwF4Rh05rvJPuj+LOgDJkIWZ+gIE=
 github.com/ethpandaops/go-eth2-client v0.1.0/go.mod h1:9BBd/XIw1egZTkxtFGMvgXnsxX6ypKHKNKD7itqjmNQ=
 github.com/felixge/httpsnoop v1.0.4 h1:NFTV2Zj1bL4mc9sqWACXbQFVBBg2W3GPvqp8/ESS2Wg=
