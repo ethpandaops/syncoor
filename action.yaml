@@ -239,7 +239,7 @@ inputs:
   kurtosis-version:
     description: 'Kurtosis CLI version to use'
     required: false
-    default: '1.16.6'
+    default: '1.18.1'
 
 outputs:
   report-path:
@@ -254,7 +254,7 @@ runs:
   steps:
     - name: Verify and install dependencies
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ethpandaops/syncoor/.github/actions/dependencies@a4dd36a75f97bbe43134d08197c5ea3cf3fbad59
+      uses: ethpandaops/syncoor/.github/actions/dependencies@59851f7b3da04e649e1d92e03684aae7db6accd5
       with:
         kurtosis-version: ${{ inputs.kurtosis-version }}
 
