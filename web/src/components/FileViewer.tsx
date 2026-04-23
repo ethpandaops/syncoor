@@ -311,25 +311,6 @@ export function FileViewer({
   };
 
   const buildLineContents = (text: string, lines: string[]): { nodes: React.ReactNode[]; wrapperClass: string } => {
-    const firstLine = lines[0] || '';
-    const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m');
-
-    if (ansiRegex.test(firstLine)) {
-      const convert = new Convert({
-        fg: '#000',
-        bg: '#FFF',
-        newline: false,
-        escapeXML: true,
-        stream: false
-      });
-      return {
-        nodes: lines.map((line) => (
-          <span dangerouslySetInnerHTML={{ __html: convert.toHtml(line) }} />
-        )),
-        wrapperClass: ''
-      };
-    }
-
     if (fileType === 'json') {
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.json, 'json');
@@ -358,8 +339,18 @@ export function FileViewer({
       }
     }
 
+    // Route all other text through ansi-to-html: it converts ANSI SGR
+    // sequences to styled spans and safely XML-escapes lines that have none,
+    // so mixed files (plain header + ANSI body) render correctly.
+    const convert = new Convert({
+      newline: false,
+      escapeXML: true,
+      stream: false,
+    });
     return {
-      nodes: lines.map((line) => <span>{line}</span>),
+      nodes: lines.map((line) => (
+        <span dangerouslySetInnerHTML={{ __html: convert.toHtml(line) }} />
+      )),
       wrapperClass: ''
     };
   };
