@@ -42,6 +42,7 @@ export function FileViewer({
   const [copied, setCopied] = useState(false);
   const [fullWindow, setFullWindow] = useState(initialFullWindow);
   const [highlightedLines, setHighlightedLines] = useState<number[]>([]);
+  const [wrapLines, setWrapLines] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const currentRequestRef = useRef<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -58,6 +59,14 @@ export function FileViewer({
       onFullWindowToggle(newFullWindow);
     }
   }, [fullWindow, onFullWindowToggle]);
+
+  const toggleWrapLines = useCallback(() => {
+    const newWrap = !wrapLines;
+    setWrapLines(newWrap);
+    const newParams = new URLSearchParams(searchParams);
+    newParams.set('wrap', newWrap.toString());
+    setSearchParams(newParams);
+  }, [wrapLines, searchParams, setSearchParams]);
 
   // Add ESC key listener for full window mode
   useEffect(() => {
@@ -190,6 +199,19 @@ export function FileViewer({
   const fileType = getFileType(filePath);
   const isViewable = ['text', 'json', 'yaml', 'toml', 'xml', 'shell'].includes(fileType);
 
+  // Initialize wrap setting from URL, or default to wrap for plain-text/log files
+  useEffect(() => {
+    const wrapParam = searchParams.get('wrap');
+    if (wrapParam === 'true') {
+      setWrapLines(true);
+    } else if (wrapParam === 'false') {
+      setWrapLines(false);
+    } else {
+      setWrapLines(fileType === 'text');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filePath, fileType]);
+
   // Reset state when file changes
   useEffect(() => {
     setContent(null);
@@ -288,204 +310,132 @@ export function FileViewer({
     }
   };
 
-  // Function to render content with line numbers
-  const renderContentWithLineNumbers = (text: string, isFullWindow = false) => {
-    const lines = text.split('\n');
-
-    const heightClass = isFullWindow
-      ? "h-full"
-      : "max-h-[calc(100vh-24rem)]";
-
-    return (
-      <div ref={contentRef} className={`text-xs font-mono bg-muted overflow-hidden ${heightClass} overflow-y-auto`} style={{ overflowX: 'auto' }}>
-        <div className="flex min-w-fit">
-          {/* Line numbers */}
-          <div className="bg-muted-foreground/10 px-4 py-4 select-none border-r border-border sticky left-0 flex-shrink-0" style={{ minHeight: '100%' }}>
-            <div className="flex flex-col h-full">
-              {lines.map((_, index) => (
-                <div
-                  key={index}
-                  data-line-number={index + 1}
-                  className={`cursor-pointer hover:bg-muted-foreground/20 px-2 py-0.5 text-right min-w-[3rem] ${
-                    highlightedLines.includes(index + 1)
-                      ? 'bg-blue-500/20 text-blue-600 font-semibold'
-                      : 'text-muted-foreground'
-                  }`}
-                  onClick={(e) => handleLineClick(index + 1, e)}
-                  title="Click to select line, Ctrl+click to multi-select, Shift+click for range"
-                  style={{ height: '1.25rem', lineHeight: '1.25rem' }}
-                >
-                  {index + 1}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="flex-1 px-4 py-4 min-w-0">
-            {renderContentByType(text, lines)}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Function to detect and convert ANSI codes or apply syntax highlighting
-  const renderContentByType = (text: string, lines: string[]) => {
-    // Check if the first line contains ANSI escape sequences (for performance)
-    const firstLine = text.split('\n')[0];
+  const buildLineContents = (text: string, lines: string[]): { nodes: React.ReactNode[]; wrapperClass: string } => {
+    const firstLine = lines[0] || '';
     const ansiRegex = new RegExp(String.fromCharCode(27) + '\\[[0-9;]*m');
 
-    // Handle ANSI content line by line
     if (ansiRegex.test(firstLine)) {
-      return (
-        <div>
-          {lines.map((line, index) => {
-            const lineNumber = index + 1;
-            const isHighlighted = highlightedLines.includes(lineNumber);
-
-            const convert = new Convert({
-              fg: '#000',
-              bg: '#FFF',
-              newline: false,
-              escapeXML: true,
-              stream: false
-            });
-
-            const htmlContent = convert.toHtml(line);
-
-            return (
-              <div
-                key={index}
-                className={`${isHighlighted ? 'bg-blue-500/10' : ''} whitespace-nowrap`}
-                style={{ height: '1.25rem', lineHeight: '1.25rem' }}
-              >
-                <span
-                  dangerouslySetInnerHTML={{ __html: htmlContent }}
-                  style={{
-                    whiteSpace: 'pre',
-                    wordWrap: 'normal'
-                  }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      );
+      const convert = new Convert({
+        fg: '#000',
+        bg: '#FFF',
+        newline: false,
+        escapeXML: true,
+        stream: false
+      });
+      return {
+        nodes: lines.map((line) => (
+          <span dangerouslySetInnerHTML={{ __html: convert.toHtml(line) }} />
+        )),
+        wrapperClass: ''
+      };
     }
 
-    // Handle JSON and YAML with full-file syntax highlighting
     if (fileType === 'json') {
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.json, 'json');
-        const htmlLines = highlightedHtml.split('\n');
-
-        return (
-          <div>
-            <style dangerouslySetInnerHTML={{
-              __html: `
-                .syntax-json .token.property { color: #0066cc; }
-                .syntax-json .token.string { color: #22863a; }
-                .syntax-json .token.number { color: #005cc5; }
-                .syntax-json .token.boolean { color: #d73a49; }
-                .syntax-json .token.null { color: #6f42c1; }
-                .syntax-json .token.punctuation { color: #586069; }
-              `
-            }} />
-            {htmlLines.map((htmlLine, index) => {
-              const lineNumber = index + 1;
-              const isHighlighted = highlightedLines.includes(lineNumber);
-
-              return (
-                <div
-                  key={index}
-                  className={`syntax-json ${isHighlighted ? 'bg-blue-500/10' : ''}`}
-                  style={{
-                    height: '1.25rem',
-                    lineHeight: '1.25rem',
-                    textShadow: 'none',
-                    whiteSpace: 'pre',
-                    overflow: 'visible'
-                  }}
-                  dangerouslySetInnerHTML={{ __html: htmlLine }}
-                />
-              );
-            })}
-          </div>
-        );
+        return {
+          nodes: highlightedHtml.split('\n').map((htmlLine) => (
+            <span dangerouslySetInnerHTML={{ __html: htmlLine }} />
+          )),
+          wrapperClass: 'syntax-json'
+        };
       } catch (e) {
-        // Fallback to plain text
-        return renderPlainText(lines);
+        // Fallback to plain
       }
     }
 
     if (fileType === 'yaml') {
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.yaml, 'yaml');
-        const htmlLines = highlightedHtml.split('\n');
-
-        return (
-          <div>
-            <style dangerouslySetInnerHTML={{
-              __html: `
-                .syntax-yaml .token.key { color: #0066cc; }
-                .syntax-yaml .token.string { color: #22863a; }
-                .syntax-yaml .token.number { color: #005cc5; }
-                .syntax-yaml .token.boolean { color: #d73a49; }
-                .syntax-yaml .token.null { color: #6f42c1; }
-                .syntax-yaml .token.punctuation { color: #586069; }
-                .syntax-yaml .token.comment { color: #6a737d; font-style: italic; }
-              `
-            }} />
-            {htmlLines.map((htmlLine, index) => {
-              const lineNumber = index + 1;
-              const isHighlighted = highlightedLines.includes(lineNumber);
-
-              return (
-                <div
-                  key={index}
-                  className={`syntax-yaml ${isHighlighted ? 'bg-blue-500/10' : ''}`}
-                  style={{
-                    height: '1.25rem',
-                    lineHeight: '1.25rem',
-                    textShadow: 'none',
-                    whiteSpace: 'pre',
-                    overflow: 'visible'
-                  }}
-                  dangerouslySetInnerHTML={{ __html: htmlLine }}
-                />
-              );
-            })}
-          </div>
-        );
+        return {
+          nodes: highlightedHtml.split('\n').map((htmlLine) => (
+            <span dangerouslySetInnerHTML={{ __html: htmlLine }} />
+          )),
+          wrapperClass: 'syntax-yaml'
+        };
       } catch (e) {
-        // Fallback to plain text
-        return renderPlainText(lines);
+        // Fallback to plain
       }
     }
 
-    // Regular text rendering
-    return renderPlainText(lines);
+    return {
+      nodes: lines.map((line) => <span>{line}</span>),
+      wrapperClass: ''
+    };
   };
 
-  // Helper function for plain text rendering
-  const renderPlainText = (lines: string[]) => {
-    return (
-      <div>
-        {lines.map((line, index) => {
-          const lineNumber = index + 1;
-          const isHighlighted = highlightedLines.includes(lineNumber);
+  const renderContentWithLineNumbers = (text: string, isFullWindow = false) => {
+    const lines = text.split('\n');
+    const { nodes: lineContents, wrapperClass } = buildLineContents(text, lines);
 
-          return (
-            <div
-              key={index}
-              className={`${isHighlighted ? 'bg-blue-500/10' : ''} whitespace-nowrap`}
-              style={{ height: '1.25rem', lineHeight: '1.25rem' }}
-            >
-              <span>{line}</span>
-            </div>
-          );
-        })}
+    const heightClass = isFullWindow
+      ? "h-full"
+      : "max-h-[calc(100vh-24rem)]";
+
+    const contentStyle: React.CSSProperties = wrapLines
+      ? { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', textShadow: 'none' }
+      : { whiteSpace: 'pre', textShadow: 'none' };
+
+    return (
+      <div
+        ref={contentRef}
+        className={`text-xs font-mono bg-muted overflow-hidden ${heightClass} overflow-y-auto`}
+        style={{ overflowX: wrapLines ? 'hidden' : 'auto' }}
+      >
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            .syntax-json .token.property { color: #0066cc; }
+            .syntax-json .token.string { color: #22863a; }
+            .syntax-json .token.number { color: #005cc5; }
+            .syntax-json .token.boolean { color: #d73a49; }
+            .syntax-json .token.null { color: #6f42c1; }
+            .syntax-json .token.punctuation { color: #586069; }
+            .syntax-yaml .token.key { color: #0066cc; }
+            .syntax-yaml .token.string { color: #22863a; }
+            .syntax-yaml .token.number { color: #005cc5; }
+            .syntax-yaml .token.boolean { color: #d73a49; }
+            .syntax-yaml .token.null { color: #6f42c1; }
+            .syntax-yaml .token.punctuation { color: #586069; }
+            .syntax-yaml .token.comment { color: #6a737d; font-style: italic; }
+          `
+        }} />
+        <div className={wrapLines ? "py-4" : "py-4 min-w-fit"}>
+          {lines.map((_, index) => {
+            const lineNumber = index + 1;
+            const isHighlighted = highlightedLines.includes(lineNumber);
+
+            return (
+              <div
+                key={index}
+                className={`flex ${isHighlighted ? 'bg-blue-500/10' : ''}`}
+              >
+                <div
+                  data-line-number={lineNumber}
+                  className={`shrink-0 sticky left-0 z-10 cursor-pointer select-none text-right border-r border-border ${
+                    isHighlighted
+                      ? 'bg-blue-500/20 text-blue-600 font-semibold'
+                      : 'bg-muted-foreground/10 hover:bg-muted-foreground/20 text-muted-foreground'
+                  }`}
+                  onClick={(e) => handleLineClick(lineNumber, e)}
+                  title="Click to select line, Ctrl+click to multi-select, Shift+click for range"
+                  style={{ minWidth: '3rem', padding: '0 0.5rem', lineHeight: '1.25rem' }}
+                >
+                  {lineNumber}
+                </div>
+                <div
+                  className={`flex-1 min-w-0 px-4 ${wrapperClass}`}
+                  style={{
+                    minHeight: '1.25rem',
+                    lineHeight: '1.25rem',
+                    ...contentStyle,
+                  }}
+                >
+                  {lineContents[index]}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -501,6 +451,9 @@ export function FileViewer({
               {loadedSize && <Badge variant="outline">{formatBytes(loadedSize)}</Badge>}
             </div>
             <div className="flex gap-2">
+              <Button onClick={toggleWrapLines} size="sm" variant="outline">
+                {wrapLines ? 'Unwrap' : 'Wrap'}
+              </Button>
               <Button
                 onClick={copyContent}
                 size="sm"
@@ -539,6 +492,11 @@ export function FileViewer({
               <Badge variant="outline" className="text-xs">
                 Loading...
               </Badge>
+            )}
+            {content && (
+              <Button onClick={toggleWrapLines} size="sm" variant="outline">
+                {wrapLines ? 'Unwrap' : 'Wrap'}
+              </Button>
             )}
             {content && (
               <Button
