@@ -254,7 +254,7 @@ runs:
   steps:
     - name: Verify and install dependencies
       if: ${{ inputs.run-tests == 'true' }}
-      uses: ethpandaops/syncoor/.github/actions/dependencies@59851f7b3da04e649e1d92e03684aae7db6accd5
+      uses: ethpandaops/syncoor/.github/actions/dependencies@44d647f59e845115195548b73f77b37314daa506
       with:
         kurtosis-version: ${{ inputs.kurtosis-version }}
 
