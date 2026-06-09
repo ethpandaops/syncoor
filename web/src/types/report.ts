@@ -108,6 +108,8 @@ export interface ProgressEntry {
   ce: number;
   /** CPU usage consensus - Consensus client CPU usage percentage */
   cc: number;
+  /** Execution eth version - Highest negotiated devp2p "eth" protocol version across EL peers (e.g. 70, 71) */
+  eev?: number;
 }
 
 /**

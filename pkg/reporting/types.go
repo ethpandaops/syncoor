@@ -39,6 +39,11 @@ type ProgressMetrics struct {
 	ExecVersion     string  `json:"exec_version,omitempty"`
 	ConsVersion     string  `json:"cons_version,omitempty"`
 
+	// ExecEthProtocolVersion is the highest negotiated devp2p "eth" protocol
+	// version across the execution client's peers (e.g. 70, 71). 0/omitted when
+	// unknown or unavailable.
+	ExecEthProtocolVersion uint64 `json:"exec_eth_protocol_version,omitempty"`
+
 	// Docker metrics for execution client
 	ExecDiskUsage       uint64  `json:"exec_disk_usage"`
 	ExecMemoryUsage     uint64  `json:"exec_memory_usage"`

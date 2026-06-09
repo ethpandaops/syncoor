@@ -567,6 +567,11 @@ export default function TestList() {
                             }}
                           />
                           <span className="font-medium capitalize">{report.execution_client_info.type}</span>
+                          {report.sync_info.last_entry?.eev ? (
+                            <Badge variant="outline" className="text-[10px] font-mono px-1 py-0">
+                              eth/{report.sync_info.last_entry.eev}
+                            </Badge>
+                          ) : null}
                         </Link>
                       </td>
                       <td className="py-3 px-3">

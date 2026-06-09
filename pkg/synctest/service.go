@@ -706,6 +706,8 @@ func (s *service) WaitForSync(ctx context.Context) error {
 				PeersExecutionClient: metrics.ExePeers,
 				PeersConsensusClient: metrics.ConPeers,
 
+				ExecEthProtocolVersion: execSyncStatus.MaxEthProtocolVersion,
+
 				// Docker metrics for execution client
 				DiskUsageExecutionClient:       metrics.ExeDiskUsage,
 				MemoryUsageExecutionClient:     metrics.ExeMemoryUsage,
@@ -743,6 +745,8 @@ func (s *service) WaitForSync(ctx context.Context) error {
 					ConsSyncPercent: metrics.ConSyncPercentage,
 					ExecVersion:     metrics.ExeVersion,
 					ConsVersion:     metrics.ConVersion,
+
+					ExecEthProtocolVersion: execSyncStatus.MaxEthProtocolVersion,
 
 					// Docker metrics for execution client
 					ExecMemoryUsage:     metrics.ExeMemoryUsage,

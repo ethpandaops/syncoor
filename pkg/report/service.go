@@ -86,6 +86,10 @@ type SyncProgressEntry struct {
 	PeersExecutionClient uint64 `json:"pe"` // Execution client peers
 	PeersConsensusClient uint64 `json:"pc"` // Consensus client peers
 
+	// Highest negotiated devp2p "eth" protocol version across the execution
+	// client's peers (e.g. 70, 71). 0/omitted when unknown or unavailable.
+	ExecEthProtocolVersion uint64 `json:"eev,omitempty"`
+
 	// Docker metrics for execution client
 	DiskUsageExecutionClient       uint64  `json:"de"`  // Execution client disk usage (bytes)
 	MemoryUsageExecutionClient     uint64  `json:"me"`  // Execution client memory usage (bytes)

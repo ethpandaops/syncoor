@@ -17,6 +17,7 @@ type Client interface {
 	IsSyncing(ctx context.Context) (bool, error)
 	GetBlockNumber(ctx context.Context) (uint64, error)
 	GetPeerCount(ctx context.Context) (int, error)
+	GetMaxEthProtocolVersion(ctx context.Context) (uint64, error)
 	Name() string
 }
 
@@ -41,10 +42,13 @@ func (e *RPCError) Error() string {
 
 // SyncStatus represents the sync status of the execution client
 type SyncStatus struct {
-	BlockNumber  uint64
-	IsSyncing    bool
-	PeerCount    int
-	SyncProgress *SyncProgress
+	BlockNumber uint64
+	IsSyncing   bool
+	PeerCount   int
+	// MaxEthProtocolVersion is the highest negotiated devp2p "eth" version across
+	// peers (0 when unknown/unavailable). Best-effort; never fails the read.
+	MaxEthProtocolVersion uint64
+	SyncProgress          *SyncProgress
 }
 
 // SyncProgress represents the sync progress when syncing
@@ -99,6 +103,50 @@ func (c *client) GetPeerCount(ctx context.Context) (int, error) {
 	}
 
 	return peerCount, nil
+}
+
+// GetMaxEthProtocolVersion returns the highest negotiated devp2p "eth" protocol
+// version across all connected peers (e.g. 70 for eth/70, 71 for eth/71). It
+// queries admin_peers and inspects each peer's protocols.eth.version. A return
+// value of 0 means no peer reported an eth version (e.g. no peers yet, or the
+// client does not expose admin_peers / the eth version over HTTP). The error is
+// only non-nil when the RPC call itself fails, so callers can treat the
+// information as best-effort and never fail the sync test on it.
+func (c *client) GetMaxEthProtocolVersion(ctx context.Context) (uint64, error) {
+	req := map[string]interface{}{
+		"jsonrpc": "2.0",
+		"method":  "admin_peers",
+		"params":  []interface{}{},
+		"id":      1,
+	}
+
+	resp, err := c.makeRPCRequest(ctx, req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get peers: %w", err)
+	}
+
+	// admin_peers returns an array of peers. We only care about the negotiated
+	// eth protocol version, parsed defensively so an unexpected shape from any
+	// single client/peer never aborts the whole read.
+	var peers []struct {
+		Protocols struct {
+			Eth struct {
+				Version uint64 `json:"version"`
+			} `json:"eth"`
+		} `json:"protocols"`
+	}
+	if err := json.Unmarshal(resp.Result, &peers); err != nil {
+		return 0, fmt.Errorf("failed to parse admin_peers: %w", err)
+	}
+
+	var maxVersion uint64
+	for _, p := range peers {
+		if p.Protocols.Eth.Version > maxVersion {
+			maxVersion = p.Protocols.Eth.Version
+		}
+	}
+
+	return maxVersion, nil
 }
 
 // IsSyncing checks if the client is syncing
@@ -220,6 +268,15 @@ func (c *client) GetSyncStatus(ctx context.Context) (*SyncStatus, error) {
 		BlockNumber: blockNumber,
 		IsSyncing:   isSyncing,
 		PeerCount:   peerCount,
+	}
+
+	// Best-effort: record the highest negotiated eth protocol version. Not all
+	// clients expose admin_peers over HTTP, so a failure here is logged and
+	// ignored rather than failing the whole sync-status read.
+	if maxEthVersion, err := c.GetMaxEthProtocolVersion(ctx); err != nil {
+		c.log.WithError(err).Debug("Failed to get max eth protocol version")
+	} else {
+		status.MaxEthProtocolVersion = maxEthVersion
 	}
 
 	// Check sync progress if	syncing

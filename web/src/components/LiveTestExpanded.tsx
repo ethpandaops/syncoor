@@ -330,6 +330,14 @@ const LiveTestExpanded: React.FC<LiveTestExpandedProps> = ({
                 {test.current_metrics?.exec_version || testDetail.el_client_config?.image?.split(':')[1] || 'N/A'}
               </div>
             </div>
+            {test.current_metrics?.exec_eth_protocol_version ? (
+              <div>
+                <span className="text-xs text-muted-foreground">Negotiated eth Protocol:</span>
+                <div className="font-mono text-xs break-all overflow-hidden">
+                  eth/{test.current_metrics.exec_eth_protocol_version}
+                </div>
+              </div>
+            ) : null}
             <div>
               <span className="text-xs text-muted-foreground">Image:</span>
               <div className="font-mono text-xs break-all overflow-hidden">{testDetail.el_client_config.image}</div>

@@ -27,6 +27,8 @@ export interface ProgressMetrics {
   cons_sync_percent: number;
   exec_version?: string;
   cons_version?: string;
+  /** Highest negotiated devp2p "eth" protocol version across EL peers (e.g. 70, 71) */
+  exec_eth_protocol_version?: number;
   exec_memory_usage?: number;
   cons_memory_usage?: number;
   exec_block_io_read?: number;

@@ -25,6 +25,7 @@ export function transformProgressPoints(progressHistory: ProgressPoint[]): Progr
     bwc: point.metrics.cons_block_io_write || 0,
     ce: point.metrics.exec_cpu_usage_percent || 0,
     cc: point.metrics.cons_cpu_usage_percent || 0,
+    eev: point.metrics.exec_eth_protocol_version || 0,
   }));
 }
 
@@ -52,6 +53,7 @@ export function transformProgressEntries(progressEntries: ProgressEntry[]): Prog
       cons_block_io_write: entry.bwc,
       exec_cpu_usage_percent: entry.ce,
       cons_cpu_usage_percent: entry.cc,
+      exec_eth_protocol_version: entry.eev,
     },
   }));
 }

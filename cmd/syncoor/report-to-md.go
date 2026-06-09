@@ -61,13 +61,14 @@ type MainReport struct {
 		SyncProgressFile string `json:"sync_progress_file"`
 		EntriesCount     int    `json:"entries_count"`
 		LastEntry        *struct {
-			T  int64  `json:"t"`
-			B  uint64 `json:"b"`
-			S  uint64 `json:"s"`
-			DE uint64 `json:"de"`
-			DC uint64 `json:"dc"`
-			PE uint64 `json:"pe"`
-			PC uint64 `json:"pc"`
+			T   int64  `json:"t"`
+			B   uint64 `json:"b"`
+			S   uint64 `json:"s"`
+			DE  uint64 `json:"de"`
+			DC  uint64 `json:"dc"`
+			PE  uint64 `json:"pe"`
+			PC  uint64 `json:"pc"`
+			EEV uint64 `json:"eev"`
 		} `json:"last_entry,omitempty"`
 	} `json:"sync_status"`
 	ExecutionClientInfo struct {
@@ -224,6 +225,9 @@ func addSyncResults(md *strings.Builder, report *MainReport) {
 		fmt.Fprintf(md, "| **CL Disk Usage** | %s |\n", formatBytes(report.SyncStatus.LastEntry.DC))
 		fmt.Fprintf(md, "| **EL Peers** | %d |\n", report.SyncStatus.LastEntry.PE)
 		fmt.Fprintf(md, "| **CL Peers** | %d |\n", report.SyncStatus.LastEntry.PC)
+		if report.SyncStatus.LastEntry.EEV > 0 {
+			fmt.Fprintf(md, "| **EL eth Protocol** | eth/%d |\n", report.SyncStatus.LastEntry.EEV)
+		}
 	}
 	md.WriteString("\n")
 }

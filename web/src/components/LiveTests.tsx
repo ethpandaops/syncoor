@@ -686,6 +686,11 @@ const LiveTests: React.FC<LiveTestsProps> = ({ endpoints, className }) => {
                                           return version.length > 20 ? `${version.slice(0, 20)}...` : version;
                                         })()}
                                       </div>
+                                      {test.current_metrics?.exec_eth_protocol_version ? (
+                                        <Badge variant="outline" className="mt-0.5 text-[10px] font-mono px-1 py-0">
+                                          eth/{test.current_metrics.exec_eth_protocol_version}
+                                        </Badge>
+                                      ) : null}
                                     </div>
                                   </div>
                                 </td>
