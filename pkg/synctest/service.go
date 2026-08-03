@@ -668,9 +668,13 @@ func (s *service) WaitForSync(ctx context.Context) error {
 
 				"el_block_highest": metrics.ExeSyncHighestBlock,
 				"el_block":         metrics.ExeSyncCurrentBlock,
-				"el_chain_id":      metrics.ExeChainID,
-				"el_syncing":       metrics.ExeIsSyncing,
-				"el_type":          s.cfg.ELClient,
+				// eth_blockNumber directly from the EL; can differ from el_block
+				// on clients that only update their chain head once sync
+				// completes (e.g. besu during snap sync import)
+				"el_block_rpc": execSyncStatus.BlockNumber,
+				"el_chain_id":  metrics.ExeChainID,
+				"el_syncing":   metrics.ExeIsSyncing,
+				"el_type":      s.cfg.ELClient,
 			}).Info("Sync progress")
 
 			// Track progress if we got all data
