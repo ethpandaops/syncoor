@@ -52,7 +52,7 @@ inputs:
     default: 'false'
 
   el-client:
-    description: 'Execution layer client type (geth, besu, nethermind, erigon, reth)'
+    description: 'Execution layer client type (geth, besu, nethermind, erigon, reth, ethrex)'
     required: false
     default: 'geth'
 

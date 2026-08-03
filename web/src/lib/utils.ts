@@ -133,6 +133,7 @@ export function getClientDisplayName(info: ClientInfo): string {
     'nethermind': 'Nethermind',
     'besu': 'Besu',
     'erigon': 'Erigon',
+    'ethrex': 'Ethrex',
     'prysm': 'Prysm',
     'lighthouse': 'Lighthouse',
     'teku': 'Teku',
