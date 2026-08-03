@@ -315,8 +315,8 @@ export function FileViewer({
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.json, 'json');
         return {
-          nodes: highlightedHtml.split('\n').map((htmlLine) => (
-            <span dangerouslySetInnerHTML={{ __html: htmlLine }} />
+          nodes: highlightedHtml.split('\n').map((htmlLine, index) => (
+            <span key={index} dangerouslySetInnerHTML={{ __html: htmlLine }} />
           )),
           wrapperClass: 'syntax-json'
         };
@@ -329,8 +329,8 @@ export function FileViewer({
       try {
         const highlightedHtml = Prism.highlight(text, Prism.languages.yaml, 'yaml');
         return {
-          nodes: highlightedHtml.split('\n').map((htmlLine) => (
-            <span dangerouslySetInnerHTML={{ __html: htmlLine }} />
+          nodes: highlightedHtml.split('\n').map((htmlLine, index) => (
+            <span key={index} dangerouslySetInnerHTML={{ __html: htmlLine }} />
           )),
           wrapperClass: 'syntax-yaml'
         };
@@ -348,8 +348,8 @@ export function FileViewer({
       stream: false,
     });
     return {
-      nodes: lines.map((line) => (
-        <span dangerouslySetInnerHTML={{ __html: convert.toHtml(line) }} />
+      nodes: lines.map((line, index) => (
+        <span key={index} dangerouslySetInnerHTML={{ __html: convert.toHtml(line) }} />
       )),
       wrapperClass: ''
     };
