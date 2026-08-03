@@ -1,6 +1,7 @@
 package kurtosis
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -132,28 +133,32 @@ func NewClient(log logrus.FieldLogger) Client {
 
 // InspectKurtosisService runs `kurtosis service inspect $enclaveName $service -o json` and returns the parsed result
 func (c *client) InspectService(ctx context.Context, enclaveName, service string) (*KurtosisServiceInspectResult, error) {
-	// Run the kurtosis service inspect command
+	// Run the kurtosis service inspect command. Capture stdout separately from
+	// stderr so CLI log lines don't get mixed into the JSON output
 	cmd := exec.CommandContext(ctx, "kurtosis", "service", "inspect", enclaveName, service, "-o", "json")
 
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, &exitErr) {
 			c.log.WithFields(logrus.Fields{
 				"enclave":   enclaveName,
 				"service":   service,
 				"exit_code": exitErr.ExitCode(),
-				"output":    string(output),
-				"stderr":    string(exitErr.Stderr),
+				"output":    stdout.String(),
+				"stderr":    stderr.String(),
 			}).Error("Kurtosis service inspect failed")
-			return nil, fmt.Errorf("failed to run kurtosis service inspect command (exit code %d): %w\nOutput: %s", exitErr.ExitCode(), err, string(output))
+			return nil, fmt.Errorf("failed to run kurtosis service inspect command (exit code %d): %w\nOutput: %s", exitErr.ExitCode(), err, stderr.String())
 		}
-		return nil, fmt.Errorf("failed to run kurtosis service inspect command: %w\nOutput: %s", err, string(output))
+		return nil, fmt.Errorf("failed to run kurtosis service inspect command: %w\nOutput: %s", err, stderr.String())
 	}
 
 	// Parse the JSON output
 	var result KurtosisServiceInspectResult
-	if err := json.Unmarshal(output, &result); err != nil {
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
 		return nil, fmt.Errorf("failed to parse JSON output: %w", err)
 	}
 

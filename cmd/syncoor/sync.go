@@ -205,7 +205,7 @@ Exit codes:
 	cmd.Flags().DurationVar(&checkInterval, "check-interval", 10*time.Second, "Interval in seconds between sync status checks")
 	cmd.Flags().DurationVar(&runTimeout, "run-timeout", 60*time.Minute,
 		"Timeout for sync operation - will cancel sync and generate report marked as 'timeout' if exceeded (exits with code 124)")
-	cmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth)")
+	cmd.Flags().StringVar(&elClient, "el-client", "geth", "Execution layer client type (geth, besu, nethermind, erigon, reth, ethrex)")
 	cmd.Flags().StringVar(&clClient, "cl-client", "teku", "Consensus layer client type (lighthouse, teku, prysm, nimbus, lodestar, grandine)")
 	cmd.Flags().StringVar(&elImage, "el-image", "", "Execution layer client image (optional)")
 	cmd.Flags().StringVar(&clImage, "cl-image", "", "Consensus layer client image (optional)")

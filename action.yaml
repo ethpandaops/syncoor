@@ -52,7 +52,7 @@ inputs:
     default: 'false'
 
   el-client:
-    description: 'Execution layer client type (geth, besu, nethermind, erigon, reth)'
+    description: 'Execution layer client type (geth, besu, nethermind, erigon, reth, ethrex)'
     required: false
     default: 'geth'
 
@@ -239,7 +239,7 @@ inputs:
   kurtosis-version:
     description: 'Kurtosis CLI version to use'
     required: false
-    default: '1.18.1'
+    default: '1.20.0'
 
 outputs:
   report-path:
