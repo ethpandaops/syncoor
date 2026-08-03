@@ -16,8 +16,18 @@ type Client interface {
 	GetSyncStatus(ctx context.Context) (*SyncStatus, error)
 	IsSyncing(ctx context.Context) (bool, error)
 	GetBlockNumber(ctx context.Context) (uint64, error)
+	GetLatestBlockHead(ctx context.Context) (*BlockHead, error)
 	GetPeerCount(ctx context.Context) (int, error)
 	Name() string
+}
+
+// BlockHead represents the header fields of the latest block relevant for head checks
+type BlockHead struct {
+	Number    uint64
+	Timestamp uint64
+	// SlotNumber is the beacon chain slot the block belongs to (EIP-7843);
+	// nil on networks/clients that do not include it in the block header
+	SlotNumber *uint64
 }
 
 // RPCResponse represents a JSON-RPC response
@@ -142,6 +152,47 @@ func (c *client) GetBlockNumber(ctx context.Context) (uint64, error) {
 	}
 
 	return blockNumber, nil
+}
+
+// GetLatestBlockHead gets the number, timestamp and slot number (EIP-7843) of the latest block
+func (c *client) GetLatestBlockHead(ctx context.Context) (*BlockHead, error) {
+	req := map[string]any{
+		"jsonrpc": "2.0",
+		"method":  "eth_getBlockByNumber",
+		"params":  []any{"latest", false},
+		"id":      1,
+	}
+
+	resp, err := c.makeRPCRequest(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest block: %w", err)
+	}
+
+	var rawBlock struct {
+		Number     string  `json:"number"`
+		Timestamp  string  `json:"timestamp"`
+		SlotNumber *string `json:"slotNumber"`
+	}
+	if err := json.Unmarshal(resp.Result, &rawBlock); err != nil {
+		return nil, fmt.Errorf("failed to parse latest block: %w", err)
+	}
+
+	head := &BlockHead{}
+	if _, err := fmt.Sscanf(rawBlock.Number, "0x%x", &head.Number); err != nil {
+		return nil, fmt.Errorf("failed to parse block number hex: %w", err)
+	}
+	if _, err := fmt.Sscanf(rawBlock.Timestamp, "0x%x", &head.Timestamp); err != nil {
+		return nil, fmt.Errorf("failed to parse timestamp hex: %w", err)
+	}
+	if rawBlock.SlotNumber != nil {
+		var slotNumber uint64
+		if _, err := fmt.Sscanf(*rawBlock.SlotNumber, "0x%x", &slotNumber); err != nil {
+			return nil, fmt.Errorf("failed to parse slotNumber hex: %w", err)
+		}
+		head.SlotNumber = &slotNumber
+	}
+
+	return head, nil
 }
 
 // SyncProgress gets the sync progress object if syncing, returns nil if not syncing

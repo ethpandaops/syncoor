@@ -765,8 +765,8 @@ func (s *service) WaitForSync(ctx context.Context) error {
 			consensusSyncStatus.IsOptimistic == false &&
 			consensusSyncStatus.IsSyncing == false &&
 			execSyncStatus.IsSyncing == false &&
-			execSyncStatus.BlockNumber > 0 {
-
+			execSyncStatus.BlockNumber > 0 &&
+			s.isAtNetworkHead(ctx, consensusSyncStatus.HeadSlot) {
 			// Mark test as completed to prevent further progress reports
 			s.testCompleted = true
 
@@ -871,6 +871,58 @@ func (s *service) SaveTempReport(ctx context.Context) error {
 }
 
 // createBasicReport creates a basic report structure as fallback
+// headSlotTolerance is the number of slots the execution client head is
+// allowed to trail the network head and still be considered synced
+const headSlotTolerance = 64
+
+// isAtNetworkHead cross-checks the execution client head against where the
+// network should be right now. Clients can transiently report "not syncing"
+// while far behind the network head, so self-reported sync flags alone are not
+// trusted. Slot durations can change at forks (EIP-7782) and the spec only
+// exposes the current SECONDS_PER_SLOT, so freshness is checked in the time
+// domain (block timestamps are absolute) instead of deriving slot counts from
+// genesis; SECONDS_PER_SLOT only scales the tolerance. On errors, completion
+// is deferred (the run timeout acts as the backstop).
+func (s *service) isAtNetworkHead(ctx context.Context, clHeadSlot string) bool {
+	secondsPerSlot, err := s.consensusClientFetcher.GetSecondsPerSlot(ctx)
+	if err != nil {
+		s.log.WithError(err).Warn("Failed to fetch slot duration from consensus client, deferring sync completion check")
+		return false
+	}
+
+	head, err := s.executionClientFetcher.GetLatestBlockHead(ctx)
+	if err != nil {
+		s.log.WithError(err).Warn("Failed to fetch latest block from execution client, deferring sync completion check")
+		return false
+	}
+
+	now := uint64(time.Now().Unix()) // #nosec G115 - unix time is positive
+	if head.Timestamp+headSlotTolerance*secondsPerSlot < now {
+		s.log.WithFields(logrus.Fields{
+			"el_block":           head.Number,
+			"el_block_timestamp": head.Timestamp,
+			"behind_seconds":     now - head.Timestamp,
+		}).Info("Clients report synced but execution head timestamp is behind wall clock, continuing to wait")
+		return false
+	}
+
+	// When the block header carries the slot number (EIP-7843), also require
+	// the execution head to be at the slot the consensus client reports as head
+	if head.SlotNumber != nil {
+		headSlot, parseErr := strconv.ParseUint(clHeadSlot, 10, 64)
+		if parseErr == nil && *head.SlotNumber+headSlotTolerance < headSlot {
+			s.log.WithFields(logrus.Fields{
+				"el_block":     head.Number,
+				"el_slot":      *head.SlotNumber,
+				"cl_head_slot": headSlot,
+			}).Info("Clients report synced but execution head slot is behind consensus head slot, continuing to wait")
+			return false
+		}
+	}
+
+	return true
+}
+
 func (s *service) createBasicReport() *report.Result {
 	return &report.Result{
 		Network: s.cfg.Network,
