@@ -882,13 +882,15 @@ const headSlotTolerance = 64
 // isAtNetworkHead cross-checks the execution client head against where the
 // network should be right now. Clients can transiently report "not syncing"
 // while far behind the network head, so self-reported sync flags alone are not
-// trusted. Slot durations can change at forks (EIP-7782) and the spec only
-// exposes the current SECONDS_PER_SLOT, so freshness is checked in the time
-// domain (block timestamps are absolute) instead of deriving slot counts from
-// genesis; SECONDS_PER_SLOT only scales the tolerance. On errors, completion
-// is deferred (the run timeout acts as the backstop).
+// trusted. On errors, completion is deferred (the run timeout acts as the backstop).
 func (s *service) isAtNetworkHead(ctx context.Context, clHeadSlot string) bool {
-	secondsPerSlot, err := s.consensusClientFetcher.GetSecondsPerSlot(ctx)
+	headSlot, err := strconv.ParseUint(clHeadSlot, 10, 64)
+	if err != nil {
+		s.log.WithError(err).Warn("Failed to parse consensus head slot, deferring sync completion check")
+		return false
+	}
+
+	slotDuration, err := s.consensusClientFetcher.GetSlotDuration(ctx, headSlot)
 	if err != nil {
 		s.log.WithError(err).Warn("Failed to fetch slot duration from consensus client, deferring sync completion check")
 		return false
@@ -900,12 +902,13 @@ func (s *service) isAtNetworkHead(ctx context.Context, clHeadSlot string) bool {
 		return false
 	}
 
-	now := uint64(time.Now().Unix()) // #nosec G115 - unix time is positive
-	if head.Timestamp+headSlotTolerance*secondsPerSlot < now {
+	now := time.Now()
+	headTime := time.Unix(int64(head.Timestamp), 0) // #nosec G115 - block timestamps fit in int64
+	if headTime.Add(headSlotTolerance * slotDuration).Before(now) {
 		s.log.WithFields(logrus.Fields{
 			"el_block":           head.Number,
 			"el_block_timestamp": head.Timestamp,
-			"behind_seconds":     now - head.Timestamp,
+			"behind_seconds":     int64(now.Sub(headTime).Seconds()),
 		}).Info("Clients report synced but execution head timestamp is behind wall clock, continuing to wait")
 		return false
 	}
@@ -913,8 +916,7 @@ func (s *service) isAtNetworkHead(ctx context.Context, clHeadSlot string) bool {
 	// When the block header carries the slot number (EIP-7843), also require
 	// the execution head to be at the slot the consensus client reports as head
 	if head.SlotNumber != nil {
-		headSlot, parseErr := strconv.ParseUint(clHeadSlot, 10, 64)
-		if parseErr == nil && *head.SlotNumber+headSlotTolerance < headSlot {
+		if *head.SlotNumber+headSlotTolerance < headSlot {
 			s.log.WithFields(logrus.Fields{
 				"el_block":     head.Number,
 				"el_slot":      *head.SlotNumber,

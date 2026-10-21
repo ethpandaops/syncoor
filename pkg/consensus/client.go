@@ -21,7 +21,7 @@ var ErrUnexpectedStatus = errors.New("beacon API returned unexpected status")
 // Client defines the interface for consensus layer operations
 type Client interface {
 	GetSyncStatus(ctx context.Context) (*SyncStatus, error)
-	GetSecondsPerSlot(ctx context.Context) (uint64, error)
+	GetSlotDuration(ctx context.Context, slot uint64) (time.Duration, error)
 	Name() string
 }
 
@@ -98,26 +98,88 @@ func (c *client) GetSyncStatus(ctx context.Context) (*SyncStatus, error) {
 	return &syncResponse.Data, nil
 }
 
-// GetSecondsPerSlot gets the slot duration from the consensus client spec
-func (c *client) GetSecondsPerSlot(ctx context.Context) (uint64, error) {
+// GetSlotDuration gets the duration of the given slot from the consensus client spec
+func (c *client) GetSlotDuration(ctx context.Context, slot uint64) (time.Duration, error) {
 	var response struct {
-		Data struct {
-			SecondsPerSlot string `json:"SECONDS_PER_SLOT"`
-		} `json:"data"`
+		Data map[string]any `json:"data"`
 	}
 	if err := c.getJSON(ctx, "/eth/v1/config/spec", &response); err != nil {
 		return 0, err
 	}
 
-	secondsPerSlot, err := strconv.ParseUint(response.Data.SecondsPerSlot, 10, 64)
+	return slotDurationAt(response.Data, slot)
+}
+
+func slotDurationAt(spec map[string]any, slot uint64) (time.Duration, error) {
+	genesisMs, ok, err := specUint(spec, "SLOT_DURATION_MS")
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse SECONDS_PER_SLOT: %w", err)
+		return 0, err
 	}
-	if secondsPerSlot == 0 {
-		return 0, fmt.Errorf("%w: SECONDS_PER_SLOT is zero", ErrInvalidSpec)
+	if !ok {
+		secondsPerSlot, found, err := specUint(spec, "SECONDS_PER_SLOT")
+		if err != nil {
+			return 0, err
+		}
+		if !found {
+			return 0, fmt.Errorf("%w: SLOT_DURATION_MS and SECONDS_PER_SLOT missing", ErrInvalidSpec)
+		}
+		genesisMs = secondsPerSlot * 1000
+	}
+	if genesisMs == 0 {
+		return 0, fmt.Errorf("%w: slot duration is zero", ErrInvalidSpec)
 	}
 
-	return secondsPerSlot, nil
+	hezeMs, hasHezeDuration, err := specUint(spec, "SLOT_DURATION_MS_HEZE")
+	if err != nil {
+		return 0, err
+	}
+	hezeEpoch, hasHezeEpoch, err := specUint(spec, "HEZE_FORK_EPOCH")
+	if err != nil {
+		return 0, err
+	}
+	if !hasHezeDuration || !hasHezeEpoch || hezeEpoch == farFutureEpoch {
+		return msToDuration(genesisMs), nil
+	}
+	if hezeMs == 0 {
+		return 0, fmt.Errorf("%w: SLOT_DURATION_MS_HEZE is zero", ErrInvalidSpec)
+	}
+
+	slotsPerEpoch, found, err := specUint(spec, "SLOTS_PER_EPOCH")
+	if err != nil {
+		return 0, err
+	}
+	if !found || slotsPerEpoch == 0 {
+		return 0, fmt.Errorf("%w: SLOTS_PER_EPOCH missing or zero", ErrInvalidSpec)
+	}
+
+	if slot/slotsPerEpoch >= hezeEpoch {
+		return msToDuration(hezeMs), nil
+	}
+
+	return msToDuration(genesisMs), nil
+}
+
+const farFutureEpoch = ^uint64(0)
+
+func msToDuration(ms uint64) time.Duration {
+	return time.Duration(ms) * time.Millisecond // #nosec G115 - spec slot durations fit in int64
+}
+
+func specUint(spec map[string]any, key string) (uint64, bool, error) {
+	raw, ok := spec[key]
+	if !ok {
+		return 0, false, nil
+	}
+	str, ok := raw.(string)
+	if !ok {
+		return 0, false, fmt.Errorf("%w: %s is not a string", ErrInvalidSpec, key)
+	}
+	value, err := strconv.ParseUint(str, 10, 64)
+	if err != nil {
+		return 0, false, fmt.Errorf("failed to parse %s: %w", key, err)
+	}
+
+	return value, true, nil
 }
 
 // Name returns the name of the consensus client
