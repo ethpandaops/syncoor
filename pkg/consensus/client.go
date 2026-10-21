@@ -111,22 +111,9 @@ func (c *client) GetSlotDuration(ctx context.Context, slot uint64) (time.Duratio
 }
 
 func slotDurationAt(spec map[string]any, slot uint64) (time.Duration, error) {
-	genesisMs, ok, err := specUint(spec, "SLOT_DURATION_MS")
+	genesisMs, err := genesisSlotDurationMs(spec)
 	if err != nil {
 		return 0, err
-	}
-	if !ok {
-		secondsPerSlot, found, err := specUint(spec, "SECONDS_PER_SLOT")
-		if err != nil {
-			return 0, err
-		}
-		if !found {
-			return 0, fmt.Errorf("%w: SLOT_DURATION_MS and SECONDS_PER_SLOT missing", ErrInvalidSpec)
-		}
-		genesisMs = secondsPerSlot * 1000
-	}
-	if genesisMs == 0 {
-		return 0, fmt.Errorf("%w: slot duration is zero", ErrInvalidSpec)
 	}
 
 	hezeMs, hasHezeDuration, err := specUint(spec, "SLOT_DURATION_MS_HEZE")
@@ -157,6 +144,28 @@ func slotDurationAt(spec map[string]any, slot uint64) (time.Duration, error) {
 	}
 
 	return msToDuration(genesisMs), nil
+}
+
+func genesisSlotDurationMs(spec map[string]any) (uint64, error) {
+	ms, ok, err := specUint(spec, "SLOT_DURATION_MS")
+	if err != nil {
+		return 0, err
+	}
+	if !ok {
+		secondsPerSlot, found, err := specUint(spec, "SECONDS_PER_SLOT")
+		if err != nil {
+			return 0, err
+		}
+		if !found {
+			return 0, fmt.Errorf("%w: SLOT_DURATION_MS and SECONDS_PER_SLOT missing", ErrInvalidSpec)
+		}
+		ms = secondsPerSlot * 1000
+	}
+	if ms == 0 {
+		return 0, fmt.Errorf("%w: slot duration is zero", ErrInvalidSpec)
+	}
+
+	return ms, nil
 }
 
 const farFutureEpoch = ^uint64(0)

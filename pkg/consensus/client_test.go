@@ -92,7 +92,14 @@ func TestGetSlotDuration(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/eth/v1/config/spec", r.URL.Path)
-		_, _ = w.Write([]byte(`{"data":{"SECONDS_PER_SLOT":"12","SLOT_DURATION_MS":"12000","SLOT_DURATION_MS_HEZE":"9000","HEZE_FORK_EPOCH":"5","SLOTS_PER_EPOCH":"32","DEPOSIT_CONTRACT_ADDRESS":"0x00000000219ab540356cbb839cbe05303d7705fa"}}`))
+		_, _ = w.Write([]byte(`{"data":{
+			"SECONDS_PER_SLOT":"12",
+			"SLOT_DURATION_MS":"12000",
+			"SLOT_DURATION_MS_HEZE":"9000",
+			"HEZE_FORK_EPOCH":"5",
+			"SLOTS_PER_EPOCH":"32",
+			"DEPOSIT_CONTRACT_ADDRESS":"0x00000000219ab540356cbb839cbe05303d7705fa"
+		}}`))
 	}))
 	defer server.Close()
 
