@@ -28,8 +28,7 @@ jobs:
         el-client: reth
         el-extra-args: >-
           [
-            "--full",
-            "--disable-discovery"
+            "--full"
           ]
         cl-client: prysm
         cl-env-vars: >-
