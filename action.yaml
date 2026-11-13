@@ -396,12 +396,16 @@ runs:
         # Mount temp directory (for metrics exporter config file)
         DOCKER_CMD="$DOCKER_CMD -v /tmp:/tmp"
 
-        KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token"
-        if [[ "$OSTYPE" == "darwin"* ]]; then
-          KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}/kurtosis/api-auth-token"
+        if [ -z "${KURTOSIS_API_AUTH_TOKEN:-}" ]; then
+          KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token"
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}/kurtosis/api-auth-token"
+          fi
+          if [ -f "$KURTOSIS_TOKEN_FILE" ]; then
+            export KURTOSIS_API_AUTH_TOKEN="$(cat "$KURTOSIS_TOKEN_FILE")"
+          fi
         fi
-        if [ -f "$KURTOSIS_TOKEN_FILE" ]; then
-          export KURTOSIS_API_AUTH_TOKEN="$(cat "$KURTOSIS_TOKEN_FILE")"
+        if [ -n "${KURTOSIS_API_AUTH_TOKEN:-}" ]; then
           DOCKER_CMD="$DOCKER_CMD -e KURTOSIS_API_AUTH_TOKEN"
         fi
 

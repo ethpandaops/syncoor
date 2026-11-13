@@ -49,6 +49,7 @@ services:
     environment:
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - SYNCOOR_AUTH_TOKEN=${SYNCOOR_AUTH_TOKEN:-}
+      - KURTOSIS_API_AUTH_TOKEN=${KURTOSIS_API_AUTH_TOKEN:-}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /tmp:/tmp

@@ -20,8 +20,11 @@ To be written...
 Using docker compose:
 
 ```bash
+export KURTOSIS_API_AUTH_TOKEN="$(cat "${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token")"
 docker compose up -d
 ```
+
+Kurtosis 1.23.0 and newer require an auth token on the engine. The `syncoor-run` container cannot read the token file the Kurtosis CLI keeps on the host, so it is passed through `KURTOSIS_API_AUTH_TOKEN`. On macOS the file is at `~/Library/Application Support/kurtosis/api-auth-token`.
 
 
 Open [http://localhost:10002](http://localhost:10002) in your browser to view the web UI.
