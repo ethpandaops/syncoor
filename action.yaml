@@ -409,10 +409,6 @@ runs:
         else
           echo "::warning::No Kurtosis API auth token found in KURTOSIS_API_AUTH_TOKEN or $KURTOSIS_TOKEN_FILE; Kurtosis 1.23.0+ engines will reject syncoor"
         fi
-          DOCKER_CMD="$DOCKER_CMD -e KURTOSIS_API_AUTH_TOKEN"
-        else
-          echo "::warning::No Kurtosis API auth token found in KURTOSIS_API_AUTH_TOKEN or $KURTOSIS_TOKEN_FILE; Kurtosis 1.23.0+ engines will reject syncoor"
-        fi
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
