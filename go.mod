@@ -4,7 +4,7 @@ go 1.26.10
 
 require (
 	github.com/docker/go-connections v0.7.0
-	github.com/ethpandaops/ethereum-package-go v0.10.0
+	github.com/ethpandaops/ethereum-package-go v0.11.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/kurtosis-tech/kurtosis/api/golang v1.23.0
 	github.com/moby/moby/api v1.52.0-alpha.1
@@ -39,7 +39,7 @@ require (
 	github.com/distribution/reference v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707 // indirect
-	github.com/ethpandaops/go-eth2-client v0.1.2 // indirect
+	github.com/ethpandaops/go-eth2-client v0.1.5 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -70,8 +70,8 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
-	github.com/pk910/dynamic-ssz v1.3.2-0.20260505131440-111bcb265c8f // indirect
-	github.com/pk910/hashtree-bindings v0.1.0 // indirect
+	github.com/pk910/dynamic-ssz v1.3.2 // indirect
+	github.com/pk910/hashtree-bindings v0.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
