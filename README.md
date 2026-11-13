@@ -60,7 +60,7 @@ Running the `syncoor` binary as the same user that started the engine needs no e
     ghcr.io/ethpandaops/syncoor:master sync --network hoodi --el-client geth --cl-client teku
   ```
 
-  With docker compose, export the variable the same way before `docker compose up`; the `syncoor-run` service forwards it. The GitHub action does this automatically.
+  With docker compose, export the variable the same way before `docker compose up`; the `syncoor-run` service forwards it. The GitHub action does this automatically: it starts the engine on the runner and forwards the runner's token (or a `KURTOSIS_API_AUTH_TOKEN` already set in the job environment) into the `syncoor-run` container, so workflows using `ethpandaops/syncoor@master` need no changes.
 
 A missing or wrong token fails with `missing or invalid Kurtosis API auth token`. The Kurtosis CLI and the SDK built into syncoor must share the same major.minor version as the engine.
 

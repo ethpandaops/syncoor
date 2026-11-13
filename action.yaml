@@ -396,17 +396,22 @@ runs:
         # Mount temp directory (for metrics exporter config file)
         DOCKER_CMD="$DOCKER_CMD -v /tmp:/tmp"
 
-        if [ -z "${KURTOSIS_API_AUTH_TOKEN:-}" ]; then
-          KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token"
-          if [[ "$OSTYPE" == "darwin"* ]]; then
-            KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}/kurtosis/api-auth-token"
-          fi
-          if [ -f "$KURTOSIS_TOKEN_FILE" ]; then
-            export KURTOSIS_API_AUTH_TOKEN="$(cat "$KURTOSIS_TOKEN_FILE")"
-          fi
+        KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}/kurtosis/api-auth-token"
+        fi
+        if [ -z "${KURTOSIS_API_AUTH_TOKEN:-}" ] && [ -f "$KURTOSIS_TOKEN_FILE" ]; then
+          export KURTOSIS_API_AUTH_TOKEN="$(cat "$KURTOSIS_TOKEN_FILE")"
         fi
         if [ -n "${KURTOSIS_API_AUTH_TOKEN:-}" ]; then
+          echo "::add-mask::$KURTOSIS_API_AUTH_TOKEN"
           DOCKER_CMD="$DOCKER_CMD -e KURTOSIS_API_AUTH_TOKEN"
+        else
+          echo "::warning::No Kurtosis API auth token found in KURTOSIS_API_AUTH_TOKEN or $KURTOSIS_TOKEN_FILE; Kurtosis 1.23.0+ engines will reject syncoor"
+        fi
+          DOCKER_CMD="$DOCKER_CMD -e KURTOSIS_API_AUTH_TOKEN"
+        else
+          echo "::warning::No Kurtosis API auth token found in KURTOSIS_API_AUTH_TOKEN or $KURTOSIS_TOKEN_FILE; Kurtosis 1.23.0+ engines will reject syncoor"
         fi
 
         # Add the image
