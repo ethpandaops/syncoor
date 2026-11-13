@@ -239,7 +239,7 @@ inputs:
   kurtosis-version:
     description: 'Kurtosis CLI version to use'
     required: false
-    default: '1.20.0'
+    default: '1.23.0'
 
 outputs:
   report-path:
@@ -395,6 +395,15 @@ runs:
 
         # Mount temp directory (for metrics exporter config file)
         DOCKER_CMD="$DOCKER_CMD -v /tmp:/tmp"
+
+        KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/kurtosis/api-auth-token"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+          KURTOSIS_TOKEN_FILE="${XDG_CONFIG_HOME:-$HOME/Library/Application Support}/kurtosis/api-auth-token"
+        fi
+        if [ -f "$KURTOSIS_TOKEN_FILE" ]; then
+          export KURTOSIS_API_AUTH_TOKEN="$(cat "$KURTOSIS_TOKEN_FILE")"
+          DOCKER_CMD="$DOCKER_CMD -e KURTOSIS_API_AUTH_TOKEN"
+        fi
 
         # Add the image
         DOCKER_CMD="$DOCKER_CMD $IMAGE"
