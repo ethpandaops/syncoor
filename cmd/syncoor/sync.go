@@ -62,6 +62,7 @@ func NewSyncCommand() *cobra.Command {
 Exit codes:
   0   - Success (sync completed successfully)
   1   - General error
+  123 - Network start failure (network failed to start, error report saved)
   124 - Timeout (sync operation timed out)
   125 - Container crash (EL or CL container crashed)`,
 		Run: func(cmd *cobra.Command, args []string) {
@@ -168,6 +169,11 @@ Exit codes:
 
 			// Start the service
 			if err := syncTestService.Start(ctx); err != nil {
+				if errors.Is(err, synctest.ErrNetworkStartFailed) {
+					logger.Errorf("Failed to start sync test: %v", err)
+					os.Exit(ExitCodeNetworkStartFailure)
+				}
+
 				logger.Fatalf("Failed to start sync test: %v", err)
 			}
 			defer func() {

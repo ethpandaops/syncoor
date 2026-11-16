@@ -23,6 +23,8 @@ const (
 	ExitCodeSuccess = 0
 	// ExitCodeError indicates a general error
 	ExitCodeError = 1
+	// ExitCodeNetworkStartFailure indicates the network failed to start and an error report was saved
+	ExitCodeNetworkStartFailure = 123
 	// ExitCodeTimeout indicates the operation timed out
 	ExitCodeTimeout = 124
 	// ExitCodeContainerCrash indicates a container crashed

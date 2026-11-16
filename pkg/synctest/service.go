@@ -29,6 +29,9 @@ import (
 // ErrSyncTimeout is returned when the sync operation times out
 var ErrSyncTimeout = errors.New("sync operation timed out")
 
+// ErrNetworkStartFailed is returned when the network failed to start and an error report was saved
+var ErrNetworkStartFailed = errors.New("network failed to start")
+
 // Service defines the interface for the sync test service
 type Service interface {
 	Start(ctx context.Context) error
@@ -280,8 +283,8 @@ func (s *service) Start(ctx context.Context) error {
 	network, err := ethereum.Run(ctx, runOpts...,
 	)
 	if err != nil {
-		if ctx.Err() == nil {
-			s.saveNetworkStartFailureReport(ctx, err)
+		if ctx.Err() == nil && s.saveNetworkStartFailureReport(ctx, err) {
+			return fmt.Errorf("%w: %w", ErrNetworkStartFailed, err)
 		}
 
 		return fmt.Errorf("failed to start network: %w", err)
@@ -1009,11 +1012,11 @@ func (s *service) checkContainerHealth(ctx context.Context, enclaveName, service
 
 const maxStartFailureMessageLen = 2000
 
-func (s *service) saveNetworkStartFailureReport(ctx context.Context, startErr error) {
+func (s *service) saveNetworkStartFailureReport(ctx context.Context, startErr error) bool {
 	if err := s.reportService.Start(ctx); err != nil {
 		s.log.WithError(err).Error("Failed to start report service for network start failure")
 
-		return
+		return false
 	}
 
 	if err := s.reportService.SetNetwork(ctx, s.cfg.Network); err != nil {
@@ -1059,10 +1062,12 @@ func (s *service) saveNetworkStartFailureReport(ctx context.Context, startErr er
 	if err := s.reportService.SaveReportToFiles(ctx, baseName, s.cfg.ReportDir); err != nil {
 		s.log.WithError(err).Error("Failed to save network start failure report")
 
-		return
+		return false
 	}
 
 	s.log.Info("Network start failure report saved")
+
+	return true
 }
 
 // finalizeSyncTest handles the common finalization steps for failed sync tests

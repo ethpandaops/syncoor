@@ -564,6 +564,10 @@ runs:
         if [ $DOCKER_EXIT_CODE -eq 0 ]; then
           echo "✅ Syncoor test completed successfully"
           exit 0
+        elif [ $DOCKER_EXIT_CODE -eq 123 ]; then
+          echo "🚫 Syncoor network failed to start (exit code 123) - this is acceptable for CI"
+          echo "The test will be marked as successful since the start failure produces a valid error report"
+          exit 0
         elif [ $DOCKER_EXIT_CODE -eq 124 ]; then
           echo "⏰ Syncoor test timed out (exit code 124) - this is acceptable for CI"
           echo "The test will be marked as successful since timeout is expected behavior"
@@ -579,13 +583,13 @@ runs:
         fi
 
     - name: Upload results to S3
-      if: ${{ !cancelled() && inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
+      if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
       shell: bash
       run: |
         rclone copy --no-traverse ${{ runner.temp }}/reports s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
 
     - name: Generate report index and upload to S3
-      if: ${{ !cancelled() && inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
+      if: ${{ inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/tmp_results
