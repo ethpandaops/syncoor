@@ -280,6 +280,10 @@ func (s *service) Start(ctx context.Context) error {
 	network, err := ethereum.Run(ctx, runOpts...,
 	)
 	if err != nil {
+		if ctx.Err() == nil {
+			s.saveNetworkStartFailureReport(ctx, err)
+		}
+
 		return fmt.Errorf("failed to start network: %w", err)
 	}
 
@@ -1001,6 +1005,64 @@ func (s *service) checkContainerHealth(ctx context.Context, enclaveName, service
 	}
 
 	return nil
+}
+
+const maxStartFailureMessageLen = 2000
+
+func (s *service) saveNetworkStartFailureReport(ctx context.Context, startErr error) {
+	if err := s.reportService.Start(ctx); err != nil {
+		s.log.WithError(err).Error("Failed to start report service for network start failure")
+
+		return
+	}
+
+	if err := s.reportService.SetNetwork(ctx, s.cfg.Network); err != nil {
+		s.log.WithError(err).Warn("Failed to set network in report")
+	}
+
+	if err := s.reportService.SetLabels(ctx, s.cfg.Labels); err != nil {
+		s.log.WithError(err).Warn("Failed to set labels in report")
+	}
+
+	if err := s.reportService.SetExecutionClientInfo(ctx, &report.ClientInfo{
+		Name:  s.cfg.ELClient,
+		Type:  s.cfg.ELClient,
+		Image: s.cfg.ELImage,
+		Cmd:   s.cfg.ELExtraArgs,
+	}); err != nil {
+		s.log.WithError(err).Warn("Failed to set execution client info in report")
+	}
+
+	if err := s.reportService.SetConsensusClientInfo(ctx, &report.ClientInfo{
+		Name:  s.cfg.CLClient,
+		Type:  s.cfg.CLClient,
+		Image: s.cfg.CLImage,
+		Cmd:   s.cfg.CLExtraArgs,
+	}); err != nil {
+		s.log.WithError(err).Warn("Failed to set consensus client info in report")
+	}
+
+	message := startErr.Error()
+	if len(message) > maxStartFailureMessageLen {
+		message = "..." + message[len(message)-maxStartFailureMessageLen:]
+	}
+
+	if err := s.reportService.SetSyncStatus(ctx, "error", "Network failed to start: "+message); err != nil {
+		s.log.WithError(err).Warn("Failed to set status in report")
+	}
+
+	if err := s.reportService.Stop(ctx); err != nil {
+		s.log.WithError(err).Error("Failed to stop report service")
+	}
+
+	baseName := fmt.Sprintf("%s_%s_%s", s.cfg.Network, s.cfg.ELClient, s.cfg.CLClient)
+	if err := s.reportService.SaveReportToFiles(ctx, baseName, s.cfg.ReportDir); err != nil {
+		s.log.WithError(err).Error("Failed to save network start failure report")
+
+		return
+	}
+
+	s.log.Info("Network start failure report saved")
 }
 
 // finalizeSyncTest handles the common finalization steps for failed sync tests

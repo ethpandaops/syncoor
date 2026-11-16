@@ -579,13 +579,13 @@ runs:
         fi
 
     - name: Upload results to S3
-      if: ${{ inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
+      if: ${{ !cancelled() && inputs.s3-upload == 'true' && inputs.run-tests == 'true' }}
       shell: bash
       run: |
         rclone copy --no-traverse ${{ runner.temp }}/reports s3:${{ inputs.s3-bucket }}/${{ inputs.s3-path }}
 
     - name: Generate report index and upload to S3
-      if: ${{ inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
+      if: ${{ !cancelled() && inputs.s3-upload == 'true' && inputs.s3-index-generate == 'true' }}
       shell: bash
       run: |
         mkdir -p ${{ runner.temp }}/tmp_results
