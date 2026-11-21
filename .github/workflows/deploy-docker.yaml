@@ -7,9 +7,17 @@ on:
     tags:
       - 'v*.*.*'
 
+# A run that has started pushing finishes, so the tags it moves stay consistent
+# with what it mirrored.
+concurrency:
+  group: docker-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
 env:
   GHCR_REPO: ghcr.io/${{ github.repository }}
-  DOCKERHUB_REPO: docker.io/${{ github.repository }}
   DOCKERFILE: Dockerfile
 
 jobs:
@@ -30,10 +38,10 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/v*.*.* ]]; then
             VERSION="${GITHUB_REF#refs/tags/}"
             echo "tag_prefix=$VERSION" >> $GITHUB_OUTPUT
-            echo "additional_tags=[\"$VERSION\",\"latest\"]" >> $GITHUB_OUTPUT
+            echo "additional_tags=$VERSION latest" >> $GITHUB_OUTPUT
           else
             echo "tag_prefix=master" >> $GITHUB_OUTPUT
-            echo "additional_tags=[\"master\",\"master-latest\"]" >> $GITHUB_OUTPUT
+            echo "additional_tags=master master-latest" >> $GITHUB_OUTPUT
           fi
 
   build_amd64:
@@ -43,6 +51,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -56,34 +66,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build amd64 docker image
+      # Without provenance the pushed digest is the amd64 image manifest
+      # itself, which the manifest job merges and mirrors by digest.
+      - name: Build and push amd64 docker image
+        id: build
         env:
           PREFIX: ${{ needs.meta.outputs.tag_prefix }}
           SHA: ${{ needs.meta.outputs.sha_short }}
         run: |
-          docker build . --file "$DOCKERFILE" \
+          docker buildx build . --file "$DOCKERFILE" \
+            --platform=linux/amd64 \
+            --provenance=false \
+            --sbom=false \
             --tag "${GHCR_REPO}:${PREFIX}-amd64" \
             --tag "${GHCR_REPO}:${PREFIX}-${SHA}-amd64" \
-            --tag "${DOCKERHUB_REPO}:${PREFIX}-amd64" \
-            --tag "${DOCKERHUB_REPO}:${PREFIX}-${SHA}-amd64" \
-            --platform=linux/amd64
-
-      - name: Push amd64 docker images
-        env:
-          PREFIX: ${{ needs.meta.outputs.tag_prefix }}
-          SHA: ${{ needs.meta.outputs.sha_short }}
-        run: |
-          docker push "${GHCR_REPO}:${PREFIX}-amd64"
-          docker push "${GHCR_REPO}:${PREFIX}-${SHA}-amd64"
-          docker push "${DOCKERHUB_REPO}:${PREFIX}-amd64"
-          docker push "${DOCKERHUB_REPO}:${PREFIX}-${SHA}-amd64"
+            --metadata-file "$RUNNER_TEMP/build.json" \
+            --push
+          digest=$(jq -er '."containerimage.digest"' "$RUNNER_TEMP/build.json")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
   build_arm64:
     name: Build arm64 image
@@ -92,6 +92,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -105,42 +107,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Build arm64 docker image
+      # Without provenance the pushed digest is the arm64 image manifest
+      # itself, which the manifest job merges and mirrors by digest.
+      - name: Build and push arm64 docker image
+        id: build
         env:
           PREFIX: ${{ needs.meta.outputs.tag_prefix }}
           SHA: ${{ needs.meta.outputs.sha_short }}
         run: |
-          docker build . --file "$DOCKERFILE" \
+          docker buildx build . --file "$DOCKERFILE" \
+            --platform=linux/arm64 \
+            --provenance=false \
+            --sbom=false \
             --tag "${GHCR_REPO}:${PREFIX}-arm64" \
             --tag "${GHCR_REPO}:${PREFIX}-${SHA}-arm64" \
-            --tag "${DOCKERHUB_REPO}:${PREFIX}-arm64" \
-            --tag "${DOCKERHUB_REPO}:${PREFIX}-${SHA}-arm64" \
-            --platform=linux/arm64
+            --metadata-file "$RUNNER_TEMP/build.json" \
+            --push
+          digest=$(jq -er '."containerimage.digest"' "$RUNNER_TEMP/build.json")
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
-      - name: Push arm64 docker images
-        env:
-          PREFIX: ${{ needs.meta.outputs.tag_prefix }}
-          SHA: ${{ needs.meta.outputs.sha_short }}
-        run: |
-          docker push "${GHCR_REPO}:${PREFIX}-arm64"
-          docker push "${GHCR_REPO}:${PREFIX}-${SHA}-arm64"
-          docker push "${DOCKERHUB_REPO}:${PREFIX}-arm64"
-          docker push "${DOCKERHUB_REPO}:${PREFIX}-${SHA}-arm64"
-
-  manifest_sha:
-    name: Multi-arch sha manifest
+  manifest:
+    name: Multi-arch manifests
     needs: [meta, build_amd64, build_arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write      # attest, and authenticate to the image mirror
+      attestations: write
     steps:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -152,61 +146,45 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Log in to Docker Hub
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Create multi-arch sha manifest
+      # One index of the two per-arch digests, tagged <prefix>-<sha> and each
+      # additional tag.
+      - name: Create multi-arch manifests
+        id: manifest
         env:
           PREFIX: ${{ needs.meta.outputs.tag_prefix }}
           SHA: ${{ needs.meta.outputs.sha_short }}
+          ADDITIONAL_TAGS: ${{ needs.meta.outputs.additional_tags }}
+          AMD64_DIGEST: ${{ needs.build_amd64.outputs.digest }}
+          ARM64_DIGEST: ${{ needs.build_arm64.outputs.digest }}
         run: |
-          for repo in "$GHCR_REPO" "$DOCKERHUB_REPO"; do
-            docker buildx imagetools create -t "${repo}:${PREFIX}-${SHA}" \
-              "${repo}:${PREFIX}-${SHA}-amd64" \
-              "${repo}:${PREFIX}-${SHA}-arm64"
+          read -ra extra <<< "$ADDITIONAL_TAGS"
+          tags=("${PREFIX}-${SHA}" "${extra[@]}")
+          args=()
+          for tag in "${tags[@]}"; do
+            args+=(-t "${GHCR_REPO}:${tag}")
           done
+          docker buildx imagetools create --metadata-file "$RUNNER_TEMP/manifest.json" "${args[@]}" \
+            "${GHCR_REPO}@${AMD64_DIGEST}" \
+            "${GHCR_REPO}@${ARM64_DIGEST}"
+          digest=$(jq -er '."containerimage.descriptor".digest' "$RUNNER_TEMP/manifest.json")
+          {
+            echo "tags<<EOF"
+            for tag in "${tags[@]}"; do
+              echo "${tag}@${digest}"
+            done
+            echo "${PREFIX}-amd64@${AMD64_DIGEST}"
+            echo "${PREFIX}-${SHA}-amd64@${AMD64_DIGEST}"
+            echo "${PREFIX}-arm64@${ARM64_DIGEST}"
+            echo "${PREFIX}-${SHA}-arm64@${ARM64_DIGEST}"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
-  manifest_extra:
-    name: Multi-arch additional manifests
-    needs: [meta, build_amd64, build_arm64]
-    if: ${{ needs.meta.outputs.additional_tags != '' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        tag: ${{ fromJSON(needs.meta.outputs.additional_tags) }}
-    steps:
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Log in to GHCR
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+      # Both builds ran on GitHub-hosted runners in this run, so this job
+      # attests the index and the per-arch images behind it. Re-running it
+      # rebuilds the same index from the same per-arch digests.
+      - name: Attest and mirror to Docker Hub
+        uses: ethpandaops/actions/mirror-image@738aeadbcdc54f1c9af659d35f8ef29dd5c0fae6
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-      - name: Create multi-arch manifest ${{ matrix.tag }}
-        env:
-          PREFIX: ${{ needs.meta.outputs.tag_prefix }}
-          SHA: ${{ needs.meta.outputs.sha_short }}
-          TAG: ${{ matrix.tag }}
-        run: |
-          for repo in "$GHCR_REPO" "$DOCKERHUB_REPO"; do
-            docker buildx imagetools create -t "${repo}:${TAG}" \
-              "${repo}:${PREFIX}-${SHA}-amd64" \
-              "${repo}:${PREFIX}-${SHA}-arm64"
-          done
+          image: syncoor
+          tags: ${{ steps.manifest.outputs.tags }}
+          mirror-url: ${{ secrets.IMAGE_MIRROR_URL }}
