@@ -133,7 +133,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write      # attest, and authenticate to the image mirror
+      id-token: write
       attestations: write
     steps:
       - name: Set up Docker Buildx
